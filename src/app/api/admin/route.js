@@ -1,4 +1,3 @@
-/* eslint-disable */
 // JavaScript version of admin route to bypass TypeScript module detection
 import { NextResponse } from 'next/server';
 

@@ -1,35 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import Database from '../../../lib/database';
+// JavaScript version of auth route to bypass TypeScript module detection
+import { NextResponse } from 'next/server';
 
-// Force this file to be treated as an ES module
-export {};
-
-// Type exports to ensure this file is recognized as a module
-export type UserRegistration = {
-    first_name: string;
-    last_name: string;
-    phone: string;
-    password: string;
-    otpCode?: string;
-};
-
-export type UserLogin = {
-    phone: string;
-    password: string;
-};
-
-// Initialize database connection on first request
 let isInitialized = false;
+let Database;
 
 async function initializeDatabase() {
     if (!isInitialized) {
+        // Dynamic import to avoid module resolution issues
+        const { default: DatabaseClass } = await import('../../../lib/database');
+        Database = DatabaseClass;
         await Database.initializeDatabase();
         isInitialized = true;
     }
 }
 
 // POST - Register new user
-export async function POST(request: NextRequest) {
+async function POST(request) {
     try {
         await initializeDatabase();
 
@@ -94,7 +80,7 @@ export async function POST(request: NextRequest) {
 }
 
 // PUT - Login user  
-export async function PUT(request: NextRequest) {
+async function PUT(request) {
     try {
         await initializeDatabase();
 
@@ -147,7 +133,7 @@ export async function PUT(request: NextRequest) {
 }
 
 // GET - Login user (alternative method)
-export async function GET(request: NextRequest) {
+async function GET(request) {
     try {
         await initializeDatabase();
 
@@ -200,3 +186,5 @@ export async function GET(request: NextRequest) {
         );
     }
 }
+
+export { POST, PUT, GET };
