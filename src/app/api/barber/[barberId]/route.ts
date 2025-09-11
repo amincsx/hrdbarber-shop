@@ -47,54 +47,53 @@ export async function GET(
     }
 }
 
-// PUT - Update booking status (confirm, cancel, etc.)
+// PUT - Update booking status (for barber)
 export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ barberId: string }> }
 ) {
     try {
+        await initializeDatabase();
+        
         const { barberId } = await params;
-        const { booking_id, status, notes } = await request.json();
+        const { bookingId, status, notes } = await request.json();
 
-        if (!booking_id || !status) {
+        if (!bookingId || !status) {
             return NextResponse.json(
-                { error: 'شناسه رزرو و وضعیت الزامی است' },
+                { error: 'شناسه نوبت و وضعیت الزامی است' },
                 { status: 400 }
             );
         }
 
-        const bookings = await readBookings();
-        const bookingIndex = bookings.findIndex((b: any) =>
-            b.id === booking_id && (b.barber === barberId || b.barber === decodeURIComponent(barberId))
-        );
-
-        if (bookingIndex === -1) {
+        // Verify booking belongs to this barber
+        const booking = await Database.findBookingById(bookingId);
+        
+        if (!booking || booking.barberId !== decodeURIComponent(barberId)) {
             return NextResponse.json(
-                { error: 'رزرو یافت نشد' },
-                { status: 404 }
+                { error: 'نوبت یافت نشد یا متعلق به این آرایشگر نیست' },
+                { status: 403 }
             );
         }
 
-        // Update booking
-        bookings[bookingIndex] = {
-            ...bookings[bookingIndex],
-            status,
-            notes: notes || bookings[bookingIndex].notes,
-            updated_at: new Date().toISOString()
-        };
+        // Update booking status
+        const updatedBooking = await Database.updateBookingStatus(bookingId, status, notes);
 
-        // Write updated bookings
-        await fs.writeFile(BOOKINGS_FILE, JSON.stringify(bookings, null, 2));
+        if (!updatedBooking) {
+            return NextResponse.json(
+                { error: 'خطا در به‌روزرسانی وضعیت نوبت' },
+                { status: 500 }
+            );
+        }
 
         return NextResponse.json({
-            message: 'رزرو با موفقیت به‌روزرسانی شد',
-            booking: bookings[bookingIndex]
+            message: 'وضعیت نوبت به‌روزرسانی شد',
+            booking: updatedBooking
         });
 
     } catch (error) {
-        console.error('Error updating booking:', error);
+        console.error('Update booking status error:', error);
         return NextResponse.json(
-            { error: 'خطا در به‌روزرسانی رزرو' },
+            { error: 'خطا در به‌روزرسانی وضعیت نوبت' },
             { status: 500 }
         );
     }
