@@ -1,0 +1,15 @@
+{
+    "app": "hrdbarber-shop",
+    "port": 3000,
+    "platform": "node",
+    "node": {
+        "version": "20"
+    },
+    "build": {
+        "command": "npm run build"
+    },
+    "healthCheck": {
+        "path": "/",
+        "port": 3000
+    }
+}

@@ -1,36 +1,103 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+# آرایشگاه HRD - سامانه رزرو نوبت
 
-First, run the development server:
+یک اپلیکیشن Progressive Web App (PWA) برای رزرو نوبت آرایشگاه با قابلیت‌های زیر:
 
+## ویژگی‌ها
+
+- 🔐 سیستم احراز هویت کاربران
+- 📅 تقویم شمسی برای انتخاب تاریخ
+- ⏰ انتخاب زمان با کنترل تداخل
+- 💼 انتخاب آرایشگر و سرویس‌ها
+- 📱 طراحی ریسپانسیو و PWA
+- 🗃️ ذخیره سازی در دیتابیس و localStorage
+- 🔄 همگام‌سازی آفلاین/آنلاین
+
+## تکنولوژی‌ها
+
+- **Frontend**: Next.js 15 با App Router
+- **Database**: Supabase PostgreSQL
+- **Styling**: Tailwind CSS + Inline Styles
+- **PWA**: next-pwa
+- **Authentication**: Custom + Supabase Auth
+
+## راه‌اندازی محیط توسعه
+
+### پیش‌نیازها
+- Node.js 18+
+- npm یا yarn
+- حساب Supabase
+
+### مراحل نصب
+
+1. **کلون پروژه**:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd hrdbarber.shop
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **نصب dependencies**:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. **تنظیم متغیرهای محیطی**:
+فایل `.env.local` را ایجاد کنید:
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. **راه‌اندازی دیتابیس**:
+- به پنل Supabase بروید
+- SQL موجود در `database/schema.sql` را اجرا کنید
 
-## Learn More
+5. **اجرای پروژه**:
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+## راه‌اندازی دیتابیس Supabase
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 1. ایجاد حساب و پروژه
+- به [supabase.com](https://supabase.com) بروید
+- حساب کاربری ایجاد کنید
+- پروژه جدید ایجاد کنید
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 2. اجرای SQL Schema
+در SQL Editor پنل Supabase، کد موجود در `database/schema.sql` را اجرا کنید.
 
-## Deploy on Vercel
+### 3. تنظیمات Authentication
+- در بخش Authentication، Anonymous access را فعال کنید
+- RLS policies از فایل schema اعمال می‌شوند
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## دیپلوی
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Vercel (توصیه شده)
+
+1. **اتصال به Vercel**:
+```bash
+npm i -g vercel
+vercel
+```
+
+2. **تنظیم Environment Variables**:
+در پنل Vercel، متغیرهای زیر را اضافه کنید:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+3. **دیپلوی**:
+```bash
+vercel --prod
+```
+
+## PWA Features
+
+- اپ قابل نصب روی موبایل
+- کار آفلاین
+- کش کردن صفحات
+- آیکون اختصاری روی صفحه اصلی
+
+---
+
+ساخته شده با ❤️ برای آرایشگاه HRD
