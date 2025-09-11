@@ -77,25 +77,25 @@ export interface Barber {
 
 // Database utility class
 export class Database {
-    
+
     // Get users collection
     static async getUsersCollection(): Promise<Collection<User>> {
         const database = await connectDB();
         return database.collection<User>('users');
     }
-    
+
     // Get bookings collection
     static async getBookingsCollection(): Promise<Collection<Booking>> {
         const database = await connectDB();
         return database.collection<Booking>('bookings');
     }
-    
+
     // Get barbers collection
     static async getBarbersCollection(): Promise<Collection<Barber>> {
         const database = await connectDB();
         return database.collection<Barber>('barbers');
     }
-    
+
     // User operations
     static async createUser(userData: Omit<User, '_id' | 'createdAt' | 'updatedAt'>): Promise<User> {
         const users = await this.getUsersCollection();
@@ -105,30 +105,30 @@ export class Database {
             createdAt: now,
             updatedAt: now
         };
-        
+
         const result = await users.insertOne(user);
         return { ...user, _id: result.insertedId.toString() };
     }
-    
+
     static async findUserByPhone(phone: string): Promise<User | null> {
         const users = await this.getUsersCollection();
         return await users.findOne({ phone });
     }
-    
+
     static async updateUser(phone: string, updateData: Partial<User>): Promise<boolean> {
         const users = await this.getUsersCollection();
         const result = await users.updateOne(
             { phone },
-            { 
-                $set: { 
-                    ...updateData, 
-                    updatedAt: new Date() 
-                } 
+            {
+                $set: {
+                    ...updateData,
+                    updatedAt: new Date()
+                }
             }
         );
         return result.modifiedCount > 0;
     }
-    
+
     // Booking operations
     static async createBooking(bookingData: Omit<Booking, '_id' | 'createdAt' | 'updatedAt'>): Promise<Booking> {
         const bookings = await this.getBookingsCollection();
@@ -138,33 +138,33 @@ export class Database {
             createdAt: now,
             updatedAt: now
         };
-        
+
         const result = await bookings.insertOne(booking);
         return { ...booking, _id: result.insertedId.toString() };
     }
-    
+
     static async getBookingsByUser(userPhone: string): Promise<Booking[]> {
         const bookings = await this.getBookingsCollection();
         return await bookings.find({ userPhone }).sort({ createdAt: -1 }).toArray();
     }
-    
+
     static async getBookingsByBarber(barberId: string): Promise<Booking[]> {
         const bookings = await this.getBookingsCollection();
         return await bookings.find({ barberId }).sort({ createdAt: -1 }).toArray();
     }
-    
+
     static async updateBookingStatus(bookingId: string, status: Booking['status'], notes?: string): Promise<Booking | null> {
         const bookings = await this.getBookingsCollection();
-        
-        const updateData: any = { 
-            status, 
-            updatedAt: new Date() 
+
+        const updateData: any = {
+            status,
+            updatedAt: new Date()
         };
-        
+
         if (notes) {
             updateData.notes = notes;
         }
-        
+
         const result = await bookings.findOneAndUpdate(
             { _id: new ObjectId(bookingId) } as any,
             { $set: updateData },
@@ -172,40 +172,40 @@ export class Database {
         );
         return result ? { ...result, _id: result._id.toString() } : null;
     }
-    
+
     // Additional booking methods
     static async findBookingById(bookingId: string): Promise<Booking | null> {
         const bookings = await this.getBookingsCollection();
         const booking = await bookings.findOne({ _id: new ObjectId(bookingId) } as any);
         return booking ? { ...booking, _id: booking._id.toString() } : null;
     }
-    
+
     static async findBookingsByUserId(userId: string): Promise<Booking[]> {
         const bookings = await this.getBookingsCollection();
         return await bookings.find({ userId }).sort({ createdAt: -1 }).toArray();
     }
-    
+
     static async findBookingsByDate(dateKey: string): Promise<Booking[]> {
         const bookings = await this.getBookingsCollection();
         return await bookings.find({ dateKey }).sort({ startTime: 1 }).toArray();
     }
-    
+
     static async findBookingsByDateAndBarber(dateKey: string, barberId: string): Promise<Booking[]> {
         const bookings = await this.getBookingsCollection();
         return await bookings.find({ dateKey, barberId }).toArray();
     }
-    
+
     static async getAllBookings(): Promise<Booking[]> {
         const bookings = await this.getBookingsCollection();
         return await bookings.find({}).sort({ createdAt: -1 }).toArray();
     }
-    
+
     static async deleteBooking(bookingId: string): Promise<boolean> {
         const bookings = await this.getBookingsCollection();
         const result = await bookings.deleteOne({ _id: new ObjectId(bookingId) } as any);
         return result.deletedCount > 0;
     }
-    
+
     // Barber operations
     static async createBarber(barberData: Omit<Barber, '_id' | 'createdAt' | 'updatedAt'>): Promise<Barber> {
         const barbers = await this.getBarbersCollection();
@@ -215,26 +215,26 @@ export class Database {
             createdAt: now,
             updatedAt: now
         };
-        
+
         const result = await barbers.insertOne(barber);
         return { ...barber, _id: result.insertedId.toString() };
     }
-    
+
     static async getAllBarbers(): Promise<Barber[]> {
         const barbers = await this.getBarbersCollection();
         return await barbers.find({ isActive: true }).toArray();
     }
-    
+
     static async findBarberByName(name: string): Promise<Barber | null> {
         const barbers = await this.getBarbersCollection();
         return await barbers.findOne({ name });
     }
-    
+
     // Initialize database with default data
     static async initializeDatabase(): Promise<void> {
         try {
             await connectDB();
-            
+
             // Create default admin user if not exists
             const adminExists = await this.findUserByPhone('09123456789');
             if (!adminExists) {
@@ -246,7 +246,7 @@ export class Database {
                 });
                 console.log('Default admin user created');
             }
-            
+
             // Create default barbers if not exists
             const defaultBarbers = [
                 {
@@ -280,7 +280,7 @@ export class Database {
                     }
                 }
             ];
-            
+
             for (const barberData of defaultBarbers) {
                 const barberExists = await this.findBarberByName(barberData.name);
                 if (!barberExists) {
@@ -288,25 +288,25 @@ export class Database {
                     console.log(`Default barber ${barberData.name} created`);
                 }
             }
-            
+
             // Create indexes for better performance
             const users = await this.getUsersCollection();
             const bookings = await this.getBookingsCollection();
             const barbers = await this.getBarbersCollection();
-            
+
             await users.createIndex({ phone: 1 }, { unique: true });
             await bookings.createIndex({ userPhone: 1 });
             await bookings.createIndex({ barberId: 1 });
             await bookings.createIndex({ dateKey: 1 });
             await barbers.createIndex({ name: 1 }, { unique: true });
-            
+
             console.log('Database indexes created');
-            
+
         } catch (error) {
             console.error('Database initialization failed:', error);
         }
     }
-    
+
     // Close database connection
     static async closeConnection(): Promise<void> {
         if (client) {

@@ -18,10 +18,10 @@ export async function GET(
 ) {
     try {
         await initializeDatabase();
-        
+
         const { barberId } = await params;
         const decodedBarberId = decodeURIComponent(barberId);
-        
+
         // Get bookings for this barber using MongoDB
         const bookings = await Database.getBookingsByBarber(decodedBarberId);
 
@@ -54,7 +54,7 @@ export async function PUT(
 ) {
     try {
         await initializeDatabase();
-        
+
         const { barberId } = await params;
         const { bookingId, status, notes } = await request.json();
 
@@ -67,7 +67,7 @@ export async function PUT(
 
         // Verify booking belongs to this barber
         const booking = await Database.findBookingById(bookingId);
-        
+
         if (!booking || booking.barberId !== decodeURIComponent(barberId)) {
             return NextResponse.json(
                 { error: 'نوبت یافت نشد یا متعلق به این آرایشگر نیست' },

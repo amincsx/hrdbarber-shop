@@ -29,7 +29,7 @@ async function initializeDatabase() {
 export async function POST(request: NextRequest) {
     try {
         await initializeDatabase();
-        
+
         const userData = await request.json();
         const { first_name, last_name, phone, password, otpCode } = userData;
 
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
         // Check if user already exists
         const existingUser = await Database.findUserByPhone(phone);
-        
+
         if (existingUser) {
             return NextResponse.json(
                 { error: 'کاربری با این شماره تلفن قبلاً ثبت نام کرده است' },
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
     try {
         await initializeDatabase();
-        
+
         const { phone, password } = await request.json();
 
         if (!phone || !password) {
@@ -106,7 +106,7 @@ export async function PUT(request: NextRequest) {
 
         // Find user by phone
         const user = await Database.findUserByPhone(phone);
-        
+
         if (!user) {
             return NextResponse.json(
                 { error: 'کاربری با این شماره تلفن یافت نشد' },
@@ -147,7 +147,7 @@ export async function PUT(request: NextRequest) {
 export async function GET(request: NextRequest) {
     try {
         await initializeDatabase();
-        
+
         const { searchParams } = new URL(request.url);
         const phone = searchParams.get('phone');
         const password = searchParams.get('password');
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
 
         // Find user by phone
         const user = await Database.findUserByPhone(phone);
-        
+
         if (!user) {
             return NextResponse.json(
                 { error: 'شماره تلفن یا رمز عبور اشتباه است' },

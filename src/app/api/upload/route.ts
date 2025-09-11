@@ -4,12 +4,12 @@ export async function POST(request: NextRequest) {
     try {
         // This is a placeholder upload endpoint
         // You can implement file upload logic here when needed
-        
+
         return NextResponse.json({
             success: false,
             message: 'Upload functionality not implemented yet'
         }, { status: 501 });
-        
+
     } catch (error) {
         console.error('Upload error:', error);
         return NextResponse.json({
