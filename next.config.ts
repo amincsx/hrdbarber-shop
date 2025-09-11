@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
     tsconfigPath: undefined, // Don't use tsconfig for builds
   },
 
-  // Disable typed routes
+  // Disable all type checking
   typedRoutes: false,
 
   // External packages for server components

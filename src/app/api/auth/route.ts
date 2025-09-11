@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Database from '../../../lib/database';
 
+// Force this file to be treated as an ES module
+export {};
+
 // Type exports to ensure this file is recognized as a module
 export type UserRegistration = {
     first_name: string;

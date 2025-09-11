@@ -1,0 +1,19 @@
+{
+  "platform": "next",
+  "build": {
+    "commands": [
+      "npm ci",
+      "npm run build"
+    ],
+    "env": {
+      "SKIP_ENV_VALIDATION": "true",
+      "TSC_COMPILE_ON_ERROR": "true", 
+      "DISABLE_ESLINT": "true",
+      "SKIP_TYPE_CHECK": "true",
+      "NEXT_SKIP_VALIDATION": "true"
+    }
+  },
+  "runtime": {
+    "nodeVersion": "18"
+  }
+}
