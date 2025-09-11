@@ -1,4 +1,4 @@
-import { MongoClient, Db, Collection } from 'mongodb';
+import { MongoClient, Db, Collection, ObjectId } from 'mongodb';
 
 // MongoDB Configuration
 const MONGODB_URI = 'mongodb://root:HezBrylIIfJuZhRzudMR9qOQ@hrddatabase:27017/my-app?authSource=admin';
@@ -155,7 +155,6 @@ export class Database {
     
     static async updateBookingStatus(bookingId: string, status: Booking['status'], notes?: string): Promise<Booking | null> {
         const bookings = await this.getBookingsCollection();
-        const { ObjectId } = require('mongodb');
         
         const updateData: any = { 
             status, 
@@ -167,7 +166,7 @@ export class Database {
         }
         
         const result = await bookings.findOneAndUpdate(
-            { _id: new ObjectId(bookingId) },
+            { _id: new ObjectId(bookingId) } as any,
             { $set: updateData },
             { returnDocument: 'after' }
         );
@@ -177,8 +176,7 @@ export class Database {
     // Additional booking methods
     static async findBookingById(bookingId: string): Promise<Booking | null> {
         const bookings = await this.getBookingsCollection();
-        const { ObjectId } = require('mongodb');
-        const booking = await bookings.findOne({ _id: new ObjectId(bookingId) });
+        const booking = await bookings.findOne({ _id: new ObjectId(bookingId) } as any);
         return booking ? { ...booking, _id: booking._id.toString() } : null;
     }
     
@@ -204,8 +202,7 @@ export class Database {
     
     static async deleteBooking(bookingId: string): Promise<boolean> {
         const bookings = await this.getBookingsCollection();
-        const { ObjectId } = require('mongodb');
-        const result = await bookings.deleteOne({ _id: new ObjectId(bookingId) });
+        const result = await bookings.deleteOne({ _id: new ObjectId(bookingId) } as any);
         return result.deletedCount > 0;
     }
     
