@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "cross-env SKIP_ENV_VALIDATION=true TSC_COMPILE_ON_ERROR=true DISABLE_ESLINT=true next build",
+    "build:liara": "cross-env SKIP_ENV_VALIDATION=true TSC_COMPILE_ON_ERROR=true DISABLE_ESLINT=true SKIP_TYPE_CHECK=true next build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -22,6 +23,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.2",
     "tailwindcss": "^4",

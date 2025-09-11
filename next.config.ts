@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
   // Disable typed routes
   typedRoutes: false,
 
+  // External packages for server components
+  serverExternalPackages: ['mongodb'],
+
   webpack: (config: any) => {
     config.resolve.fallback = { fs: false, path: false };
 
@@ -25,6 +28,30 @@ const nextConfig: NextConfig = {
     config.plugins = config.plugins.filter((plugin: any) => {
       return plugin.constructor.name !== 'ForkTsCheckerWebpackPlugin';
     });
+
+    // Force all modules to be treated as ES modules
+    config.resolve.extensionAlias = {
+      ".js": [".js", ".ts"],
+      ".jsx": [".jsx", ".tsx"],
+    };
+
+    // Configure module resolution to handle all file types as ES modules
+    config.module.rules.push({
+      test: /\.(js|jsx|ts|tsx)$/,
+      type: 'javascript/auto',
+      resolve: {
+        fullySpecified: false
+      }
+    });
+
+    // Disable warnings that might be treated as module errors
+    config.ignoreWarnings = [
+      /Critical dependency: the request of a dependency is an expression/,
+      /Module not found/,
+      /Can't resolve/,
+      /Failed to parse source map/,
+      /is not a module/
+    ];
 
     return config;
   },

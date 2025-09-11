@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from '@/lib/database';
+import Database from '../../../lib/database';
 
 // Type exports to ensure this file is recognized as a module
 export type UserRegistration = {
