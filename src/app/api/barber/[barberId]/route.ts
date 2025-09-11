@@ -1,28 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import Database from '@/lib/database';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const BOOKINGS_FILE = path.join(DATA_DIR, 'bookings.json');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
+// Initialize database connection on first request
+let isInitialized = false;
 
-// Read bookings from file
-async function readBookings() {
-    try {
-        const data = await fs.readFile(BOOKINGS_FILE, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        return [];
-    }
-}
-
-// Read users from file
-async function readUsers() {
-    try {
-        const data = await fs.readFile(USERS_FILE, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        return [];
+async function initializeDatabase() {
+    if (!isInitialized) {
+        await Database.initializeDatabase();
+        isInitialized = true;
     }
 }
 
@@ -32,38 +17,25 @@ export async function GET(
     { params }: { params: Promise<{ barberId: string }> }
 ) {
     try {
+        await initializeDatabase();
+        
         const { barberId } = await params;
-        const bookings = await readBookings();
-        const users = await readUsers();
-
-        // Filter bookings for this barber
-        const barberBookings = bookings.filter((booking: any) =>
-            booking.barber === barberId ||
-            booking.barber === decodeURIComponent(barberId)
-        );
-
-        // Enhance bookings with user information
-        const enhancedBookings = barberBookings.map((booking: any) => {
-            const user = users.find((u: any) => u.id === booking.user_id);
-            return {
-                ...booking,
-                user_name: user ? `${user.first_name} ${user.last_name}` : 'نامشخص',
-                user_phone: user ? user.phone : 'نامشخص'
-            };
-        });
+        const decodedBarberId = decodeURIComponent(barberId);
+        
+        // Get bookings for this barber using MongoDB
+        const bookings = await Database.getBookingsByBarber(decodedBarberId);
 
         // Sort bookings by date and time
-        enhancedBookings.sort((a: any, b: any) => {
-            if (a.date_key !== b.date_key) {
-                return new Date(a.date_key).getTime() - new Date(b.date_key).getTime();
-            }
-            return a.start_time.localeCompare(b.start_time);
+        const sortedBookings = bookings.sort((a, b) => {
+            const dateA = new Date(a.dateKey + 'T' + a.startTime);
+            const dateB = new Date(b.dateKey + 'T' + b.startTime);
+            return dateA.getTime() - dateB.getTime();
         });
 
         return NextResponse.json({
-            barber: barberId,
-            bookings: enhancedBookings,
-            total_bookings: enhancedBookings.length
+            barber: decodedBarberId,
+            bookings: sortedBookings,
+            total_bookings: sortedBookings.length
         });
 
     } catch (error) {

@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   eslint: {
     ignoreDuringBuilds: true,
+    dirs: [], // Don't run ESLint on any directories during build
   },
   typescript: {
     ignoreBuildErrors: true,
