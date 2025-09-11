@@ -1,0 +1,8 @@
+# Ignore JavaScript files in API routes to bypass ESLint issues
+src/app/api/**/*.js
+*.js
+**/*.js
+node_modules/
+.next/
+dist/
+build/

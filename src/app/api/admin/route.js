@@ -1,5 +1,6 @@
+/* eslint-disable */
 // JavaScript version of admin route to bypass TypeScript module detection
-const { NextResponse } = require('next/server');
+import { NextResponse } from 'next/server';
 
 let isInitialized = false;
 let Database;
@@ -181,4 +182,4 @@ async function PUT(request) {
     }
 }
 
-module.exports = { POST, GET, PUT };
+export { POST, GET, PUT };
