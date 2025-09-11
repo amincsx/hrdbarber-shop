@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -11,8 +12,6 @@ const nextConfig: NextConfig = {
     config.resolve.fallback = { fs: false, path: false };
     return config;
   },
-  // Disable PWA for now to avoid build issues
-  // Will re-enable after successful deployment
 };
 
 export default nextConfig;
