@@ -105,7 +105,7 @@ export default function SignupPage() {
         // Fallback to localStorage
         try {
           const storedUsers = localStorage.getItem('users') ? JSON.parse(localStorage.getItem('users')!) : [];
-          
+
           // Check if user already exists
           const existingUser = storedUsers.find((u: any) => u.phone === phone);
           if (existingUser) {
@@ -126,7 +126,7 @@ export default function SignupPage() {
           storedUsers.push(newUser);
           localStorage.setItem('users', JSON.stringify(storedUsers));
           localStorage.setItem('userData', JSON.stringify(newUser));
-          
+
           router.push('/booking');
         } catch (localErr) {
           setError('خطا در ثبت نام. لطفا دوباره تلاش کنید');
@@ -224,7 +224,7 @@ export default function SignupPage() {
                   کد تایید به شماره {phone} ارسال شد
                 </p>
               </div>
-              
+
               <div>
                 <input
                   type="text"
@@ -236,7 +236,7 @@ export default function SignupPage() {
                   className="w-full p-4 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white placeholder-white/70 text-center text-lg tracking-widest"
                 />
               </div>
-              
+
               <div className="text-center">
                 <button
                   type="button"
