@@ -1,21 +1,11 @@
 {
     "app": "hrdbarber-shop",
     "port": 3000,
-    "platform": "node",
-    "node": {
-        "version": "18"
-    },
     "build": {
-        "command": "npm install && npm run build"
+        "location": "iran"
     },
-    "start": {
-        "command": "npm start"
-    },
-    "healthCheck": {
-        "path": "/",
-        "port": 3000
-    },
-    "env": {
-        "NODE_ENV": "production"
+    "disks": [],
+    "next": {
+        "mirror": false
     }
 }
