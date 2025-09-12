@@ -17,66 +17,31 @@ export default function DashboardPage() {
       const user = JSON.parse(storedData);
       setUserData(user);
 
-      // Fetch bookings from API
+      // Fetch bookings from API database
       const fetchUserBookings = async () => {
         try {
+          console.log('🔍 Fetching bookings for user:', user.phone);
           const response = await fetch(`/api/bookings?user_id=${encodeURIComponent(user.phone)}`);
           if (response.ok) {
             const data = await response.json();
             const bookings = data.bookings || [];
             console.log('📋 Fetched user bookings from database:', bookings);
             
+            // Sort by date and time (most recent first)
             if (bookings.length > 0) {
-              // Sort by date and time (most recent first)
               bookings.sort((a: any, b: any) => {
                 const dateA = new Date(a.date_key + 'T' + a.start_time);
                 const dateB = new Date(b.date_key + 'T' + b.start_time);
                 return dateB.getTime() - dateA.getTime();
               });
-              setUserBookings(bookings);
-            } else {
-              console.log('📱 No bookings from API, checking localStorage');
-              fetchFromLocalStorage();
             }
+            setUserBookings(bookings);
           } else {
-            console.warn('⚠️ API failed, falling back to localStorage');
-            fetchFromLocalStorage();
-          }
-        } catch (error) {
-          console.error('❌ Error fetching bookings:', error);
-          fetchFromLocalStorage();
-        }
-      };
-
-      const fetchFromLocalStorage = () => {
-        try {
-          const allBookings = localStorage.getItem('allBookings');
-          if (allBookings) {
-            const bookings = JSON.parse(allBookings);
-            const userBookings = bookings.filter((booking: any) =>
-              booking.phone === user.phone || 
-              booking.user_phone === user.phone ||
-              booking.user_id === user.phone
-            );
-            
-            if (userBookings.length > 0) {
-              userBookings.sort((a: any, b: any) => {
-                const dateA = new Date((a.dateKey || a.date_key) + 'T' + (a.startTime || a.start_time));
-                const dateB = new Date((b.dateKey || b.date_key) + 'T' + (b.startTime || b.start_time));
-                return dateB.getTime() - dateA.getTime();
-              });
-              setUserBookings(userBookings);
-              console.log('📱 Loaded user bookings from localStorage:', userBookings);
-            } else {
-              console.log('📝 No bookings found in localStorage for user:', user.phone);
-              setUserBookings([]);
-            }
-          } else {
-            console.log('📝 No bookings found in localStorage');
+            console.warn('⚠️ API response not ok:', response.status);
             setUserBookings([]);
           }
         } catch (error) {
-          console.error('❌ Error reading localStorage:', error);
+          console.error('❌ Error fetching bookings from database:', error);
           setUserBookings([]);
         }
       };
@@ -122,7 +87,7 @@ export default function DashboardPage() {
             <div className="p-6">
               <div className="space-y-4">
                 <div className="text-center text-sm text-white/70 mb-4">
-                  📱 رزروهای شما از localStorage بارگذاری شده‌اند
+                  �️ رزروهای شما از پایگاه داده بارگذاری شده‌اند
                 </div>
                 {userBookings.map((booking: any, index: number) => (
                   <div key={index} className="glass-card p-4 space-y-2 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl">
