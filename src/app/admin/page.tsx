@@ -124,7 +124,7 @@ export default function AdminLogin() {
                             value={loginData.username}
                             onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
                             className="w-full p-4 glass-input text-glass"
-                            placeholder={loginData.type === 'owner' ? 'owner' : 'نام کاربری آرایشگر'}
+                            placeholder={loginData.type === 'owner' ? 'ceo' : 'نام انگلیسی آرایشگر (مثلا hamid)'}
                             required
                         />
                     </div>
@@ -173,19 +173,6 @@ export default function AdminLogin() {
                     </button>
                 </form>
 
-                {/* Demo Credentials */}
-                <div className="mt-8 p-4 bg-yellow-400/10 backdrop-blur-sm border border-yellow-400/20 rounded-xl">
-                    <h3 className="font-semibold text-yellow-600 mb-3 flex items-center">
-                        🔑 اطلاعات تست:
-                    </h3>
-                    <div className="text-sm text-yellow-700 space-y-1">
-                        <p><strong>مالک:</strong> username: owner, password: owner123</p>
-                        <p><strong>آرایشگران:</strong></p>
-                        <p className="mr-4">• حمید: username: hamid, password: barber123</p>
-                        <p className="mr-4">• بنیامین: username: benyamin, password: barber123</p>
-                        <p className="mr-4">• محمد: username: mohammad, password: barber123</p>
-                    </div>
-                </div>
 
                 {/* Back to main */}
                 <div className="mt-6 text-center">

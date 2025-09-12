@@ -2,7 +2,7 @@ import MongoDatabase from './src/lib/mongoDatabase.js';
 
 async function testAuthLogic() {
     console.log('🔐 Testing authentication logic...');
-    
+
     try {
         // Test authentication for user/pass
         console.log('\n1️⃣ Testing user/pass authentication...');
@@ -13,7 +13,7 @@ async function testAuthLogic() {
         } else {
             console.log('❌ user/pass authentication failed');
         }
-        
+
         // Test authentication for ceo/instad
         console.log('\n2️⃣ Testing ceo/instad authentication...');
         const user2 = await MongoDatabase.findUserByPhone('ceo');
@@ -23,7 +23,7 @@ async function testAuthLogic() {
         } else {
             console.log('❌ ceo/instad authentication failed');
         }
-        
+
         // Test getting all barbers
         console.log('\n3️⃣ Testing barber data...');
         const barbers = await MongoDatabase.getAllBarbers();
@@ -31,11 +31,11 @@ async function testAuthLogic() {
         barbers.forEach(barber => {
             console.log(`   - ${barber.name}`);
         });
-        
+
     } catch (error) {
         console.error('❌ Error:', error);
     }
-    
+
     process.exit(0);
 }
 

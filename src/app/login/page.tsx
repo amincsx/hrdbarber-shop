@@ -198,9 +198,12 @@ export default function LoginPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required
-              placeholder="شماره تلفن"
+              placeholder="شماره تلفن یا نام کاربری"
               className="w-full p-4 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white placeholder-white/70"
             />
+            <div className="text-xs text-white/60 mt-1 px-1">
+              آرایشگران: لطفا نام کاربری انگلیسی خود را وارد کنید (مثلا hamid)
+            </div>
           </div>
 
           <div>

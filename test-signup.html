@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Test Signup API</title>
+    <meta charset="UTF-8">
+</head>
+
+<body>
+    <h1>Test Signup API</h1>
+    <button onclick="testSignup()">Test Signup</button>
+    <div id="result"></div>
+
+    <script>
+        async function testSignup() {
+            const result = document.getElementById('result');
+            result.innerHTML = 'Testing...';
+
+            const uniquePhone = '0912' + Date.now().toString().slice(-7);
+            const testUser = {
+                first_name: 'تست',
+                last_name: 'کاربر جدید',
+                phone: uniquePhone,
+                password: 'test123456',
+                otp: '1234'
+            };
+
+            try {
+                console.log('Testing with user:', testUser);
+
+                const response = await fetch('http://localhost:3001/api/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testUser)
+                });
+
+                const data = await response.json();
+
+                result.innerHTML = `
+                    <h3>Status: ${response.status}</h3>
+                    <h3>Response:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    <h3>Test User:</h3>
+                    <pre>${JSON.stringify(testUser, null, 2)}</pre>
+                `;
+
+                console.log('Response:', response.status, data);
+
+                // If signup was successful, test if user can login
+                if (response.ok) {
+                    result.innerHTML += '<h3>Testing login...</h3>';
+
+                    const loginResponse = await fetch(`http://localhost:3001/api/auth?phone=${testUser.phone}&password=${testUser.password}`);
+                    const loginData = await loginResponse.json();
+
+                    result.innerHTML += `
+                        <h3>Login Status: ${loginResponse.status}</h3>
+                        <pre>${JSON.stringify(loginData, null, 2)}</pre>
+                    `;
+                }
+
+            } catch (error) {
+                result.innerHTML = `<h3>Error:</h3><pre>${error.message}</pre>`;
+                console.error('Error:', error);
+            }
+        }
+    </script>
+</body>
+
+</html>

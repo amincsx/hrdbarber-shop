@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 0.0.0.0",
     "build": "cross-env SKIP_ENV_VALIDATION=true TSC_COMPILE_ON_ERROR=true DISABLE_ESLINT=true next build",
     "build:liara": "cross-env SKIP_ENV_VALIDATION=true TSC_COMPILE_ON_ERROR=true DISABLE_ESLINT=true SKIP_TYPE_CHECK=true ESLint_NO_DEV_ERRORS=true next build",
     "build:force": "cross-env SKIP_ENV_VALIDATION=true TSC_COMPILE_ON_ERROR=true DISABLE_ESLINT=true SKIP_TYPE_CHECK=true ESLint_NO_DEV_ERRORS=true ESLINT_NO_DEV_ERRORS=true next build --no-lint",
@@ -11,6 +11,7 @@
     "lint": "echo 'Linting disabled for deployment'"
   },
   "dependencies": {
+    "dotenv": "^17.2.2",
     "mongodb": "^6.19.0",
     "mongoose": "^8.18.1",
     "next": "15.5.2",

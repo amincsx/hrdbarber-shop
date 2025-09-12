@@ -25,8 +25,25 @@ async function POST(request) {
 
         // Owner login
         if (type === 'owner') {
-            // Test owner credentials
-            if (username === 'owner' && password === 'owner123') {
+            // Check for admin/CEO user in the database
+            const adminUser = await MongoDatabase.getUserByUsername('ceo');
+
+            if (adminUser && adminUser.password === password) {
+                return NextResponse.json({
+                    success: true,
+                    message: 'ورود مدیر موفقیت‌آمیز',
+                    user: {
+                        id: adminUser._id,
+                        name: adminUser.name || 'مدیر سیستم',
+                        type: 'owner',
+                        username: adminUser.username
+                    }
+                });
+            }
+
+            // Also support hardcoded credentials as fallback
+            else if ((username === 'owner' && password === 'owner123') ||
+                (username === 'ceo' && password === 'instad')) {
                 return NextResponse.json({
                     success: true,
                     message: 'ورود مدیر موفقیت‌آمیز',
@@ -34,7 +51,7 @@ async function POST(request) {
                         id: 'owner-1',
                         name: 'مدیر سیستم',
                         type: 'owner',
-                        username: 'owner'
+                        username: username
                     }
                 });
             } else {
