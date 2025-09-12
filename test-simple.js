@@ -7,7 +7,7 @@ async function testSimple() {
         console.log('1️⃣ Testing barbers API...');
         const response = await fetch('http://localhost:3000/api/admin?action=barbers');
         const data = await response.json();
-        
+
         if (data.barbers) {
             console.log(`✅ Found ${data.barbers.length} barbers in MongoDB:`);
             data.barbers.forEach(barber => {
@@ -16,7 +16,7 @@ async function testSimple() {
         } else {
             console.log('❌ No barbers found');
         }
-        
+
         // Test 2: Test authentication initialization
         console.log('\n2️⃣ Testing authentication...');
         const loginResponse = await fetch('http://localhost:3000/api/admin', {
@@ -28,12 +28,12 @@ async function testSimple() {
                 type: 'barber'
             })
         });
-        
+
         const loginData = await loginResponse.json();
         console.log('✅ Authentication system responding');
-        
+
         console.log('\n🎉 MongoDB integration looks good!');
-        
+
     } catch (error) {
         console.error('❌ Test failed:', error.message);
     }

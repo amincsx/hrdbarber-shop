@@ -214,7 +214,7 @@ export class SimpleFileDB {
         const existingBarbers = this.getUsersByRole('barber');
         if (existingBarbers.length === 0) {
             console.log('🔧 Initializing barber accounts...');
-            
+
             const barbers = [
                 { username: 'hamid', name: 'حمید', password: 'hamid123', role: 'barber' },
                 { username: 'benyamin', name: 'بنیامین', password: 'benyamin123', role: 'barber' },

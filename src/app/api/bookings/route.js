@@ -21,12 +21,12 @@ async function POST(request) {
         const existingBookings = await MongoDatabase.getBookingsByDate(date_key);
         const hasConflict = existingBookings.some(booking => {
             if (booking.barber !== barber) return false;
-            
+
             const requestStart = start_time;
             const requestEnd = end_time;
             const existingStart = booking.start_time;
             const existingEnd = booking.end_time;
-            
+
             return (requestStart < existingEnd && requestEnd > existingStart);
         });
 

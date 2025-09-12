@@ -48,10 +48,10 @@ async function POST(request) {
         // Barber login - Use MongoDB
         if (type === 'barber') {
             console.log('🔍 Processing barber login from MongoDB...');
-            
+
             const user = await MongoDatabase.getUserByUsername(username);
             console.log('  - User found in database:', !!user);
-            
+
             if (!user || user.role !== 'barber') {
                 console.log('❌ Barber not found for username:', username);
                 return NextResponse.json(

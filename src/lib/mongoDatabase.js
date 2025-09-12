@@ -2,7 +2,7 @@ import dbConnect from './mongodb.js';
 import { Barber, Booking, User } from './models.js';
 
 class MongoDatabase {
-    
+
     // Barber operations
     static async getAllBarbers() {
         try {
@@ -52,7 +52,7 @@ class MongoDatabase {
     static async addBooking(bookingData) {
         try {
             await dbConnect();
-            
+
             // Find barber by name to get ID
             const barber = await Barber.findOne({ name: bookingData.barber });
             if (barber) {
@@ -61,7 +61,7 @@ class MongoDatabase {
 
             const booking = new Booking(bookingData);
             const savedBooking = await booking.save();
-            
+
             console.log('✅ Booking saved to MongoDB:', savedBooking._id);
             return savedBooking;
         } catch (error) {
@@ -104,6 +104,18 @@ class MongoDatabase {
         }
     }
 
+    static async findUserByPhone(phone) {
+        try {
+            await dbConnect();
+            // For our system, phone is used as username
+            const user = await User.findOne({ username: phone });
+            return user;
+        } catch (error) {
+            console.error('Error getting user by phone:', error);
+            return null;
+        }
+    }
+
     static async addUser(userData) {
         try {
             await dbConnect();
@@ -136,10 +148,10 @@ class MongoDatabase {
 
             // Get all active barbers from your existing data
             const barbers = await Barber.find({ isActive: true });
-            
+
             for (const barber of barbers) {
                 // Check if user account already exists
-                const existingUser = await User.findOne({ 
+                const existingUser = await User.findOne({
                     $or: [
                         { username: barber.username },
                         { barber_id: barber._id }
@@ -174,7 +186,7 @@ class MongoDatabase {
             }
 
             console.log('✅ Barber authentication initialization completed');
-            
+
         } catch (error) {
             console.error('Error initializing barber authentication:', error);
             throw error;

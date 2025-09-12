@@ -502,10 +502,10 @@ export default function BookingPage() {
 
         // Load existing bookings from file database
         loadBookingsFromDatabase();
-        
+
         // Load available barbers from MongoDB
         loadBarbersFromDatabase();
-        
+
         setIsLoading(false);
     }, [router]);
 
