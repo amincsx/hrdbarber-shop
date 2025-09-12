@@ -51,7 +51,7 @@ export class SimpleFileDB {
                 status: booking.status || 'confirmed'
             };
             bookings.push(newBooking);
-            
+
             if (this.writeBookings(bookings)) {
                 console.log('✅ Booking saved to file database:', newBooking._id);
                 return newBooking;
@@ -74,8 +74,8 @@ export class SimpleFileDB {
 
     static getBookingsByUser(userId) {
         const bookings = this.readBookings();
-        return bookings.filter(booking => 
-            booking.user_id === userId || 
+        return bookings.filter(booking =>
+            booking.user_id === userId ||
             booking.user_phone === userId ||
             booking.phone === userId
         );
@@ -90,14 +90,14 @@ export class SimpleFileDB {
         try {
             const bookings = this.readBookings();
             const bookingIndex = bookings.findIndex(b => b._id === bookingId || b.id === bookingId);
-            
+
             if (bookingIndex !== -1) {
                 bookings[bookingIndex] = {
                     ...bookings[bookingIndex],
                     ...updates,
                     updated_at: new Date().toISOString()
                 };
-                
+
                 if (this.writeBookings(bookings)) {
                     console.log('✅ Booking updated:', bookingId);
                     return bookings[bookingIndex];
@@ -114,7 +114,7 @@ export class SimpleFileDB {
         try {
             const bookings = this.readBookings();
             const filteredBookings = bookings.filter(b => b._id !== bookingId && b.id !== bookingId);
-            
+
             if (this.writeBookings(filteredBookings)) {
                 console.log('✅ Booking deleted:', bookingId);
                 return true;
@@ -134,22 +134,22 @@ export class SimpleFileDB {
     // Check for booking conflicts
     static hasConflict(dateKey, startTime, endTime, barber, excludeBookingId = null) {
         const bookings = this.getBookingsByDate(dateKey);
-        
+
         return bookings.some(booking => {
             // Skip the booking we're updating
             if (excludeBookingId && (booking._id === excludeBookingId || booking.id === excludeBookingId)) {
                 return false;
             }
-            
+
             // Only check same barber
             if (booking.barber !== barber) return false;
-            
+
             // Skip cancelled bookings
             if (booking.status === 'cancelled') return false;
-            
+
             const existingStart = booking.start_time;
             const existingEnd = booking.end_time;
-            
+
             return (
                 (startTime >= existingStart && startTime < existingEnd) ||
                 (endTime > existingStart && endTime <= existingEnd) ||

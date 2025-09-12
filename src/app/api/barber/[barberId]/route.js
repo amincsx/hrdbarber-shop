@@ -7,7 +7,7 @@ async function GET(request, { params }) {
     try {
         const resolvedParams = await params;
         const { barberId } = resolvedParams;
-        
+
         console.log('🔍 Barber API called with:');
         console.log('  - Raw barberId:', barberId);
         console.log('  - Decoded barberId:', decodeURIComponent(barberId));

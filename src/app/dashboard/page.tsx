@@ -25,7 +25,7 @@ export default function DashboardPage() {
     const activeOrUpcomingBookings = bookings.filter((booking: any) => {
       const bookingDate = new Date(booking.date_key);
       const endTime = new Date(booking.date_key + 'T' + booking.end_time);
-      
+
       return endTime.getTime() > currentTime;
     });
 
@@ -42,7 +42,7 @@ export default function DashboardPage() {
       });
 
       const latestEndTime = new Date(latestBooking.date_key + 'T' + latestBooking.end_time);
-      
+
       if (latestEndTime.getTime() <= currentTime) {
         // Latest booking has ended, can book
         setCanBookNew(true);
@@ -78,7 +78,7 @@ export default function DashboardPage() {
             const data = await response.json();
             const bookings = data.bookings || [];
             console.log('📋 Fetched user bookings from database:', bookings);
-            
+
             // Sort by date and time (most recent first)
             if (bookings.length > 0) {
               bookings.sort((a: any, b: any) => {
@@ -119,16 +119,16 @@ export default function DashboardPage() {
 
   return (
     <div className="mobile-full-height relative min-h-screen flex items-center justify-center p-4" dir="rtl"
-         style={{
-           backgroundImage: 'url(/picbg2.jpg)',
-           backgroundSize: 'cover',
-           backgroundPosition: 'center',
-           backgroundRepeat: 'no-repeat',
-           backgroundAttachment: 'fixed'
-         }}>
+      style={{
+        backgroundImage: 'url(/picbg2.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed'
+      }}>
       {/* Background overlay */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-      
+
       <div className="relative glass mobile-container w-full max-w-md p-6 space-y-6 backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl shadow-2xl">
         <h1 className="text-2xl font-bold mb-6 text-center text-white">
           داشبورد - {userData.name}
@@ -153,16 +153,15 @@ export default function DashboardPage() {
                     <p className="text-sm text-white/90"><strong>سرویس‌ها:</strong> {booking.services.join('، ')}</p>
                     <p className="text-sm text-white/90"><strong>مدت زمان:</strong> {booking.totalDuration || booking.total_duration} دقیقه</p>
                     {booking.status && (
-                      <p className="text-sm text-white/90"><strong>وضعیت:</strong> 
-                        <span className={`ml-1 px-2 py-1 rounded text-xs ${
-                          booking.status === 'confirmed' ? 'bg-green-500/20 text-green-300' :
-                          booking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
-                          booking.status === 'cancelled' ? 'bg-red-500/20 text-red-300' :
-                          'bg-gray-500/20 text-gray-300'
-                        }`}>
+                      <p className="text-sm text-white/90"><strong>وضعیت:</strong>
+                        <span className={`ml-1 px-2 py-1 rounded text-xs ${booking.status === 'confirmed' ? 'bg-green-500/20 text-green-300' :
+                            booking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
+                              booking.status === 'cancelled' ? 'bg-red-500/20 text-red-300' :
+                                'bg-gray-500/20 text-gray-300'
+                          }`}>
                           {booking.status === 'confirmed' ? 'تایید شده' :
-                           booking.status === 'pending' ? 'در انتظار' :
-                           booking.status === 'cancelled' ? 'لغو شده' : booking.status}
+                            booking.status === 'pending' ? 'در انتظار' :
+                              booking.status === 'cancelled' ? 'لغو شده' : booking.status}
                         </span>
                       </p>
                     )}
@@ -213,7 +212,7 @@ export default function DashboardPage() {
                 )}
               </div>
             )}
-            
+
             <Link
               href="/"
               className="glass-button bg-white/10 text-white py-2 px-4 rounded-lg hover:bg-white/20 font-medium transition-colors backdrop-blur-xl border border-white/20 text-sm"

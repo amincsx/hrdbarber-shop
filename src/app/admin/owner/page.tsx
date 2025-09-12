@@ -61,14 +61,14 @@ export default function OwnerDashboard() {
     const fetchAllData = async () => {
         try {
             setLoading(true);
-            
+
             // Fetch all bookings from the file database API
             const response = await fetch('/api/bookings');
-            
+
             if (response.ok) {
                 const data = await response.json();
                 const bookings: Booking[] = data.bookings || [];
-                
+
                 console.log('📊 Fetched bookings from file database:', bookings);
                 setAllBookings(bookings);
 
@@ -81,7 +81,7 @@ export default function OwnerDashboard() {
 
                 for (const barberName of availableBarbers) {
                     const barberBookings = bookings.filter(b => b.barber === barberName);
-                    
+
                     const todayBookings = barberBookings.filter(b =>
                         b.date_key === today && b.status !== 'cancelled'
                     ).length;
@@ -169,13 +169,13 @@ export default function OwnerDashboard() {
 
     if (!adminSession) {
         return <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
-                    style={{
-                      backgroundImage: 'url(/picbg2.jpg)',
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      backgroundRepeat: 'no-repeat',
-                      backgroundAttachment: 'fixed'
-                    }}>
+            style={{
+                backgroundImage: 'url(/picbg2.jpg)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                backgroundAttachment: 'fixed'
+            }}>
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
             <div className="absolute inset-0 overflow-hidden">
                 <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
@@ -190,13 +190,13 @@ export default function OwnerDashboard() {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
-                 style={{
-                   backgroundImage: 'url(/picbg2.jpg)',
-                   backgroundSize: 'cover',
-                   backgroundPosition: 'center',
-                   backgroundRepeat: 'no-repeat',
-                   backgroundAttachment: 'fixed'
-                 }}>
+                style={{
+                    backgroundImage: 'url(/picbg2.jpg)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundAttachment: 'fixed'
+                }}>
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
                 <div className="absolute inset-0 overflow-hidden">
                     <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
@@ -211,18 +211,18 @@ export default function OwnerDashboard() {
     }
 
     return (
-        <div className="min-h-screen p-4 relative overflow-hidden" 
-             dir="rtl"
-             style={{
-               backgroundImage: 'url(/picbg2.jpg)',
-               backgroundSize: 'cover',
-               backgroundPosition: 'center',
-               backgroundRepeat: 'no-repeat',
-               backgroundAttachment: 'fixed'
-             }}>
+        <div className="min-h-screen p-4 relative overflow-hidden"
+            dir="rtl"
+            style={{
+                backgroundImage: 'url(/picbg2.jpg)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                backgroundAttachment: 'fixed'
+            }}>
             {/* Background overlay */}
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-            
+
             {/* Animated Background Elements */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/5 rounded-full blur-3xl animate-pulse"></div>

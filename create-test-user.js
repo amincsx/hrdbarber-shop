@@ -24,7 +24,7 @@ function createTestUserData() {
     console.log('4. Or go directly to login page and use these credentials');
     console.log('');
     console.log('� Note: This user will be stored in localStorage when you signup/login');
-    
+
     return testUser;
 }
 
@@ -32,11 +32,11 @@ function createTestUserData() {
 function storeTestUserInBrowser() {
     const userData = {
         firstName: 'کاربر',
-        lastName: 'تست', 
+        lastName: 'تست',
         phone: '09123456789',
         name: 'کاربر تست'
     };
-    
+
     console.log('To store this user in browser localStorage, run this in browser console:');
     console.log('localStorage.setItem("userData", \'' + JSON.stringify(userData) + '\');');
 }

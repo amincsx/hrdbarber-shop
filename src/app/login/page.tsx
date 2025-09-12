@@ -125,8 +125,8 @@ export default function LoginPage() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ 
-            phone: forgotPhone, 
+          body: JSON.stringify({
+            phone: forgotPhone,
             otp: otpCode,
             newPassword: newPassword
           }),

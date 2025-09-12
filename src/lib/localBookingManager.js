@@ -19,8 +19,8 @@ export class LocalBookingManager {
 
     static getBookingsByUser(userPhone) {
         const allBookings = this.getAllBookings();
-        return allBookings.filter(booking => 
-            booking.phone === userPhone || 
+        return allBookings.filter(booking =>
+            booking.phone === userPhone ||
             booking.user_phone === userPhone ||
             booking.user_id === userPhone
         );
@@ -28,8 +28,8 @@ export class LocalBookingManager {
 
     static getBookingsByDate(dateKey) {
         const allBookings = this.getAllBookings();
-        return allBookings.filter(booking => 
-            (booking.dateKey === dateKey) || 
+        return allBookings.filter(booking =>
+            (booking.dateKey === dateKey) ||
             (booking.date_key === dateKey)
         );
     }
@@ -48,7 +48,7 @@ export class LocalBookingManager {
 
         return {
             total: allBookings.length,
-            today: allBookings.filter(b => 
+            today: allBookings.filter(b =>
                 (b.dateKey === today || b.date_key === today)
             ).length,
             thisWeek: allBookings.filter(b => {
@@ -67,14 +67,14 @@ export class LocalBookingManager {
 
         return {
             total: barberBookings.length,
-            today: barberBookings.filter(b => 
+            today: barberBookings.filter(b =>
                 (b.dateKey === today || b.date_key === today)
             ).length,
             thisWeek: barberBookings.filter(b => {
                 const bookingDate = b.dateKey || b.date_key;
                 return bookingDate >= weekAgoStr && bookingDate <= today;
             }).length,
-            pending: barberBookings.filter(b => 
+            pending: barberBookings.filter(b =>
                 !b.status || b.status === 'pending'
             ).length
         };
@@ -83,17 +83,17 @@ export class LocalBookingManager {
     static updateBookingStatus(bookingId, status, notes) {
         try {
             const allBookings = this.getAllBookings();
-            const bookingIndex = allBookings.findIndex(b => 
+            const bookingIndex = allBookings.findIndex(b =>
                 b.id === bookingId || b._id === bookingId
             );
-            
+
             if (bookingIndex !== -1) {
                 allBookings[bookingIndex].status = status;
                 if (notes) {
                     allBookings[bookingIndex].notes = notes;
                 }
                 allBookings[bookingIndex].updated_at = new Date().toISOString();
-                
+
                 localStorage.setItem('allBookings', JSON.stringify(allBookings));
                 return allBookings[bookingIndex];
             }

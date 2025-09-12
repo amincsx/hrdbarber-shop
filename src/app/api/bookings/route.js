@@ -85,7 +85,7 @@ async function GET(request) {
 
         console.log(`📊 Retrieved ${bookings.length} bookings from file database`);
 
-        return NextResponse.json({ 
+        return NextResponse.json({
             bookings,
             source: 'file-database',
             total: bookings.length
@@ -94,7 +94,7 @@ async function GET(request) {
     } catch (error) {
         console.error('❌ Booking fetch error:', error);
         return NextResponse.json(
-            { 
+            {
                 bookings: [],
                 error: 'خطا در دریافت رزروها',
                 source: 'error'

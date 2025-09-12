@@ -17,7 +17,7 @@ async function initializeDatabase() {
 async function POST(request) {
     try {
         const { username, password, type } = await request.json();
-        
+
         console.log('🔐 Admin login attempt:');
         console.log('  - Username:', username);
         console.log('  - Type:', type);

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,6 +16,7 @@
             align-items: center;
             justify-content: center;
         }
+
         .container {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(20px);
@@ -25,11 +27,13 @@
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
+
         h1 {
             color: white;
             margin-bottom: 30px;
             font-size: 24px;
         }
+
         .credentials {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
@@ -37,6 +41,7 @@
             margin: 20px 0;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
+
         .credential-item {
             display: flex;
             justify-content: space-between;
@@ -44,6 +49,7 @@
             margin: 10px 0;
             color: white;
         }
+
         .credential-value {
             background: rgba(255, 255, 255, 0.1);
             padding: 8px 15px;
@@ -51,6 +57,7 @@
             font-family: monospace;
             font-size: 14px;
         }
+
         button {
             background: rgba(255, 255, 255, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.3);
@@ -63,10 +70,12 @@
             transition: all 0.3s ease;
             font-family: 'Tahoma', sans-serif;
         }
+
         button:hover {
             background: rgba(255, 255, 255, 0.3);
             transform: translateY(-2px);
         }
+
         .success {
             background: rgba(76, 175, 80, 0.2);
             border: 1px solid rgba(76, 175, 80, 0.5);
@@ -76,6 +85,7 @@
             margin: 20px 0;
             display: none;
         }
+
         .instructions {
             color: rgba(255, 255, 255, 0.8);
             font-size: 14px;
@@ -84,11 +94,12 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>🎯 Test Users Setup</h1>
         <p style="color: rgba(255, 255, 255, 0.9);">کاربران تست برای توسعه محلی</p>
-        
+
         <!-- Regular User -->
         <div class="credentials">
             <h3 style="color: white; margin-bottom: 15px;">👤 کاربر عادی</h3>
@@ -165,15 +176,15 @@
 
             // Store in localStorage
             localStorage.setItem('userData', JSON.stringify(userData));
-            
+
             // Show success message
             document.getElementById('success').style.display = 'block';
-            
+
             console.log('Test user created:', userData);
         }
 
         // Check if user already exists
-        window.onload = function() {
+        window.onload = function () {
             const existingUser = localStorage.getItem('userData');
             if (existingUser) {
                 document.getElementById('success').style.display = 'block';
@@ -182,4 +193,5 @@
         };
     </script>
 </body>
+
 </html>

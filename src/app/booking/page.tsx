@@ -240,22 +240,22 @@ export default function BookingPage() {
     const generateTimeSlots = (barberName: string) => {
         const schedule = barberSchedules[barberName as keyof typeof barberSchedules] || { start: 10, end: 21 };
         const slots = [];
-        
+
         for (let hour = schedule.start; hour <= schedule.end - 1; hour++) {
             for (let minute = 0; minute < 60; minute += 15) {
                 // Don't add slots that would end after closing time
                 const endHour = minute === 45 ? hour + 1 : hour;
                 const endMinute = minute === 45 ? 0 : minute + 15;
-                
+
                 if (endHour > schedule.end || (endHour === schedule.end && endMinute > 0)) {
                     break;
                 }
-                
+
                 const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
                 slots.push(timeStr);
             }
         }
-        
+
         return slots;
     };
 
@@ -274,7 +274,7 @@ export default function BookingPage() {
             slots.push('21:00');
             return slots;
         }
-        
+
         return generateTimeSlots(selectedBarber);
     };
 
@@ -291,17 +291,17 @@ export default function BookingPage() {
                 '19:00', '19:30', '20:00', '20:30', '21:00'
             ];
         }
-        
+
         const schedule = barberSchedules[selectedBarber as keyof typeof barberSchedules] || { start: 10, end: 21 };
         const slots = [];
-        
+
         for (let hour = schedule.start; hour < schedule.end; hour++) {
             slots.push(`${hour.toString().padStart(2, '0')}:00`);
             if (hour + 0.5 < schedule.end) {
                 slots.push(`${hour.toString().padStart(2, '0')}:30`);
             }
         }
-        
+
         return slots;
     };
 
@@ -350,11 +350,21 @@ export default function BookingPage() {
         // Get existing bookings for selected date and barber to block conflicting times
         if (selectedDateObj && selectedBarber) {
             const dateKey = selectedDateObj.toISOString().split('T')[0];
+            console.log('Checking conflicts for:', { dateKey, selectedBarber, totalBookings: existingBookings.length });
+
             existingBookings.forEach(booking => {
+                console.log('Checking booking:', {
+                    bookingDate: booking.date_key,
+                    bookingBarber: booking.barber,
+                    startTime: booking.start_time,
+                    endTime: booking.end_time
+                });
+
                 // Only check conflicts for the same date AND same barber
-                if (booking.dateKey === dateKey && booking.barber === selectedBarber) {
-                    const bookingStart = timeToMinutes(booking.startTime);
-                    const bookingEnd = timeToMinutes(booking.endTime);
+                if (booking.date_key === dateKey && booking.barber === selectedBarber) {
+                    console.log('Found matching booking for conflict check:', booking);
+                    const bookingStart = timeToMinutes(booking.start_time);
+                    const bookingEnd = timeToMinutes(booking.end_time);
 
                     // Block all time slots that would conflict with this booking
                     baseSlotsToUse.forEach(slot => {
@@ -364,6 +374,7 @@ export default function BookingPage() {
                         // Check if slot conflicts with existing booking
                         if (slotStart < bookingEnd && bookingStart < slotEnd) {
                             blockedSlots.add(slot);
+                            console.log('Blocked slot:', slot, 'due to booking conflict');
                         }
                     });
                 }
@@ -454,6 +465,7 @@ export default function BookingPage() {
                 const data = await response.json();
                 setExistingBookings(data.bookings || []);
                 console.log('Loaded bookings from database:', data.bookings?.length || 0);
+                console.log('Sample booking format:', data.bookings?.[0]);
             } else {
                 console.error('Failed to load bookings from database');
                 // Fallback to localStorage if API fails
@@ -531,10 +543,10 @@ export default function BookingPage() {
 
         return existingBookings.some(booking => {
             // Only check conflicts for the same date AND same barber
-            if (booking.dateKey !== dateKey || booking.barber !== selectedBarber) return false;
+            if (booking.date_key !== dateKey || booking.barber !== selectedBarber) return false;
 
-            const bookingStart = timeToMinutes(booking.startTime);
-            const bookingEnd = timeToMinutes(booking.endTime);
+            const bookingStart = timeToMinutes(booking.start_time);
+            const bookingEnd = timeToMinutes(booking.end_time);
 
             // Check for overlap
             return (startMinutes < bookingEnd && endMinutes > bookingStart);
@@ -559,10 +571,10 @@ export default function BookingPage() {
         const dateKey = selectedDateObj.toISOString().split('T')[0];
         existingBookings.forEach(booking => {
             // Only block times for the same date AND same barber
-            if (booking.dateKey === dateKey && booking.barber === selectedBarber) {
+            if (booking.date_key === dateKey && booking.barber === selectedBarber) {
                 blockedRanges.push({
-                    start: timeToMinutes(booking.startTime),
-                    end: timeToMinutes(booking.endTime)
+                    start: timeToMinutes(booking.start_time),
+                    end: timeToMinutes(booking.end_time)
                 });
             }
         });
@@ -649,7 +661,9 @@ export default function BookingPage() {
             barber: selectedBarber,
             services: selectedServices,
             total_duration: totalDuration,
-            user_name: userData?.firstName || 'کاربر',
+            user_name: userData?.first_name && userData?.last_name
+                ? `${userData.first_name} ${userData.last_name}`
+                : userData?.first_name || userData?.firstName || 'کاربر',
             user_phone: userData?.phone || '',
             persian_date: formatPersianDateSync(selectedDateObj)
         };
@@ -664,7 +678,9 @@ export default function BookingPage() {
             services: selectedServices,
             barber: selectedBarber,
             totalDuration: totalDuration,
-            userName: userData?.firstName || 'کاربر',
+            userName: userData?.first_name && userData?.last_name
+                ? `${userData.first_name} ${userData.last_name}`
+                : userData?.first_name || userData?.firstName || 'کاربر',
             phone: userData?.phone || '',
             bookedAt: new Date().toISOString()
         };
@@ -682,7 +698,7 @@ export default function BookingPage() {
             });
 
             console.log('📡 API Response status:', response.status);
-            
+
             if (response.ok) {
                 const result = await response.json();
                 console.log('✅ Booking saved to database successfully:', result);
@@ -690,11 +706,11 @@ export default function BookingPage() {
             } else {
                 const errorData = await response.json();
                 console.error('❌ Failed to save booking to database. Status:', response.status, 'Error:', errorData);
-                alert(`خطا در ذخیره رزرو: ${errorData.error || 'خطای ناشناخته'}`);
+                alert('رزرو موفقیت آمیز نبود');
             }
         } catch (error) {
             console.error('❌ Network error saving booking to database:', error);
-            alert(`خطا در اتصال به سرور: ${error instanceof Error ? error.message : 'خطای ناشناخته'}`);
+            alert('رزرو موفقیت آمیز نبود');
         }
 
         // Save to individual user booking (backup)
@@ -709,14 +725,7 @@ export default function BookingPage() {
         // Reload bookings from database to get latest state
         await loadBookingsFromDatabase();
 
-        // Show success message
-        if (bookingSavedToDatabase) {
-            alert('✅ رزرو شما با موفقیت در سیستم ثبت شد و برای آرایشگران قابل مشاهده است!');
-        } else {
-            alert('⚠️ خطا در اتصال به سرور. رزرو شما به صورت موقت ذخیره شد.');
-        }
-
-        // Store confirmation details instead of showing alert
+        // Store confirmation details without showing alert
         setBookingConfirmation({
             barber: selectedBarber,
             date: formatPersianDateSync(selectedDateObj),
@@ -734,16 +743,16 @@ export default function BookingPage() {
             className="mobile-full-height flex items-center justify-center mobile-container relative overflow-hidden"
             dir="rtl"
             style={{
-              backgroundImage: 'url(/picbg2.jpg)',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
-              backgroundAttachment: 'fixed'
+                backgroundImage: 'url(/picbg2.jpg)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                backgroundAttachment: 'fixed'
             }}
         >
             {/* Background overlay */}
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-            
+
             {/* Subtle Background Elements */}
             <div className="absolute inset-0 overflow-hidden">
                 <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
