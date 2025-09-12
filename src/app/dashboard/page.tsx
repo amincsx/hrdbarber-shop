@@ -9,6 +9,58 @@ export const dynamic = 'force-dynamic';
 export default function DashboardPage() {
   const [userData, setUserData] = useState<any>(null);
   const [userBookings, setUserBookings] = useState<any[]>([]);
+  const [canBookNew, setCanBookNew] = useState<boolean>(true);
+  const [nextAvailableTime, setNextAvailableTime] = useState<string>('');
+
+  const checkBookingEligibility = (bookings: any[]) => {
+    if (bookings.length === 0) {
+      setCanBookNew(true);
+      return;
+    }
+
+    const now = new Date();
+    const currentTime = now.getTime();
+
+    // Find the most recent booking that hasn't ended yet
+    const activeOrUpcomingBookings = bookings.filter((booking: any) => {
+      const bookingDate = new Date(booking.date_key);
+      const endTime = new Date(booking.date_key + 'T' + booking.end_time);
+      
+      return endTime.getTime() > currentTime;
+    });
+
+    if (activeOrUpcomingBookings.length === 0) {
+      // No active or upcoming bookings, can book
+      setCanBookNew(true);
+      setNextAvailableTime('');
+    } else {
+      // Find the latest end time
+      const latestBooking = activeOrUpcomingBookings.reduce((latest: any, current: any) => {
+        const latestEnd = new Date(latest.date_key + 'T' + latest.end_time);
+        const currentEnd = new Date(current.date_key + 'T' + current.end_time);
+        return currentEnd > latestEnd ? current : latest;
+      });
+
+      const latestEndTime = new Date(latestBooking.date_key + 'T' + latestBooking.end_time);
+      
+      if (latestEndTime.getTime() <= currentTime) {
+        // Latest booking has ended, can book
+        setCanBookNew(true);
+        setNextAvailableTime('');
+      } else {
+        // Still have active booking, cannot book yet
+        setCanBookNew(false);
+        const options: Intl.DateTimeFormatOptions = {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        };
+        setNextAvailableTime(latestEndTime.toLocaleDateString('fa-IR', options));
+      }
+    }
+  };
 
   useEffect(() => {
     // Get user data from localStorage
@@ -36,6 +88,7 @@ export default function DashboardPage() {
               });
             }
             setUserBookings(bookings);
+            checkBookingEligibility(bookings);
           } else {
             console.warn('⚠️ API response not ok:', response.status);
             setUserBookings([]);
@@ -87,7 +140,7 @@ export default function DashboardPage() {
             <div className="p-6">
               <div className="space-y-4">
                 <div className="text-center text-sm text-white/70 mb-4">
-                  �️ رزروهای شما از پایگاه داده بارگذاری شده‌اند
+                  🗄️ رزروهای شما از پایگاه داده بارگذاری شده‌اند
                 </div>
                 {userBookings.map((booking: any, index: number) => (
                   <div key={index} className="glass-card p-4 space-y-2 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl">
@@ -135,13 +188,36 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Navigation back to home */}
-        <div className="text-center">
+        {/* Navigation and New Booking */}
+        <div className="text-center space-y-4">
+          {canBookNew ? (
+            <Link
+              href="/booking"
+              className="glass-button bg-green-500/20 text-green-300 py-3 px-6 rounded-lg hover:bg-green-500/30 font-medium transition-colors backdrop-blur-xl border border-green-500/30"
+            >
+              📅 رزرو نوبت جدید
+            </Link>
+          ) : (
+            <div className="space-y-2">
+              <div className="glass-button bg-red-500/20 text-red-300 py-3 px-6 rounded-lg font-medium backdrop-blur-xl border border-red-500/30 cursor-not-allowed">
+                ⏳ امکان رزرو جدید وجود ندارد
+              </div>
+              <p className="text-sm text-white/70">
+                پس از اتمام آخرین نوبت خود می‌توانید نوبت جدید رزرو کنید
+              </p>
+              {nextAvailableTime && (
+                <p className="text-xs text-white/60">
+                  آخرین نوبت تا: {nextAvailableTime}
+                </p>
+              )}
+            </div>
+          )}
+          
           <Link
             href="/"
-            className="glass-button bg-white/10 text-white py-3 px-6 rounded-lg hover:bg-white/20 font-medium transition-colors backdrop-blur-xl border border-white/20"
+            className="glass-button bg-white/10 text-white py-2 px-4 rounded-lg hover:bg-white/20 font-medium transition-colors backdrop-blur-xl border border-white/20 text-sm"
           >
-            🏠 بازگشت به صفحه اصلی
+            🏠 صفحه اصلی
           </Link>
         </div>
       </div>

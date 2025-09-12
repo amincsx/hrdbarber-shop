@@ -7,8 +7,14 @@ async function GET(request, { params }) {
     try {
         const resolvedParams = await params;
         const { barberId } = resolvedParams;
+        
+        console.log('🔍 Barber API called with:');
+        console.log('  - Raw barberId:', barberId);
+        console.log('  - Decoded barberId:', decodeURIComponent(barberId));
+        console.log('  - Request URL:', request.url);
 
         if (!barberId) {
+            console.log('❌ No barberId provided');
             return NextResponse.json(
                 { error: 'شناسه آرایشگر الزامی است' },
                 { status: 400 }
@@ -19,26 +25,34 @@ async function GET(request, { params }) {
         const date = searchParams.get('date');
         const status = searchParams.get('status');
 
+        // Decode the barberId for database lookup
+        const decodedBarberId = decodeURIComponent(barberId);
+        console.log('🔍 Looking up bookings for:', decodedBarberId);
+
         let bookings;
 
         if (date) {
             // Get bookings for specific date
             const allBookings = SimpleFileDB.getBookingsByDate(date);
-            bookings = allBookings.filter(booking => booking.barber === barberId);
+            bookings = allBookings.filter(booking => booking.barber === decodedBarberId);
+            console.log(`📅 Found ${bookings.length} bookings for ${decodedBarberId} on ${date}`);
         } else {
             // Get all bookings for this barber
-            bookings = SimpleFileDB.getBookingsByBarber(barberId);
+            bookings = SimpleFileDB.getBookingsByBarber(decodedBarberId);
+            console.log(`📊 Found ${bookings.length} total bookings for ${decodedBarberId}`);
         }
 
         // Filter by status if provided
         if (status) {
+            const beforeFilter = bookings.length;
             bookings = bookings.filter(booking => booking.status === status);
+            console.log(`🔍 Filtered by status '${status}': ${beforeFilter} → ${bookings.length} bookings`);
         }
 
-        console.log(`📊 Retrieved ${bookings.length} bookings for barber ${barberId}`);
+        console.log(`✅ Returning ${bookings.length} bookings for barber ${decodedBarberId}`);
 
         return NextResponse.json({
-            barber: barberId,
+            barber: decodedBarberId,
             bookings: bookings,
             total_bookings: bookings.length
         });

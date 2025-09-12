@@ -1,8 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import Database from '../../../../lib/database';
-
-// Force this file to be treated as an ES module
-export {};
+// This file has been replaced by route.js - please delete this file
+// Using the JavaScript version with SimpleFileDB instead
 
 // Type exports to ensure this file is recognized as a module
 export type BarberParams = {
