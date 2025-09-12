@@ -61,67 +61,60 @@ export default function OwnerDashboard() {
     const fetchAllData = async () => {
         try {
             setLoading(true);
-            const allBookings: Booking[] = [];
-            const stats: BarberStats[] = [];
+            
+            // Fetch all bookings from the bookings API
+            const response = await fetch('/api/bookings');
+            
+            if (response.ok) {
+                const data = await response.json();
+                const bookings: Booking[] = data.bookings || [];
+                
+                console.log('📊 Fetched bookings from database:', bookings);
+                setAllBookings(bookings);
 
-            // Fetch bookings for each barber
-            for (const barberName of availableBarbers) {
-                try {
-                    const response = await fetch(`/api/barber/${encodeURIComponent(barberName)}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        allBookings.push(...data.bookings);
+                // Calculate stats for each barber
+                const stats: BarberStats[] = [];
+                const today = new Date().toISOString().split('T')[0];
+                const weekAgo = new Date();
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                const weekAgoStr = weekAgo.toISOString().split('T')[0];
 
-                        const today = new Date().toISOString().split('T')[0];
-                        const weekAgo = new Date();
-                        weekAgo.setDate(weekAgo.getDate() - 7);
-                        const weekAgoStr = weekAgo.toISOString().split('T')[0];
+                for (const barberName of availableBarbers) {
+                    const barberBookings = bookings.filter(b => b.barber === barberName);
+                    
+                    const todayBookings = barberBookings.filter(b =>
+                        b.date_key === today && b.status !== 'cancelled'
+                    ).length;
 
-                        const todayBookings = data.bookings.filter((b: Booking) =>
-                            b.date_key === today && b.status !== 'cancelled'
-                        ).length;
+                    const weekBookings = barberBookings.filter(b =>
+                        b.date_key >= weekAgoStr && b.status !== 'cancelled'
+                    ).length;
 
-                        const weekBookings = data.bookings.filter((b: Booking) =>
-                            b.date_key >= weekAgoStr && b.status !== 'cancelled'
-                        ).length;
+                    const pendingBookings = barberBookings.filter(b =>
+                        !b.status || b.status === 'pending'
+                    ).length;
 
-                        const pendingBookings = data.bookings.filter((b: Booking) =>
-                            !b.status || b.status === 'pending'
-                        ).length;
-
-                        stats.push({
-                            name: barberName,
-                            totalBookings: data.bookings.filter((b: Booking) => b.status !== 'cancelled').length,
-                            todayBookings,
-                            weekBookings,
-                            pendingBookings
-                        });
-                    } else {
-                        stats.push({
-                            name: barberName,
-                            totalBookings: 0,
-                            todayBookings: 0,
-                            weekBookings: 0,
-                            pendingBookings: 0
-                        });
-                    }
-                } catch (err) {
-                    console.error(`Error fetching data for ${barberName}:`, err);
+                    stats.push({
+                        name: barberName,
+                        totalBookings: barberBookings.filter(b => b.status !== 'cancelled').length,
+                        todayBookings,
+                        weekBookings,
+                        pendingBookings
+                    });
                 }
+
+                setBarberStats(stats);
+            } else {
+                console.error('❌ Failed to fetch bookings from database');
+                // Fallback to empty data
+                setAllBookings([]);
+                setBarberStats([]);
             }
-
-            // Sort bookings by date and time
-            allBookings.sort((a, b) => {
-                if (a.date_key !== b.date_key) {
-                    return new Date(b.date_key).getTime() - new Date(a.date_key).getTime();
-                }
-                return b.start_time.localeCompare(a.start_time);
-            });
-
-            setAllBookings(allBookings);
-            setBarberStats(stats);
         } catch (error) {
-            console.error('Error fetching data:', error);
+            console.error('❌ Error fetching bookings:', error);
+            // Fallback to empty data
+            setAllBookings([]);
+            setBarberStats([]);
         } finally {
             setLoading(false);
         }

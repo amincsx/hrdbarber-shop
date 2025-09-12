@@ -20,47 +20,48 @@ export default function DashboardPage() {
       // Fetch bookings from API
       const fetchUserBookings = async () => {
         try {
-          const response = await fetch('/api/bookings');
+          const response = await fetch(`/api/bookings?user_id=${encodeURIComponent(user.phone)}`);
           if (response.ok) {
-            const allBookings = await response.json();
-            const userBookings = allBookings.filter((booking: any) =>
-              booking.phone === user.phone
-            );
+            const data = await response.json();
+            const bookings = data.bookings || [];
+            console.log('📋 Fetched user bookings from database:', bookings);
+            
             // Sort by date and time (most recent first)
-            userBookings.sort((a: any, b: any) => {
-              const dateA = new Date(a.dateKey + 'T' + a.startTime);
-              const dateB = new Date(b.dateKey + 'T' + b.startTime);
+            bookings.sort((a: any, b: any) => {
+              const dateA = new Date(a.date_key + 'T' + a.start_time);
+              const dateB = new Date(b.date_key + 'T' + b.start_time);
               return dateB.getTime() - dateA.getTime();
             });
-            setUserBookings(userBookings);
+            setUserBookings(bookings);
           } else {
+            console.warn('⚠️ API failed, falling back to localStorage');
             // Fallback to localStorage if API fails
             const allBookings = localStorage.getItem('allBookings');
             if (allBookings) {
               const bookings = JSON.parse(allBookings);
               const userBookings = bookings.filter((booking: any) =>
-                booking.phone === user.phone
+                booking.phone === user.phone || booking.user_phone === user.phone
               );
               userBookings.sort((a: any, b: any) => {
-                const dateA = new Date(a.dateKey + 'T' + a.startTime);
-                const dateB = new Date(b.dateKey + 'T' + b.startTime);
+                const dateA = new Date((a.dateKey || a.date_key) + 'T' + (a.startTime || a.start_time));
+                const dateB = new Date((b.dateKey || b.date_key) + 'T' + (b.startTime || b.start_time));
                 return dateB.getTime() - dateA.getTime();
               });
               setUserBookings(userBookings);
             }
           }
         } catch (error) {
-          console.error('Error fetching bookings:', error);
+          console.error('❌ Error fetching bookings:', error);
           // Fallback to localStorage
           const allBookings = localStorage.getItem('allBookings');
           if (allBookings) {
             const bookings = JSON.parse(allBookings);
             const userBookings = bookings.filter((booking: any) =>
-              booking.phone === user.phone
+              booking.phone === user.phone || booking.user_phone === user.phone
             );
             userBookings.sort((a: any, b: any) => {
-              const dateA = new Date(a.dateKey + 'T' + a.startTime);
-              const dateB = new Date(b.dateKey + 'T' + b.startTime);
+              const dateA = new Date((a.dateKey || a.date_key) + 'T' + (a.startTime || a.start_time));
+              const dateB = new Date((b.dateKey || b.date_key) + 'T' + (b.startTime || b.start_time));
               return dateB.getTime() - dateA.getTime();
             });
             setUserBookings(userBookings);
@@ -112,11 +113,25 @@ export default function DashboardPage() {
                   <h3 className="text-base font-semibold text-white">
                     رزرو شماره {index + 1}
                   </h3>
-                  <p className="text-sm text-white/90"><strong>تاریخ:</strong> {formatPersianDate(booking.dateKey)}</p>
-                  <p className="text-sm text-white/90"><strong>ساعت:</strong> {booking.startTime} تا {booking.endTime}</p>
+                  <p className="text-sm text-white/90"><strong>تاریخ:</strong> {formatPersianDate(booking.dateKey || booking.date_key)}</p>
+                  <p className="text-sm text-white/90"><strong>ساعت:</strong> {booking.startTime || booking.start_time} تا {booking.endTime || booking.end_time}</p>
                   <p className="text-sm text-white/90"><strong>آرایشگر:</strong> {booking.barber}</p>
                   <p className="text-sm text-white/90"><strong>سرویس‌ها:</strong> {booking.services.join('، ')}</p>
-                  <p className="text-sm text-white/90"><strong>مدت زمان:</strong> {booking.totalDuration} دقیقه</p>
+                  <p className="text-sm text-white/90"><strong>مدت زمان:</strong> {booking.totalDuration || booking.total_duration} دقیقه</p>
+                  {booking.status && (
+                    <p className="text-sm text-white/90"><strong>وضعیت:</strong> 
+                      <span className={`ml-1 px-2 py-1 rounded text-xs ${
+                        booking.status === 'confirmed' ? 'bg-green-500/20 text-green-300' :
+                        booking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
+                        booking.status === 'cancelled' ? 'bg-red-500/20 text-red-300' :
+                        'bg-gray-500/20 text-gray-300'
+                      }`}>
+                        {booking.status === 'confirmed' ? 'تایید شده' :
+                         booking.status === 'pending' ? 'در انتظار' :
+                         booking.status === 'cancelled' ? 'لغو شده' : booking.status}
+                      </span>
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

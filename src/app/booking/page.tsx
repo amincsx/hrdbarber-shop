@@ -553,8 +553,22 @@ export default function BookingPage() {
         const endMinutes = startMinutes + totalDuration;
         const endTime = minutesToTime(endMinutes);
 
-        // Create booking object
-        const newBooking = {
+        // Create booking object for API (with correct field names)
+        const apiBooking = {
+            user_id: userData?.phone || 'unknown',
+            date_key: selectedDateObj.toISOString().split('T')[0],
+            start_time: selectedTime,
+            end_time: endTime,
+            barber: selectedBarber,
+            services: selectedServices,
+            total_duration: totalDuration,
+            user_name: userData?.firstName || 'کاربر',
+            user_phone: userData?.phone || '',
+            persian_date: formatPersianDateSync(selectedDateObj)
+        };
+
+        // Create booking object for localStorage (with legacy field names)
+        const localBooking = {
             id: Date.now().toString(),
             dateKey: selectedDateObj.toISOString().split('T')[0],
             date: formatPersianDateSync(selectedDateObj),
@@ -568,36 +582,47 @@ export default function BookingPage() {
             bookedAt: new Date().toISOString()
         };
 
-        // Save to API/database
+        // Save to API/database first
+        let bookingSavedToDatabase = false;
         try {
             const response = await fetch('/api/bookings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(newBooking)
+                body: JSON.stringify(apiBooking)
             });
 
             if (response.ok) {
-                console.log('Booking saved to database successfully');
+                const result = await response.json();
+                console.log('✅ Booking saved to database successfully:', result);
+                bookingSavedToDatabase = true;
             } else {
-                console.error('Failed to save booking to database');
+                const errorData = await response.json();
+                console.error('❌ Failed to save booking to database:', errorData);
             }
         } catch (error) {
-            console.error('Error saving booking:', error);
+            console.error('❌ Error saving booking to database:', error);
         }
 
         // Save to individual user booking (backup)
-        localStorage.setItem('bookingData', JSON.stringify(newBooking));
+        localStorage.setItem('bookingData', JSON.stringify(localBooking));
 
         // Save to shared bookings list (backup)
         const existingBookingsData = localStorage.getItem('allBookings');
         const allBookings = existingBookingsData ? JSON.parse(existingBookingsData) : [];
-        allBookings.push(newBooking);
+        allBookings.push(localBooking);
         localStorage.setItem('allBookings', JSON.stringify(allBookings));
 
         // Update local state
         setExistingBookings(allBookings);
+
+        // Show success message
+        if (bookingSavedToDatabase) {
+            alert('✅ رزرو شما با موفقیت در سیستم ثبت شد!');
+        } else {
+            alert('⚠️ رزرو شما به صورت موقت ذخیره شد. لطفاً دوباره تلاش کنید.');
+        }
 
         // Store confirmation details instead of showing alert
         setBookingConfirmation({
@@ -702,21 +727,7 @@ export default function BookingPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowMoreDates(!showMoreDates)}
-                                    className="w-full p-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center"
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px solid #d1d5db',
-                                        borderRadius: '4px',
-                                        fontSize: '12px',
-                                        color: '#6b7280',
-                                        backgroundColor: 'white',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        marginBottom: showMoreDates ? '8px' : '0'
-                                    }}
+                                    className="w-full p-3 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all duration-300 text-white text-sm flex items-center justify-center"
                                 >
                                     <span style={{ marginLeft: '4px' }}>
                                         {showMoreDates ? 'بستن' : 'مشاهده روزهای بیشتر'}
@@ -809,20 +820,10 @@ export default function BookingPage() {
                                                 key={barber}
                                                 type="button"
                                                 onClick={() => setSelectedBarber(barber)}
-                                                className={`p-2 border rounded-md text-center ${isSelected
-                                                    ? 'bg-black text-white border-black'
-                                                    : 'bg-white text-gray-700 border-gray-300 hover:border-black'
+                                                className={`p-3 rounded-2xl text-center backdrop-blur-xl border transition-all duration-300 ${isSelected
+                                                    ? 'bg-white/20 text-white border-white/30'
+                                                    : 'bg-white/10 text-white/80 border-white/20 hover:bg-white/15'
                                                     }`}
-                                                style={{
-                                                    padding: '10px 8px',
-                                                    border: isSelected ? '1px solid black' : '1px solid #d1d5db',
-                                                    borderRadius: '6px',
-                                                    fontSize: '13px',
-                                                    backgroundColor: isSelected ? 'black' : 'white',
-                                                    color: isSelected ? 'white' : '#374151',
-                                                    cursor: 'pointer',
-                                                    textAlign: 'center'
-                                                }}
                                             >
                                                 {barber}
                                             </button>
@@ -860,20 +861,10 @@ export default function BookingPage() {
                                                 key={service.name}
                                                 type="button"
                                                 onClick={() => handleServiceToggle(service.name)}
-                                                className={`p-3 border rounded-md text-right ${isSelected
-                                                    ? 'bg-black text-white border-black'
-                                                    : 'bg-white text-gray-700 border-gray-300 hover:border-black'
+                                                className={`p-3 rounded-2xl text-right backdrop-blur-xl border transition-all duration-300 ${isSelected
+                                                    ? 'bg-white/20 text-white border-white/30'
+                                                    : 'bg-white/10 text-white/80 border-white/20 hover:bg-white/15'
                                                     }`}
-                                                style={{
-                                                    padding: '10px 8px',
-                                                    border: isSelected ? '1px solid black' : '1px solid #d1d5db',
-                                                    borderRadius: '6px',
-                                                    fontSize: '13px',
-                                                    backgroundColor: isSelected ? 'black' : 'white',
-                                                    color: isSelected ? 'white' : '#374151',
-                                                    cursor: 'pointer',
-                                                    textAlign: 'center'
-                                                }}
                                             >
                                                 {service.name}
                                             </button>
@@ -911,19 +902,10 @@ export default function BookingPage() {
                                             key={time}
                                             type="button"
                                             onClick={() => setSelectedTime(time)}
-                                            className={`p-2 border rounded text-sm ${selectedTime === time
-                                                ? 'bg-black text-white border-black'
-                                                : 'bg-white text-gray-700 border-gray-300 hover:border-black'
+                                            className={`p-3 rounded-2xl text-sm backdrop-blur-xl border transition-all duration-300 ${selectedTime === time
+                                                ? 'bg-white/20 text-white border-white/30'
+                                                : 'bg-white/10 text-white/80 border-white/20 hover:bg-white/15'
                                                 }`}
-                                            style={{
-                                                padding: '8px',
-                                                border: selectedTime === time ? '1px solid black' : '1px solid #d1d5db',
-                                                borderRadius: '4px',
-                                                fontSize: '12px',
-                                                backgroundColor: selectedTime === time ? 'black' : 'white',
-                                                color: selectedTime === time ? 'white' : '#374151',
-                                                cursor: 'pointer'
-                                            }}
                                         >
                                             {time}
                                         </button>
@@ -935,21 +917,7 @@ export default function BookingPage() {
                                     <button
                                         type="button"
                                         onClick={() => setShowAllTimeSlots(!showAllTimeSlots)}
-                                        className="w-full p-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center mb-2"
-                                        style={{
-                                            width: '100%',
-                                            padding: '8px',
-                                            border: '1px solid #d1d5db',
-                                            borderRadius: '4px',
-                                            fontSize: '12px',
-                                            color: '#6b7280',
-                                            backgroundColor: 'white',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            marginBottom: '8px'
-                                        }}
+                                        className="w-full p-3 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all duration-300 text-white text-sm flex items-center justify-center mb-2"
                                     >
                                         <span style={{ marginLeft: '4px' }}>
                                             {showAllTimeSlots ? 'بستن' : 'مشاهده ساعت‌های بیشتر'}
@@ -981,19 +949,10 @@ export default function BookingPage() {
                                                 key={time}
                                                 type="button"
                                                 onClick={() => setSelectedTime(time)}
-                                                className={`p-2 border rounded text-sm ${selectedTime === time
-                                                    ? 'bg-black text-white border-black'
-                                                    : 'bg-white text-gray-700 border-gray-300 hover:border-black'
+                                                className={`p-3 rounded-2xl text-sm backdrop-blur-xl border transition-all duration-300 ${selectedTime === time
+                                                    ? 'bg-white/20 text-white border-white/30'
+                                                    : 'bg-white/10 text-white/80 border-white/20 hover:bg-white/15'
                                                     }`}
-                                                style={{
-                                                    padding: '8px',
-                                                    border: selectedTime === time ? '1px solid black' : '1px solid #d1d5db',
-                                                    borderRadius: '4px',
-                                                    fontSize: '12px',
-                                                    backgroundColor: selectedTime === time ? 'black' : 'white',
-                                                    color: selectedTime === time ? 'white' : '#374151',
-                                                    cursor: 'pointer'
-                                                }}
                                             >
                                                 {time}
                                             </button>
@@ -1067,20 +1026,9 @@ export default function BookingPage() {
 
                             <button
                                 type="submit"
-                                className="w-full bg-black text-white py-2 px-4 rounded-md hover:bg-gray-800 font-medium"
-                                style={{
-                                    width: '100%',
-                                    backgroundColor: 'black',
-                                    color: 'white',
-                                    padding: '8px 16px',
-                                    borderRadius: '4px',
-                                    fontWeight: '500',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    transition: 'background-color 0.2s'
-                                }}
+                                className="w-full p-4 rounded-2xl font-medium backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all duration-300 text-white shadow-xl"
                             >
-                                رزرو نوبت
+                                ثبت رزرو
                             </button>
                         </form>
                     </>
