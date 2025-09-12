@@ -227,35 +227,32 @@ export default function BookingPage() {
     const [existingBookings, setExistingBookings] = useState<any[]>([]);
     const [showAllTimeSlots, setShowAllTimeSlots] = useState(false);
     const [selectedBarber, setSelectedBarber] = useState<string>('');
-    const [availableBarbers, setAvailableBarbers] = useState<any[]>([]);
+    const [availableBarbers, setAvailableBarbers] = useState<any[]>([
+        { name: 'حمید', _id: 'hamid' },
+        { name: 'بنیامین', _id: 'benyamin' },
+        { name: 'محمد', _id: 'mohammad' }
+    ]);
 
     // Load barbers from MongoDB
     const loadBarbersFromDatabase = async () => {
         try {
+            console.log('🔍 Loading barbers from MongoDB...');
             const response = await fetch('/api/admin?action=barbers');
             if (response.ok) {
                 const data = await response.json();
-                setAvailableBarbers(data.barbers || []);
-                console.log('Loaded barbers from MongoDB:', data.barbers?.length || 0);
+                if (data.barbers && data.barbers.length > 0) {
+                    setAvailableBarbers(data.barbers);
+                    console.log('✅ Loaded barbers from MongoDB:', data.barbers.length);
+                    console.log('   Barbers:', data.barbers.map((b: any) => b.name));
+                } else {
+                    console.log('ℹ️ No barbers found in MongoDB, keeping default list');
+                }
             } else {
-                console.error('Failed to load barbers from database');
-                // Fallback to hardcoded list
-                setAvailableBarbers([
-                    { name: 'حمید', _id: 'hamid' },
-                    { name: 'بنیامین', _id: 'benyamin' },
-                    { name: 'محمد', _id: 'mohammad' },
-                    { name: 'آقای احمدی', _id: 'ahmadi' }
-                ]);
+                console.error('❌ Failed to load barbers from database, status:', response.status);
             }
         } catch (error) {
-            console.error('Error loading barbers:', error);
-            // Fallback to hardcoded list
-            setAvailableBarbers([
-                { name: 'حمید', _id: 'hamid' },
-                { name: 'بنیامین', _id: 'benyamin' },
-                { name: 'محمد', _id: 'mohammad' },
-                { name: 'آقای احمدی', _id: 'ahmadi' }
-            ]);
+            console.error('❌ Error loading barbers:', error);
+            console.log('ℹ️ Keeping default barber list');
         }
     };
 
@@ -263,8 +260,7 @@ export default function BookingPage() {
     const barberSchedules = {
         'حمید': { start: 10, end: 21 }, // 10:00 - 21:00
         'بنیامین': { start: 10, end: 21 }, // 10:00 - 21:00  
-        'محمد': { start: 10, end: 21 }, // 10:00 - 21:00
-        'آقای احمدی': { start: 10, end: 21 } // 10:00 - 21:00
+        'محمد': { start: 10, end: 21 } // 10:00 - 21:00
     };
 
     // Generate time slots based on selected barber's schedule
