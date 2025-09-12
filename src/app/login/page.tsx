@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [forgotPhone, setForgotPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [forgotStep, setForgotStep] = useState<'phone' | 'otp' | 'newPassword'>('phone');
+  const [forgotStep, setForgotStep] = useState<'phone' | 'otp'>('phone');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState('');
   const [forgotSuccess, setForgotSuccess] = useState('');
@@ -80,50 +80,46 @@ export default function LoginPage() {
 
     try {
       if (forgotStep === 'phone') {
-        // Send OTP
-        const response = await fetch('/api/forgot-password', {
+        // Step 1: Check if user exists first
+        const checkResponse = await fetch('/api/forgot-password', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ 
-            phone: forgotPhone, 
-            action: 'send-otp' 
-          }),
+          body: JSON.stringify({ phone: forgotPhone }),
         });
 
-        const result = await response.json();
+        const checkResult = await checkResponse.json();
 
-        if (response.ok) {
-          setForgotSuccess(result.message);
+        if (!checkResponse.ok) {
+          setForgotError(checkResult.error);
+          return;
+        }
+
+        // Step 2: Send OTP using the same API as signup
+        const otpResponse = await fetch('/api/send-otp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ phone: forgotPhone }),
+        });
+
+        const otpResult = await otpResponse.json();
+
+        if (otpResponse.ok) {
+          setForgotSuccess('کد تأیید به شماره شما ارسال شد');
           setForgotStep('otp');
         } else {
-          setForgotError(result.error);
+          setForgotError(otpResult.error || 'خطا در ارسال کد تایید');
         }
       } else if (forgotStep === 'otp') {
-        // Verify OTP
-        const response = await fetch('/api/forgot-password', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            phone: forgotPhone, 
-            action: 'verify-otp',
-            otpCode: otpCode
-          }),
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          setForgotSuccess(result.message);
-          setForgotStep('newPassword');
-        } else {
-          setForgotError(result.error);
+        // Step 3: Verify OTP and reset password
+        if (!newPassword) {
+          setForgotError('لطفاً رمز عبور جدید را وارد کنید');
+          return;
         }
-      } else if (forgotStep === 'newPassword') {
-        // Reset password
+
         const response = await fetch('/api/forgot-password', {
           method: 'POST',
           headers: {
@@ -131,7 +127,7 @@ export default function LoginPage() {
           },
           body: JSON.stringify({ 
             phone: forgotPhone, 
-            action: 'reset-password',
+            otp: otpCode,
             newPassword: newPassword
           }),
         });
@@ -139,7 +135,7 @@ export default function LoginPage() {
         const result = await response.json();
 
         if (response.ok) {
-          setForgotSuccess(result.message);
+          setForgotSuccess('رمز عبور با موفقیت تغییر کرد');
           setTimeout(() => {
             resetForgotPassword();
           }, 2000);
@@ -284,31 +280,30 @@ export default function LoginPage() {
               )}
 
               {forgotStep === 'otp' && (
-                <div>
-                  <label className="block text-white/80 mb-2">کد تأیید</label>
-                  <input
-                    type="text"
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value)}
-                    required
-                    placeholder="کد ارسال شده را وارد کنید"
-                    className="w-full p-4 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white placeholder-white/70"
-                  />
-                </div>
-              )}
-
-              {forgotStep === 'newPassword' && (
-                <div>
-                  <label className="block text-white/80 mb-2">رمز عبور جدید</label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    placeholder="رمز عبور جدید را وارد کنید"
-                    className="w-full p-4 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white placeholder-white/70"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-white/80 mb-2">کد تأیید</label>
+                    <input
+                      type="text"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value)}
+                      required
+                      placeholder="کد ارسال شده را وارد کنید"
+                      className="w-full p-4 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white placeholder-white/70"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-white/80 mb-2">رمز عبور جدید</label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      placeholder="رمز عبور جدید را وارد کنید"
+                      className="w-full p-4 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white placeholder-white/70"
+                    />
+                  </div>
+                </>
               )}
 
               {forgotError && (
@@ -335,8 +330,6 @@ export default function LoginPage() {
                   </div>
                 ) : forgotStep === 'phone' ? (
                   'ارسال کد تأیید'
-                ) : forgotStep === 'otp' ? (
-                  'تأیید کد'
                 ) : (
                   'تغییر رمز عبور'
                 )}
@@ -345,10 +338,7 @@ export default function LoginPage() {
               {forgotStep !== 'phone' && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (forgotStep === 'otp') setForgotStep('phone');
-                    else if (forgotStep === 'newPassword') setForgotStep('otp');
-                  }}
+                  onClick={() => setForgotStep('phone')}
                   className="w-full p-3 rounded-2xl font-medium text-white/70 hover:text-white transition-colors"
                 >
                   بازگشت
