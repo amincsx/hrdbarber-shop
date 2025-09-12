@@ -7,7 +7,7 @@ let Database;
 async function initializeDatabase() {
     if (!isInitialized) {
         // Dynamic import to avoid module resolution issues
-        const { default: DatabaseClass } = await import('../../../lib/database');
+        const { default: DatabaseClass } = await import('../../../lib/mongoDatabase');
         Database = DatabaseClass;
         await Database.initializeDatabase();
         isInitialized = true;
