@@ -120,7 +120,7 @@ export default function SecureBarberDashboard() {
             case 'cancelled':
                 return <span className="px-3 py-1 text-xs bg-red-400/20 text-red-700 rounded-full border border-red-400/30 backdrop-blur-sm">❌ لغو شده</span>;
             case 'completed':
-                return <span className="px-3 py-1 text-xs bg-blue-400/20 text-blue-700 rounded-full border border-blue-400/30 backdrop-blur-sm">🎉 تکمیل شده</span>;
+                return <span className="px-3 py-1 text-xs bg-white/20 text-white rounded-full border border-white/30 backdrop-blur-sm">🎉 تکمیل شده</span>;
             default:
                 return <span className="px-3 py-1 text-xs bg-yellow-400/20 text-yellow-700 rounded-full border border-yellow-400/30 backdrop-blur-sm">⏳ در انتظار</span>;
         }
@@ -165,7 +165,7 @@ export default function SecureBarberDashboard() {
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
                 <div className="absolute inset-0 overflow-hidden">
                     <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
-                    <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-300/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+                    <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
                 </div>
                 <div className="glass-card p-8 relative z-10">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white/60 mx-auto"></div>
@@ -187,7 +187,7 @@ export default function SecureBarberDashboard() {
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
                 <div className="absolute inset-0 overflow-hidden">
                     <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
-                    <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-300/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+                    <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
                 </div>
                 <div className="glass-card p-8 text-center relative z-10">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white/60 mx-auto"></div>
@@ -243,7 +243,7 @@ export default function SecureBarberDashboard() {
             {/* Animated Background Elements */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/5 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-300/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
+                <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
                 <div className="absolute top-1/3 left-1/4 w-64 h-64 bg-purple-300/5 rounded-full blur-3xl animate-pulse delay-2000"></div>
             </div>
 
@@ -271,11 +271,11 @@ export default function SecureBarberDashboard() {
                 {/* Quick Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                     <div className="stats-card p-4 text-center">
-                        <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
                             <span className="text-xl">📊</span>
                         </div>
                         <h3 className="text-sm font-medium text-glass-secondary mb-1">کل رزروها</h3>
-                        <p className="text-2xl font-bold text-blue-600">{barberData?.total_bookings || 0}</p>
+                        <p className="text-2xl font-bold text-white">{barberData?.total_bookings || 0}</p>
                     </div>
                     <div className="stats-card p-4 text-center">
                         <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -402,7 +402,7 @@ export default function SecureBarberDashboard() {
                                             </div>
 
                                             {booking.notes && (
-                                                <div className="mt-4 p-3 bg-blue-100/10 rounded-xl border border-blue-200/20">
+                                                <div className="mt-4 p-3 bg-white/10 rounded-xl border border-white/20">
                                                     <h4 className="font-semibold text-glass flex items-center mb-2">
                                                         📝 یادداشت:
                                                     </h4>

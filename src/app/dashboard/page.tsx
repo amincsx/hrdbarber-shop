@@ -17,21 +17,58 @@ export default function DashboardPage() {
       const user = JSON.parse(storedData);
       setUserData(user);
 
-      // Get all bookings and filter for this user
-      const allBookings = localStorage.getItem('allBookings');
-      if (allBookings) {
-        const bookings = JSON.parse(allBookings);
-        const userBookings = bookings.filter((booking: any) =>
-          booking.phone === user.phone
-        );
-        // Sort by date and time (most recent first)
-        userBookings.sort((a: any, b: any) => {
-          const dateA = new Date(a.dateKey + 'T' + a.startTime);
-          const dateB = new Date(b.dateKey + 'T' + b.startTime);
-          return dateB.getTime() - dateA.getTime();
-        });
-        setUserBookings(userBookings);
-      }
+      // Fetch bookings from API
+      const fetchUserBookings = async () => {
+        try {
+          const response = await fetch('/api/bookings');
+          if (response.ok) {
+            const allBookings = await response.json();
+            const userBookings = allBookings.filter((booking: any) =>
+              booking.phone === user.phone
+            );
+            // Sort by date and time (most recent first)
+            userBookings.sort((a: any, b: any) => {
+              const dateA = new Date(a.dateKey + 'T' + a.startTime);
+              const dateB = new Date(b.dateKey + 'T' + b.startTime);
+              return dateB.getTime() - dateA.getTime();
+            });
+            setUserBookings(userBookings);
+          } else {
+            // Fallback to localStorage if API fails
+            const allBookings = localStorage.getItem('allBookings');
+            if (allBookings) {
+              const bookings = JSON.parse(allBookings);
+              const userBookings = bookings.filter((booking: any) =>
+                booking.phone === user.phone
+              );
+              userBookings.sort((a: any, b: any) => {
+                const dateA = new Date(a.dateKey + 'T' + a.startTime);
+                const dateB = new Date(b.dateKey + 'T' + b.startTime);
+                return dateB.getTime() - dateA.getTime();
+              });
+              setUserBookings(userBookings);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching bookings:', error);
+          // Fallback to localStorage
+          const allBookings = localStorage.getItem('allBookings');
+          if (allBookings) {
+            const bookings = JSON.parse(allBookings);
+            const userBookings = bookings.filter((booking: any) =>
+              booking.phone === user.phone
+            );
+            userBookings.sort((a: any, b: any) => {
+              const dateA = new Date(a.dateKey + 'T' + a.startTime);
+              const dateB = new Date(b.dateKey + 'T' + b.startTime);
+              return dateB.getTime() - dateA.getTime();
+            });
+            setUserBookings(userBookings);
+          }
+        }
+      };
+
+      fetchUserBookings();
     }
   }, []);
 
@@ -101,28 +138,14 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Quick Actions for Users */}
-        <div className="glass-card p-5 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl">
-          <h3 className="text-lg font-semibold mb-4 text-center text-white">
-            عملیات سریع
-          </h3>
-          <div className="flex gap-3 justify-center flex-wrap">
-            <Link
-              href="/booking"
-              className="glass-button bg-white/20 text-white py-2 px-4 rounded-lg hover:bg-white/30 font-medium transition-colors backdrop-blur-xl border border-white/20"
-            >
-              رزرو نوبت جدید
-            </Link>
-            <Link
-              href="/admin"
-              className="glass-button bg-white/20 text-white py-2 px-4 rounded-lg hover:bg-white/30 font-medium transition-colors backdrop-blur-xl border border-white/20"
-            >
-              ورود آرایشگر/مالک
-            </Link>
-          </div>
-          <p className="text-center mt-3 text-sm text-white/70">
-            برای مدیریت رزروها، از بخش ورود آرایشگر استفاده کنید
-          </p>
+        {/* Navigation back to home */}
+        <div className="text-center">
+          <Link
+            href="/"
+            className="glass-button bg-white/10 text-white py-3 px-6 rounded-lg hover:bg-white/20 font-medium transition-colors backdrop-blur-xl border border-white/20"
+          >
+            🏠 بازگشت به صفحه اصلی
+          </Link>
         </div>
       </div>
     </div>

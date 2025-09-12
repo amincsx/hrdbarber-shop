@@ -530,7 +530,7 @@ export default function BookingPage() {
         return availableTimes;
     };
 
-    const handleBooking = (e: React.FormEvent) => {
+    const handleBooking = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedDateObj || !selectedTime) {
             alert('لطفاً تاریخ و ساعت را انتخاب کنید');
@@ -564,13 +564,33 @@ export default function BookingPage() {
             barber: selectedBarber,
             totalDuration: totalDuration,
             userName: userData?.firstName || 'کاربر',
+            phone: userData?.phone || '',
             bookedAt: new Date().toISOString()
         };
 
-        // Save to individual user booking
+        // Save to API/database
+        try {
+            const response = await fetch('/api/bookings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(newBooking)
+            });
+
+            if (response.ok) {
+                console.log('Booking saved to database successfully');
+            } else {
+                console.error('Failed to save booking to database');
+            }
+        } catch (error) {
+            console.error('Error saving booking:', error);
+        }
+
+        // Save to individual user booking (backup)
         localStorage.setItem('bookingData', JSON.stringify(newBooking));
 
-        // Save to shared bookings list (simulate database)
+        // Save to shared bookings list (backup)
         const existingBookingsData = localStorage.getItem('allBookings');
         const allBookings = existingBookingsData ? JSON.parse(existingBookingsData) : [];
         allBookings.push(newBooking);
@@ -984,11 +1004,11 @@ export default function BookingPage() {
                                 {/* Show exact booking times */}
                                 {selectedServices.length > 0 && getAvailableStartTimes().length > 0 && (
                                     <p
-                                        className="mt-2 text-xs text-blue-600 text-center"
+                                        className="mt-2 text-xs text-white/70 text-center"
                                         style={{
                                             marginTop: '8px',
                                             fontSize: '11px',
-                                            color: '#2563eb',
+                                            color: 'rgba(255, 255, 255, 0.7)',
                                             textAlign: 'center'
                                         }}
                                     >
@@ -1029,15 +1049,15 @@ export default function BookingPage() {
                                 {/* Show time range if service selected */}
                                 {selectedServices.length > 0 && selectedTime && (
                                     <div
-                                        className="mt-2 p-2 bg-blue-50 rounded text-center text-xs"
+                                        className="mt-2 p-2 bg-white/10 rounded text-center text-xs backdrop-blur-sm border border-white/20"
                                         style={{
                                             marginTop: '8px',
                                             padding: '8px',
-                                            backgroundColor: '#eff6ff',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
                                             borderRadius: '4px',
                                             textAlign: 'center',
                                             fontSize: '11px',
-                                            color: '#1e40af'
+                                            color: 'rgba(255, 255, 255, 0.9)'
                                         }}
                                     >
                                         زمان رزرو: {selectedTime} تا {minutesToTime(timeToMinutes(selectedTime) + getTotalDuration())}
