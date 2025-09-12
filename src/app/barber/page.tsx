@@ -12,10 +12,20 @@ export default function BarberRedirect() {
     }, [router]);
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">در حال انتقال به صفحه ورود...</p>
+        <div className="min-h-screen relative flex items-center justify-center"
+             style={{
+               backgroundImage: 'url(/picbg2.jpg)',
+               backgroundSize: 'cover',
+               backgroundPosition: 'center',
+               backgroundRepeat: 'no-repeat',
+               backgroundAttachment: 'fixed'
+             }}>
+            {/* Background overlay */}
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+            
+            <div className="relative text-center max-w-md mx-4 p-8 rounded-3xl backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white/60 mx-auto"></div>
+                <p className="mt-4 text-white/90">در حال انتقال به صفحه ورود...</p>
             </div>
         </div>
     );

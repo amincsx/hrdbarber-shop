@@ -177,34 +177,61 @@ export default function OwnerDashboard() {
     };
 
     if (!adminSession) {
-        return <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+        return <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
+                    style={{
+                      backgroundImage: 'url(/picbg2.jpg)',
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundAttachment: 'fixed'
+                    }}>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
             <div className="absolute inset-0 overflow-hidden">
                 <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
                 <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-300/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
             </div>
-            <div className="glass-card p-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <div className="glass-card p-8 relative z-10">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white/60 mx-auto"></div>
             </div>
         </div>;
     }
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+            <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
+                 style={{
+                   backgroundImage: 'url(/picbg2.jpg)',
+                   backgroundSize: 'cover',
+                   backgroundPosition: 'center',
+                   backgroundRepeat: 'no-repeat',
+                   backgroundAttachment: 'fixed'
+                 }}>
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
                 <div className="absolute inset-0 overflow-hidden">
                     <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
                     <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-300/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
                 </div>
-                <div className="glass-card p-8 text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-                    <p className="mt-4 text-glass-secondary">در حال بارگذاری...</p>
+                <div className="glass-card p-8 text-center relative z-10">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white/60 mx-auto"></div>
+                    <p className="mt-4 text-white/90">در حال بارگذاری...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen p-4 relative overflow-hidden" dir="rtl">
+        <div className="min-h-screen p-4 relative overflow-hidden" 
+             dir="rtl"
+             style={{
+               backgroundImage: 'url(/picbg2.jpg)',
+               backgroundSize: 'cover',
+               backgroundPosition: 'center',
+               backgroundRepeat: 'no-repeat',
+               backgroundAttachment: 'fixed'
+             }}>
+            {/* Background overlay */}
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+            
             {/* Animated Background Elements */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/5 rounded-full blur-3xl animate-pulse"></div>

@@ -193,6 +193,7 @@ export default function BookingPage() {
     const [selectedTime, setSelectedTime] = useState('');
     const [selectedDateObj, setSelectedDateObj] = useState<Date | null>(null);
     const [isBooked, setIsBooked] = useState(false);
+    const [bookingConfirmation, setBookingConfirmation] = useState<any>(null);
     const [persianDateCache, setPersianDateCache] = useState<{ [key: string]: string }>({});
     const [currentTime, setCurrentTime] = useState(new Date()); // Add current time state
 
@@ -578,18 +579,15 @@ export default function BookingPage() {
         // Update local state
         setExistingBookings(allBookings);
 
-        // Show confirmation popup
-        const confirmationMessage = `
-    قرار ملاقات شما ثبت شد!
-    
-    آرایشگر: ${selectedBarber}
-    تاریخ: ${formatPersianDateSync(selectedDateObj)}
-    ساعت: ${selectedTime}
-    
-    منتظر شما هستیم!
-    See you at ${selectedTime}!`;
-
-        alert(confirmationMessage);
+        // Store confirmation details instead of showing alert
+        setBookingConfirmation({
+            barber: selectedBarber,
+            date: formatPersianDateSync(selectedDateObj),
+            time: selectedTime,
+            endTime: minutesToTime(timeToMinutes(selectedTime) + getTotalDuration()),
+            services: selectedServices,
+            totalDuration: getTotalDuration()
+        });
 
         setIsBooked(true);
     };
@@ -598,7 +596,17 @@ export default function BookingPage() {
         <div
             className="mobile-full-height flex items-center justify-center mobile-container relative overflow-hidden"
             dir="rtl"
+            style={{
+              backgroundImage: 'url(/picbg2.jpg)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              backgroundAttachment: 'fixed'
+            }}
         >
+            {/* Background overlay */}
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+            
             {/* Subtle Background Elements */}
             <div className="absolute inset-0 overflow-hidden">
                 <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
@@ -1057,85 +1065,73 @@ export default function BookingPage() {
                         </form>
                     </>
                 ) : (
-                    <div
-                        className="text-center"
-                        style={{ textAlign: 'center' }}
-                    >
-                        <div
-                            className="mb-6"
-                            style={{ marginBottom: '24px' }}
-                        >
-                            <div
-                                className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"
-                                style={{
-                                    width: '64px',
-                                    height: '64px',
-                                    backgroundColor: '#f0fdf4',
-                                    borderRadius: '50%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    margin: '0 auto 16px auto',
-                                    fontSize: '24px'
-                                }}
-                            >
-                                ✓
+                    <div className="text-center">
+                        {/* Success Icon */}
+                        <div className="mb-6">
+                            <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-green-500/30">
+                                <span className="text-4xl text-green-600">✓</span>
                             </div>
-                            <h2
-                                className="text-xl font-bold text-gray-900 mb-2"
-                                style={{
-                                    fontSize: '20px',
-                                    fontWeight: 'bold',
-                                    color: '#111827',
-                                    marginBottom: '8px'
-                                }}
-                            >
-                                نوبت شما رزرو شد!
+                            <h2 className="text-2xl font-bold text-white mb-4">
+                                🎉 نوبت شما رزرو شد!
                             </h2>
-                            <div
-                                className="text-gray-600 text-sm space-y-1"
-                                style={{
-                                    fontSize: '13px',
-                                    color: '#6b7280',
-                                    lineHeight: '1.4'
-                                }}
-                            >
-                                <p>تاریخ: {selectedDateObj ? formatPersianDateSync(selectedDateObj) : ''}</p>
-                                <p>ساعت: {selectedTime} تا {minutesToTime(timeToMinutes(selectedTime) + getTotalDuration())}</p>
-                                <p>آرایشگر: {selectedBarber}</p>
-                                <p>سرویس‌ها:</p>
-                                <div style={{ paddingRight: '16px' }}>
-                                    {selectedServices.map((serviceName, index) => {
-                                        const service = services.find(s => s.name === serviceName);
-                                        return (
-                                            <p key={index} style={{ fontSize: '12px' }}>
-                                                • {serviceName} ({service?.duration} دقیقه)
-                                            </p>
-                                        );
-                                    })}
+                            <p className="text-white/80 text-sm mb-6">
+                                رزرو شما با موفقیت ثبت شد. منتظر دیدار شما هستیم!
+                            </p>
+                        </div>
+
+                        {/* Booking Details in Glass Container */}
+                        <div className="glass-card p-6 mb-6 text-right">
+                            <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                                📋 جزئیات رزرو شما
+                            </h3>
+                            <div className="space-y-3 text-white/90">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-white/70">📅 تاریخ:</span>
+                                    <span className="font-medium">{bookingConfirmation?.date}</span>
                                 </div>
-                                <p style={{ fontWeight: '500', marginTop: '8px' }}>
-                                    مجموع زمان: {getTotalDuration()} دقیقه
-                                </p>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-white/70">⏰ ساعت:</span>
+                                    <span className="font-medium">{bookingConfirmation?.time} تا {bookingConfirmation?.endTime}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-white/70">✂️ آرایشگر:</span>
+                                    <span className="font-medium">{bookingConfirmation?.barber}</span>
+                                </div>
+                                <div className="border-t border-white/20 pt-3">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-white/70">🎯 سرویس‌ها:</span>
+                                        <span className="text-sm text-white/60">({bookingConfirmation?.totalDuration} دقیقه)</span>
+                                    </div>
+                                    <div className="space-y-1">
+                                        {bookingConfirmation?.services?.map((serviceName: string, index: number) => {
+                                            const service = services.find(s => s.name === serviceName);
+                                            return (
+                                                <div key={index} className="flex justify-between items-center text-sm">
+                                                    <span className="text-white/80">• {serviceName}</span>
+                                                    <span className="text-white/60">{service?.duration} دقیقه</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <Link
-                            href="/"
-                            className="inline-block bg-black text-white py-2 px-6 rounded-md hover:bg-gray-800 font-medium"
-                            style={{
-                                display: 'inline-block',
-                                backgroundColor: 'black',
-                                color: 'white',
-                                padding: '8px 24px',
-                                borderRadius: '4px',
-                                fontWeight: '500',
-                                textDecoration: 'none',
-                                transition: 'background-color 0.2s'
-                            }}
-                        >
-                            بازگشت به صفحه اصلی
-                        </Link>
+                        {/* Action Buttons */}
+                        <div className="space-y-3">
+                            <Link
+                                href="/dashboard"
+                                className="block w-full glass-button text-center py-3 px-6 rounded-xl font-medium transition-all hover:bg-white/20"
+                            >
+                                📊 مشاهده داشبورد
+                            </Link>
+                            <Link
+                                href="/"
+                                className="block w-full glass-secondary text-center py-3 px-6 rounded-xl font-medium transition-all hover:bg-white/10"
+                            >
+                                🏠 بازگشت به صفحه اصلی
+                            </Link>
+                        </div>
                     </div>
                 )}
             </div>

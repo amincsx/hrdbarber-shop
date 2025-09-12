@@ -50,41 +50,51 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="mobile-full-height bg-gradient-to-br from-slate-50 to-slate-200 flex items-center justify-center p-4" dir="rtl">
-      <div className="glass mobile-container w-full max-w-md p-6 space-y-6">
-        <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">
+    <div className="mobile-full-height relative min-h-screen flex items-center justify-center p-4" dir="rtl"
+         style={{
+           backgroundImage: 'url(/picbg2.jpg)',
+           backgroundSize: 'cover',
+           backgroundPosition: 'center',
+           backgroundRepeat: 'no-repeat',
+           backgroundAttachment: 'fixed'
+         }}>
+      {/* Background overlay */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+      
+      <div className="relative glass mobile-container w-full max-w-md p-6 space-y-6 backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl shadow-2xl">
+        <h1 className="text-2xl font-bold mb-6 text-center text-white">
           داشبورد - {userData.name}
         </h1>
 
         {userBookings.length > 0 ? (
           <div>
-            <h2 className="text-lg font-semibold mb-4 text-gray-700">نوبت‌های رزرو شده شما:</h2>
+            <h2 className="text-lg font-semibold mb-4 text-white">نوبت‌های رزرو شده شما:</h2>
             <div className="space-y-4">
               {userBookings.map((booking: any, index: number) => (
-                <div key={index} className="glass-card p-4 space-y-2">
-                  <h3 className="text-base font-semibold text-gray-800">
+                <div key={index} className="glass-card p-4 space-y-2 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl">
+                  <h3 className="text-base font-semibold text-white">
                     رزرو شماره {index + 1}
                   </h3>
-                  <p className="text-sm text-gray-700"><strong>تاریخ:</strong> {formatPersianDate(booking.dateKey)}</p>
-                  <p className="text-sm text-gray-700"><strong>ساعت:</strong> {booking.startTime} تا {booking.endTime}</p>
-                  <p className="text-sm text-gray-700"><strong>آرایشگر:</strong> {booking.barber}</p>
-                  <p className="text-sm text-gray-700"><strong>سرویس‌ها:</strong> {booking.services.join('، ')}</p>
-                  <p className="text-sm text-gray-700"><strong>مدت زمان:</strong> {booking.totalDuration} دقیقه</p>
+                  <p className="text-sm text-white/90"><strong>تاریخ:</strong> {formatPersianDate(booking.dateKey)}</p>
+                  <p className="text-sm text-white/90"><strong>ساعت:</strong> {booking.startTime} تا {booking.endTime}</p>
+                  <p className="text-sm text-white/90"><strong>آرایشگر:</strong> {booking.barber}</p>
+                  <p className="text-sm text-white/90"><strong>سرویس‌ها:</strong> {booking.services.join('، ')}</p>
+                  <p className="text-sm text-white/90"><strong>مدت زمان:</strong> {booking.totalDuration} دقیقه</p>
                 </div>
               ))}
             </div>
-            <p className="text-center font-medium mt-5 text-gray-700">
+            <p className="text-center font-medium mt-5 text-white">
               مجموع رزروها: {userBookings.length}
             </p>
           </div>
         ) : (
           <div className="text-center space-y-4">
-            <h2 className="text-lg font-semibold text-gray-700">
+            <h2 className="text-lg font-semibold text-white">
               شما هیچ نوبتی رزرو نکرده‌اید
             </h2>
             <Link
               href="/booking"
-              className="inline-block glass-button bg-slate-700 text-white py-3 px-6 rounded-lg hover:bg-slate-600 font-medium transition-colors"
+              className="inline-block glass-button bg-white/20 text-white py-3 px-6 rounded-lg hover:bg-white/30 font-medium transition-colors backdrop-blur-xl border border-white/20"
             >
               رزرو نوبت جدید
             </Link>
@@ -92,25 +102,25 @@ export default function DashboardPage() {
         )}
 
         {/* Quick Actions for Users */}
-        <div className="glass-card p-5 border-blue-200 bg-blue-50/20">
-          <h3 className="text-lg font-semibold mb-4 text-center text-blue-800">
+        <div className="glass-card p-5 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl">
+          <h3 className="text-lg font-semibold mb-4 text-center text-white">
             عملیات سریع
           </h3>
           <div className="flex gap-3 justify-center flex-wrap">
             <Link
               href="/booking"
-              className="glass-button bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 font-medium transition-colors"
+              className="glass-button bg-white/20 text-white py-2 px-4 rounded-lg hover:bg-white/30 font-medium transition-colors backdrop-blur-xl border border-white/20"
             >
               رزرو نوبت جدید
             </Link>
             <Link
               href="/admin"
-              className="glass-button bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 font-medium transition-colors"
+              className="glass-button bg-white/20 text-white py-2 px-4 rounded-lg hover:bg-white/30 font-medium transition-colors backdrop-blur-xl border border-white/20"
             >
               ورود آرایشگر/مالک
             </Link>
           </div>
-          <p className="text-center mt-3 text-sm text-slate-600">
+          <p className="text-center mt-3 text-sm text-white/70">
             برای مدیریت رزروها، از بخش ورود آرایشگر استفاده کنید
           </p>
         </div>
