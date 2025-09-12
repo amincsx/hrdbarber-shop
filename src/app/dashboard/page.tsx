@@ -120,43 +120,43 @@ export default function DashboardPage() {
           <div>
             <h2 className="text-lg font-semibold mb-4 text-white">نوبت‌های رزرو شده شما:</h2>
             <div className="p-6">
-              {userBookings.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="text-center text-sm text-white/70 mb-4">
-                    📱 رزروهای شما از localStorage بارگذاری شده‌اند
+              <div className="space-y-4">
+                <div className="text-center text-sm text-white/70 mb-4">
+                  📱 رزروهای شما از localStorage بارگذاری شده‌اند
+                </div>
+                {userBookings.map((booking: any, index: number) => (
+                  <div key={index} className="glass-card p-4 space-y-2 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl">
+                    <h3 className="text-base font-semibold text-white">
+                      رزرو شماره {index + 1}
+                    </h3>
+                    <p className="text-sm text-white/90"><strong>تاریخ:</strong> {formatPersianDate(booking.dateKey || booking.date_key)}</p>
+                    <p className="text-sm text-white/90"><strong>ساعت:</strong> {booking.startTime || booking.start_time} تا {booking.endTime || booking.end_time}</p>
+                    <p className="text-sm text-white/90"><strong>آرایشگر:</strong> {booking.barber}</p>
+                    <p className="text-sm text-white/90"><strong>سرویس‌ها:</strong> {booking.services.join('، ')}</p>
+                    <p className="text-sm text-white/90"><strong>مدت زمان:</strong> {booking.totalDuration || booking.total_duration} دقیقه</p>
+                    {booking.status && (
+                      <p className="text-sm text-white/90"><strong>وضعیت:</strong> 
+                        <span className={`ml-1 px-2 py-1 rounded text-xs ${
+                          booking.status === 'confirmed' ? 'bg-green-500/20 text-green-300' :
+                          booking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
+                          booking.status === 'cancelled' ? 'bg-red-500/20 text-red-300' :
+                          'bg-gray-500/20 text-gray-300'
+                        }`}>
+                          {booking.status === 'confirmed' ? 'تایید شده' :
+                           booking.status === 'pending' ? 'در انتظار' :
+                           booking.status === 'cancelled' ? 'لغو شده' : booking.status}
+                        </span>
+                      </p>
+                    )}
                   </div>
-                  {userBookings.map((booking: any, index: number) => (
-                <div key={index} className="glass-card p-4 space-y-2 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl">
-                  <h3 className="text-base font-semibold text-white">
-                    رزرو شماره {index + 1}
-                  </h3>
-                  <p className="text-sm text-white/90"><strong>تاریخ:</strong> {formatPersianDate(booking.dateKey || booking.date_key)}</p>
-                  <p className="text-sm text-white/90"><strong>ساعت:</strong> {booking.startTime || booking.start_time} تا {booking.endTime || booking.end_time}</p>
-                  <p className="text-sm text-white/90"><strong>آرایشگر:</strong> {booking.barber}</p>
-                  <p className="text-sm text-white/90"><strong>سرویس‌ها:</strong> {booking.services.join('، ')}</p>
-                  <p className="text-sm text-white/90"><strong>مدت زمان:</strong> {booking.totalDuration || booking.total_duration} دقیقه</p>
-                  {booking.status && (
-                    <p className="text-sm text-white/90"><strong>وضعیت:</strong> 
-                      <span className={`ml-1 px-2 py-1 rounded text-xs ${
-                        booking.status === 'confirmed' ? 'bg-green-500/20 text-green-300' :
-                        booking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
-                        booking.status === 'cancelled' ? 'bg-red-500/20 text-red-300' :
-                        'bg-gray-500/20 text-gray-300'
-                      }`}>
-                        {booking.status === 'confirmed' ? 'تایید شده' :
-                         booking.status === 'pending' ? 'در انتظار' :
-                         booking.status === 'cancelled' ? 'لغو شده' : booking.status}
-                      </span>
-                    </p>
-                  )}
-                </div>
-              ))}
-                </div>
+                ))}
                 <p className="text-center font-medium mt-5 text-white">
                   مجموع رزروها: {userBookings.length}
                 </p>
               </div>
-            ) : (
+            </div>
+          </div>
+        ) : (
           <div className="text-center space-y-4">
             <h2 className="text-lg font-semibold text-white">
               شما هیچ نوبتی رزرو نکرده‌اید
@@ -169,7 +169,6 @@ export default function DashboardPage() {
             </Link>
           </div>
         )}
-            </div>
 
         {/* Navigation back to home */}
         <div className="text-center">
