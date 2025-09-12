@@ -1,24 +1,10 @@
 // JavaScript version of auth route to bypass TypeScript module detection
 import { NextResponse } from 'next/server';
-
-let isInitialized = false;
-let Database;
-
-async function initializeDatabase() {
-    if (!isInitialized) {
-        // Dynamic import to avoid module resolution issues
-        const { default: DatabaseClass } = await import('../../../lib/mongoDatabase');
-        Database = DatabaseClass;
-        await Database.initializeDatabase();
-        isInitialized = true;
-    }
-}
+import MongoDatabase from '../../../lib/mongoDatabase.js';
 
 // POST - Register new user
 async function POST(request) {
     try {
-        await initializeDatabase();
-
         const userData = await request.json();
         const { first_name, last_name, phone, password, otpCode } = userData;
 
@@ -30,7 +16,7 @@ async function POST(request) {
         }
 
         // Check if user already exists
-        const existingUser = await Database.findUserByPhone(phone);
+        const existingUser = await MongoDatabase.findUserByPhone(phone);
 
         if (existingUser) {
             return NextResponse.json(
@@ -52,7 +38,7 @@ async function POST(request) {
         }
 
         // Create new user
-        const newUser = await Database.addUser({
+        const newUser = await MongoDatabase.addUser({
             username: phone, // Use phone as username for regular users
             phone,
             password,
@@ -84,8 +70,6 @@ async function POST(request) {
 // PUT - Login user  
 async function PUT(request) {
     try {
-        await initializeDatabase();
-
         const { phone, password } = await request.json();
 
         if (!phone || !password) {
@@ -96,7 +80,7 @@ async function PUT(request) {
         }
 
         // Find user by phone
-        const user = await Database.findUserByPhone(phone);
+        const user = await MongoDatabase.findUserByPhone(phone);
 
         if (!user) {
             return NextResponse.json(
@@ -136,8 +120,6 @@ async function PUT(request) {
 // GET - Login user (alternative method)
 async function GET(request) {
     try {
-        await initializeDatabase();
-
         const { searchParams } = new URL(request.url);
         const phone = searchParams.get('phone');
         const password = searchParams.get('password');
@@ -150,7 +132,7 @@ async function GET(request) {
         }
 
         // Find user by phone
-        const user = await Database.findUserByPhone(phone);
+        const user = await MongoDatabase.findUserByPhone(phone);
 
         if (!user) {
             return NextResponse.json(

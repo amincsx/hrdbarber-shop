@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <title>تست سیستم احراز هویت</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        button { padding: 10px; margin: 5px; }
+        input { padding: 5px; margin: 5px; }
+        #result { margin-top: 20px; padding: 10px; border: 1px solid #ddd; min-height: 100px; }
+    </style>
+</head>
+<body>
+    <h1>تست سیستم احراز هویت HRD Barber Shop</h1>
+    
+    <div class="test-section">
+        <h2>تست ورود (Login)</h2>
+        <button onclick="testLogin('user', 'pass')">تست ورود: user/pass</button>
+        <button onclick="testLogin('ceo', 'instad')">تست ورود: ceo/instad</button>
+        <button onclick="testLogin('wrong', 'credentials')">تست اطلاعات غلط</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>تست ثبت نام (Signup)</h2>
+        <input type="text" id="firstName" placeholder="نام" value="تست">
+        <input type="text" id="lastName" placeholder="نام خانوادگی" value="کاربر">
+        <input type="text" id="phone" placeholder="شماره تلفن" value="09123456789">
+        <input type="text" id="password" placeholder="رمز عبور" value="test123">
+        <button onclick="testSignup()">تست ثبت نام</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>تست OTP</h2>
+        <input type="text" id="otpPhone" placeholder="شماره تلفن" value="09123456789">
+        <button onclick="testOTP()">ارسال کد تایید</button>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        function showResult(title, data, isSuccess) {
+            const resultDiv = document.getElementById('result');
+            const className = isSuccess ? 'success' : 'error';
+            resultDiv.innerHTML = `<h3 class="${className}">${title}</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+        }
+
+        async function testLogin(phone, password) {
+            try {
+                const response = await fetch(`/api/auth?phone=${phone}&password=${password}`);
+                const data = await response.json();
+                showResult(`تست ورود: ${phone}/${password}`, data, response.ok);
+            } catch (error) {
+                showResult('خطا در تست ورود', { error: error.message }, false);
+            }
+        }
+
+        async function testSignup() {
+            try {
+                const firstName = document.getElementById('firstName').value;
+                const lastName = document.getElementById('lastName').value;
+                const phone = document.getElementById('phone').value;
+                const password = document.getElementById('password').value;
+                
+                const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        first_name: firstName,
+                        last_name: lastName,
+                        phone: phone,
+                        password: password,
+                        otpCode: '1234'
+                    })
+                });
+                
+                const data = await response.json();
+                showResult('تست ثبت نام', data, response.ok);
+            } catch (error) {
+                showResult('خطا در تست ثبت نام', { error: error.message }, false);
+            }
+        }
+
+        async function testOTP() {
+            try {
+                const phone = document.getElementById('otpPhone').value;
+                
+                const response = await fetch('/api/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: phone })
+                });
+                
+                const data = await response.json();
+                showResult('تست ارسال OTP', data, response.ok);
+            } catch (error) {
+                showResult('خطا در تست OTP', { error: error.message }, false);
+            }
+        }
+    </script>
+</body>
+</html>
