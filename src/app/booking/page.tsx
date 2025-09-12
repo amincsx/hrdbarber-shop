@@ -347,11 +347,12 @@ export default function BookingPage() {
         const baseSlotsToUse = totalDuration === 0 ? timeSlots : timeSlots;
         const blockedSlots = new Set<string>();
 
-        // Get existing bookings for selected date to block conflicting times
-        if (selectedDateObj) {
+        // Get existing bookings for selected date and barber to block conflicting times
+        if (selectedDateObj && selectedBarber) {
             const dateKey = selectedDateObj.toISOString().split('T')[0];
             existingBookings.forEach(booking => {
-                if (booking.dateKey === dateKey) {
+                // Only check conflicts for the same date AND same barber
+                if (booking.dateKey === dateKey && booking.barber === selectedBarber) {
                     const bookingStart = timeToMinutes(booking.startTime);
                     const bookingEnd = timeToMinutes(booking.endTime);
 
@@ -441,12 +442,35 @@ export default function BookingPage() {
         // Set today as default selected date
         setSelectedDateObj(today);
 
-        // Load existing bookings from localStorage (simulate database)
-        const bookings = localStorage.getItem('allBookings');
-        if (bookings) {
-            setExistingBookings(JSON.parse(bookings));
-        }
+        // Load existing bookings from file database
+        loadBookingsFromDatabase();
     }, []);
+
+    // Load bookings from file database
+    const loadBookingsFromDatabase = async () => {
+        try {
+            const response = await fetch('/api/bookings');
+            if (response.ok) {
+                const data = await response.json();
+                setExistingBookings(data.bookings || []);
+                console.log('Loaded bookings from database:', data.bookings?.length || 0);
+            } else {
+                console.error('Failed to load bookings from database');
+                // Fallback to localStorage if API fails
+                const bookings = localStorage.getItem('allBookings');
+                if (bookings) {
+                    setExistingBookings(JSON.parse(bookings));
+                }
+            }
+        } catch (error) {
+            console.error('Error loading bookings:', error);
+            // Fallback to localStorage if API fails
+            const bookings = localStorage.getItem('allBookings');
+            if (bookings) {
+                setExistingBookings(JSON.parse(bookings));
+            }
+        }
+    };
 
     // Update current time every minute
     useEffect(() => {
@@ -499,14 +523,15 @@ export default function BookingPage() {
 
     // Check if a time slot is blocked by existing bookings
     const isTimeBlocked = (startTime: string, duration: number, selectedDate: Date): boolean => {
-        if (!selectedDate) return false;
+        if (!selectedDate || !selectedBarber) return false;
 
         const dateKey = selectedDate.toISOString().split('T')[0];
         const startMinutes = timeToMinutes(startTime);
         const endMinutes = startMinutes + duration;
 
         return existingBookings.some(booking => {
-            if (booking.dateKey !== dateKey) return false;
+            // Only check conflicts for the same date AND same barber
+            if (booking.dateKey !== dateKey || booking.barber !== selectedBarber) return false;
 
             const bookingStart = timeToMinutes(booking.startTime);
             const bookingEnd = timeToMinutes(booking.endTime);
@@ -530,10 +555,11 @@ export default function BookingPage() {
         // Get all blocked time ranges (excluding the currently selected time)
         const blockedRanges: Array<{ start: number, end: number }> = [];
 
-        // Add existing bookings to blocked ranges
+        // Add existing bookings to blocked ranges (only for the selected barber)
         const dateKey = selectedDateObj.toISOString().split('T')[0];
         existingBookings.forEach(booking => {
-            if (booking.dateKey === dateKey) {
+            // Only block times for the same date AND same barber
+            if (booking.dateKey === dateKey && booking.barber === selectedBarber) {
                 blockedRanges.push({
                     start: timeToMinutes(booking.startTime),
                     end: timeToMinutes(booking.endTime)
@@ -680,8 +706,8 @@ export default function BookingPage() {
         allBookings.push(localBooking);
         localStorage.setItem('allBookings', JSON.stringify(allBookings));
 
-        // Update local state
-        setExistingBookings(allBookings);
+        // Reload bookings from database to get latest state
+        await loadBookingsFromDatabase();
 
         // Show success message
         if (bookingSavedToDatabase) {

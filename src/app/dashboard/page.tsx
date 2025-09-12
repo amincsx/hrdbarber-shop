@@ -188,38 +188,52 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Navigation and New Booking */}
-        <div className="text-center space-y-4">
-          {canBookNew ? (
-            <Link
-              href="/booking"
-              className="glass-button bg-green-500/20 text-green-300 py-3 px-6 rounded-lg hover:bg-green-500/30 font-medium transition-colors backdrop-blur-xl border border-green-500/30"
-            >
-              📅 رزرو نوبت جدید
-            </Link>
-          ) : (
-            <div className="space-y-2">
-              <div className="glass-button bg-red-500/20 text-red-300 py-3 px-6 rounded-lg font-medium backdrop-blur-xl border border-red-500/30 cursor-not-allowed">
-                ⏳ امکان رزرو جدید وجود ندارد
-              </div>
-              <p className="text-sm text-white/70">
-                پس از اتمام آخرین نوبت خود می‌توانید نوبت جدید رزرو کنید
-              </p>
-              {nextAvailableTime && (
-                <p className="text-xs text-white/60">
-                  آخرین نوبت تا: {nextAvailableTime}
+        {/* Navigation and New Booking - only show when user has existing bookings */}
+        {userBookings.length > 0 && (
+          <div className="text-center space-y-4">
+            {canBookNew ? (
+              <Link
+                href="/booking"
+                className="glass-button bg-green-500/20 text-green-300 py-3 px-6 rounded-lg hover:bg-green-500/30 font-medium transition-colors backdrop-blur-xl border border-green-500/30"
+              >
+                📅 رزرو نوبت جدید
+              </Link>
+            ) : (
+              <div className="space-y-2">
+                <div className="glass-button bg-red-500/20 text-red-300 py-3 px-6 rounded-lg font-medium backdrop-blur-xl border border-red-500/30 cursor-not-allowed">
+                  ⏳ امکان رزرو جدید وجود ندارد
+                </div>
+                <p className="text-sm text-white/70">
+                  پس از اتمام آخرین نوبت خود می‌توانید نوبت جدید رزرو کنید
                 </p>
-              )}
-            </div>
-          )}
-          
-          <Link
-            href="/"
-            className="glass-button bg-white/10 text-white py-2 px-4 rounded-lg hover:bg-white/20 font-medium transition-colors backdrop-blur-xl border border-white/20 text-sm"
-          >
-            🏠 صفحه اصلی
-          </Link>
-        </div>
+                {nextAvailableTime && (
+                  <p className="text-xs text-white/60">
+                    آخرین نوبت تا: {nextAvailableTime}
+                  </p>
+                )}
+              </div>
+            )}
+            
+            <Link
+              href="/"
+              className="glass-button bg-white/10 text-white py-2 px-4 rounded-lg hover:bg-white/20 font-medium transition-colors backdrop-blur-xl border border-white/20 text-sm"
+            >
+              🏠 صفحه اصلی
+            </Link>
+          </div>
+        )}
+
+        {/* Home link for users with no bookings */}
+        {userBookings.length === 0 && (
+          <div className="text-center">
+            <Link
+              href="/"
+              className="glass-button bg-white/10 text-white py-2 px-4 rounded-lg hover:bg-white/20 font-medium transition-colors backdrop-blur-xl border border-white/20 text-sm"
+            >
+              🏠 صفحه اصلی
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
