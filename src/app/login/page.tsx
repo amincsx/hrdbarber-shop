@@ -12,6 +12,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPhone, setForgotPhone] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [forgotStep, setForgotStep] = useState<'phone' | 'otp' | 'newPassword'>('phone');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState('');
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,6 +70,98 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    setForgotError('');
+    setForgotSuccess('');
+
+    try {
+      if (forgotStep === 'phone') {
+        // Send OTP
+        const response = await fetch('/api/forgot-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            phone: forgotPhone, 
+            action: 'send-otp' 
+          }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          setForgotSuccess(result.message);
+          setForgotStep('otp');
+        } else {
+          setForgotError(result.error);
+        }
+      } else if (forgotStep === 'otp') {
+        // Verify OTP
+        const response = await fetch('/api/forgot-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            phone: forgotPhone, 
+            action: 'verify-otp',
+            otpCode: otpCode
+          }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          setForgotSuccess(result.message);
+          setForgotStep('newPassword');
+        } else {
+          setForgotError(result.error);
+        }
+      } else if (forgotStep === 'newPassword') {
+        // Reset password
+        const response = await fetch('/api/forgot-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            phone: forgotPhone, 
+            action: 'reset-password',
+            newPassword: newPassword
+          }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          setForgotSuccess(result.message);
+          setTimeout(() => {
+            resetForgotPassword();
+          }, 2000);
+        } else {
+          setForgotError(result.error);
+        }
+      }
+    } catch (err) {
+      setForgotError('خطا در اتصال به سرور');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const resetForgotPassword = () => {
+    setShowForgotPassword(false);
+    setForgotStep('phone');
+    setForgotPhone('');
+    setOtpCode('');
+    setNewPassword('');
+    setForgotError('');
+    setForgotSuccess('');
   };
 
   return (
@@ -134,6 +234,15 @@ export default function LoginPage() {
           </button>
         </form>
 
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => setShowForgotPassword(true)}
+            className="text-white/70 hover:text-white text-sm underline decoration-white/30 underline-offset-4 transition-colors"
+          >
+            رمز عبور خود را فراموش کرده‌اید؟
+          </button>
+        </div>
+
         <div className="mt-6 text-center">
           <Link
             href="/signup"
@@ -143,6 +252,112 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 backdrop-blur-sm bg-black/30" onClick={resetForgotPassword}></div>
+          <div className="relative max-w-md w-full mx-4 p-8 rounded-3xl backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-white">بازیابی رمز عبور</h2>
+              <button
+                onClick={resetForgotPassword}
+                className="text-white/70 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              {forgotStep === 'phone' && (
+                <div>
+                  <label className="block text-white/80 mb-2">شماره تلفن</label>
+                  <input
+                    type="tel"
+                    value={forgotPhone}
+                    onChange={(e) => setForgotPhone(e.target.value)}
+                    required
+                    placeholder="شماره تلفن خود را وارد کنید"
+                    className="w-full p-4 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white placeholder-white/70"
+                  />
+                </div>
+              )}
+
+              {forgotStep === 'otp' && (
+                <div>
+                  <label className="block text-white/80 mb-2">کد تأیید</label>
+                  <input
+                    type="text"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    required
+                    placeholder="کد ارسال شده را وارد کنید"
+                    className="w-full p-4 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white placeholder-white/70"
+                  />
+                </div>
+              )}
+
+              {forgotStep === 'newPassword' && (
+                <div>
+                  <label className="block text-white/80 mb-2">رمز عبور جدید</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    placeholder="رمز عبور جدید را وارد کنید"
+                    className="w-full p-4 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white placeholder-white/70"
+                  />
+                </div>
+              )}
+
+              {forgotError && (
+                <div className="p-3 rounded-xl bg-red-500/20 border border-red-400/30 text-red-200 text-sm">
+                  {forgotError}
+                </div>
+              )}
+
+              {forgotSuccess && (
+                <div className="p-3 rounded-xl bg-green-500/20 border border-green-400/30 text-green-200 text-sm">
+                  {forgotSuccess}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={forgotLoading}
+                className="w-full p-4 rounded-2xl font-medium backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all duration-300 text-white shadow-xl"
+              >
+                {forgotLoading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current ml-2"></div>
+                    در حال پردازش...
+                  </div>
+                ) : forgotStep === 'phone' ? (
+                  'ارسال کد تأیید'
+                ) : forgotStep === 'otp' ? (
+                  'تأیید کد'
+                ) : (
+                  'تغییر رمز عبور'
+                )}
+              </button>
+
+              {forgotStep !== 'phone' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (forgotStep === 'otp') setForgotStep('phone');
+                    else if (forgotStep === 'newPassword') setForgotStep('otp');
+                  }}
+                  className="w-full p-3 rounded-2xl font-medium text-white/70 hover:text-white transition-colors"
+                >
+                  بازگشت
+                </button>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
