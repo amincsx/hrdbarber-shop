@@ -52,11 +52,13 @@ async function POST(request) {
         }
 
         // Create new user
-        const newUser = await Database.createUser({
+        const newUser = await Database.addUser({
+            username: phone, // Use phone as username for regular users
             phone,
+            password,
             name: `${first_name} ${last_name}`,
             role: 'user',
-            isVerified: !!otpCode // Verified if OTP was provided
+            isVerified: !!otpCode
         });
 
         return NextResponse.json({
@@ -103,11 +105,10 @@ async function PUT(request) {
             );
         }
 
-        // In a real app, you'd verify the password hash here
-        // For now, we'll just check if password is not empty
-        if (!password || password.length < 4) {
+        // Verify the password matches the user's stored password
+        if (!password || password !== user.password) {
             return NextResponse.json(
-                { error: 'رمز عبور نامعتبر است' },
+                { error: 'رمز عبور اشتباه است' },
                 { status: 401 }
             );
         }
@@ -158,9 +159,8 @@ async function GET(request) {
             );
         }
 
-        // In a real app, you'd verify the password hash here
-        // For now, we'll just check if password is not empty
-        if (!password || password.length < 4) {
+        // Verify the password matches the user's stored password
+        if (!password || password !== user.password) {
             return NextResponse.json(
                 { error: 'شماره تلفن یا رمز عبور اشتباه است' },
                 { status: 401 }

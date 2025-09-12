@@ -114,14 +114,23 @@ const UserSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    phone: {
+        type: String,
+        trim: true,
+        sparse: true // Optional field for regular users
+    },
     password: {
         type: String,
         required: true
     },
     role: {
         type: String,
-        enum: ['admin', 'barber', 'customer'],
+        enum: ['admin', 'barber', 'customer', 'user'],
         default: 'customer'
+    },
+    isVerified: {
+        type: Boolean,
+        default: false
     },
     barber_id: {
         type: mongoose.Schema.Types.ObjectId,
