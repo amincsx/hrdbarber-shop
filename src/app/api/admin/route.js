@@ -17,8 +17,14 @@ async function initializeDatabase() {
 async function POST(request) {
     try {
         const { username, password, type } = await request.json();
+        
+        console.log('🔐 Admin login attempt:');
+        console.log('  - Username:', username);
+        console.log('  - Type:', type);
+        console.log('  - Password provided:', !!password);
 
         if (!username || !password || !type) {
+            console.log('❌ Missing required fields');
             return NextResponse.json(
                 { error: 'نام کاربری، رمز عبور و نوع کاربر الزامی است' },
                 { status: 400 }
@@ -49,6 +55,7 @@ async function POST(request) {
 
         // Barber login - Test barbers
         if (type === 'barber') {
+            console.log('🔍 Processing barber login...');
             const testBarbers = [
                 { username: 'hamid', name: 'حمید', password: 'barber123' },
                 { username: 'benyamin', name: 'بنیامین', password: 'barber123' },
@@ -56,21 +63,26 @@ async function POST(request) {
             ];
 
             const barber = testBarbers.find(b => b.username === username);
+            console.log('  - Barber found:', !!barber);
 
             if (!barber) {
+                console.log('❌ Barber not found for username:', username);
                 return NextResponse.json(
                     { success: false, error: 'آرایشگری با این نام یافت نشد' },
                     { status: 404 }
                 );
             }
 
+            console.log('  - Password check:', password === barber.password);
             if (password !== barber.password) {
+                console.log('❌ Wrong password for barber:', username);
                 return NextResponse.json(
                     { success: false, error: 'رمز عبور اشتباه است' },
                     { status: 401 }
                 );
             }
 
+            console.log('✅ Barber login successful:', barber.name);
             return NextResponse.json({
                 success: true,
                 message: 'ورود آرایشگر موفقیت‌آمیز',

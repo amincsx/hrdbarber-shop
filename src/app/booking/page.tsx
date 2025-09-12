@@ -228,30 +228,84 @@ export default function BookingPage() {
     const [showAllTimeSlots, setShowAllTimeSlots] = useState(false);
     const [selectedBarber, setSelectedBarber] = useState<string>('');
 
-    // Generate all possible time slots (every 15 minutes from 10:00 to 21:00)
-    const generateAllTimeSlots = () => {
+    // Individual barber schedules - all barbers have same working hours
+    const barberSchedules = {
+        'حمید': { start: 10, end: 21 }, // 10:00 - 21:00
+        'بنیامین': { start: 10, end: 21 }, // 10:00 - 21:00  
+        'محمد': { start: 10, end: 21 }, // 10:00 - 21:00
+        'آقای احمدی': { start: 10, end: 21 } // 10:00 - 21:00
+    };
+
+    // Generate time slots based on selected barber's schedule
+    const generateTimeSlots = (barberName: string) => {
+        const schedule = barberSchedules[barberName as keyof typeof barberSchedules] || { start: 10, end: 21 };
         const slots = [];
-        for (let hour = 10; hour <= 20; hour++) {
+        
+        for (let hour = schedule.start; hour <= schedule.end - 1; hour++) {
             for (let minute = 0; minute < 60; minute += 15) {
-                if (hour === 20 && minute > 45) break; // Stop at 20:45 to allow 15min service until 21:00
+                // Don't add slots that would end after closing time
+                const endHour = minute === 45 ? hour + 1 : hour;
+                const endMinute = minute === 45 ? 0 : minute + 15;
+                
+                if (endHour > schedule.end || (endHour === schedule.end && endMinute > 0)) {
+                    break;
+                }
+                
                 const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
                 slots.push(timeStr);
             }
         }
-        // Add 21:00 as final slot
-        slots.push('21:00');
+        
         return slots;
+    };
+
+    // Generate all possible time slots for the selected barber (every 15 minutes)
+    const generateAllTimeSlots = () => {
+        if (!selectedBarber) {
+            // Default slots if no barber selected
+            const slots = [];
+            for (let hour = 10; hour <= 20; hour++) {
+                for (let minute = 0; minute < 60; minute += 15) {
+                    if (hour === 20 && minute > 45) break;
+                    const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                    slots.push(timeStr);
+                }
+            }
+            slots.push('21:00');
+            return slots;
+        }
+        
+        return generateTimeSlots(selectedBarber);
     };
 
     const allTimeSlots = generateAllTimeSlots();
 
-    // Basic 30-minute slots for display when no services selected
-    const timeSlots = [
-        '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
-        '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
-        '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
-        '19:00', '19:30', '20:00', '20:30', '21:00'
-    ];
+    // Generate 30-minute basic slots for display based on selected barber
+    const getBasicTimeSlots = () => {
+        if (!selectedBarber) {
+            // Default slots
+            return [
+                '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+                '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+                '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
+                '19:00', '19:30', '20:00', '20:30', '21:00'
+            ];
+        }
+        
+        const schedule = barberSchedules[selectedBarber as keyof typeof barberSchedules] || { start: 10, end: 21 };
+        const slots = [];
+        
+        for (let hour = schedule.start; hour < schedule.end; hour++) {
+            slots.push(`${hour.toString().padStart(2, '0')}:00`);
+            if (hour + 0.5 < schedule.end) {
+                slots.push(`${hour.toString().padStart(2, '0')}:30`);
+            }
+        }
+        
+        return slots;
+    };
+
+    const timeSlots = getBasicTimeSlots();
 
     const services = [
         { name: 'اصلاح سر', duration: 30 },
@@ -422,6 +476,13 @@ export default function BookingPage() {
             });
         }
     }, [availableDates, persianDateCache]);
+
+    // Reset selected time when barber changes
+    useEffect(() => {
+        if (selectedBarber) {
+            setSelectedTime(''); // Reset time selection when barber changes
+        }
+    }, [selectedBarber]);
 
     // Convert time string to minutes since midnight
     const timeToMinutes = (timeStr: string): number => {
