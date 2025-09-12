@@ -157,4 +157,75 @@ export class SimpleFileDB {
             );
         });
     }
+
+    // User management methods
+    static readUsers() {
+        try {
+            const data = fs.readFileSync(USERS_FILE, 'utf8');
+            return JSON.parse(data);
+        } catch (error) {
+            console.error('Error reading users:', error);
+            return [];
+        }
+    }
+
+    static writeUsers(users) {
+        try {
+            fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+            return true;
+        } catch (error) {
+            console.error('Error writing users:', error);
+            return false;
+        }
+    }
+
+    static addUser(user) {
+        try {
+            const users = this.readUsers();
+            const newUser = {
+                ...user,
+                _id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                created_at: new Date().toISOString()
+            };
+            users.push(newUser);
+
+            if (this.writeUsers(users)) {
+                console.log('✅ User saved to file database:', newUser._id);
+                return newUser;
+            }
+            return null;
+        } catch (error) {
+            console.error('Error adding user:', error);
+            return null;
+        }
+    }
+
+    static getUserByUsername(username) {
+        const users = this.readUsers();
+        return users.find(user => user.username === username);
+    }
+
+    static getUsersByRole(role) {
+        const users = this.readUsers();
+        return users.filter(user => user.role === role);
+    }
+
+    static initializeBarbers() {
+        const existingBarbers = this.getUsersByRole('barber');
+        if (existingBarbers.length === 0) {
+            console.log('🔧 Initializing barber accounts...');
+            
+            const barbers = [
+                { username: 'hamid', name: 'حمید', password: 'hamid123', role: 'barber' },
+                { username: 'benyamin', name: 'بنیامین', password: 'benyamin123', role: 'barber' },
+                { username: 'mohammad', name: 'محمد', password: 'mohammad123', role: 'barber' }
+            ];
+
+            barbers.forEach(barber => {
+                this.addUser(barber);
+            });
+
+            console.log('✅ Barber accounts initialized');
+        }
+    }
 }

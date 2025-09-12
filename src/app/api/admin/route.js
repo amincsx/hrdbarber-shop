@@ -1,17 +1,6 @@
 // JavaScript version of admin route to bypass TypeScript module detection
 import { NextResponse } from 'next/server';
-
-let isInitialized = false;
-let Database;
-
-async function initializeDatabase() {
-    if (!isInitialized) {
-        const { default: DatabaseClass } = await import('../../../lib/database');
-        Database = DatabaseClass;
-        await Database.initializeDatabase();
-        isInitialized = true;
-    }
-}
+import { SimpleFileDB } from '../../../lib/fileDatabase.js';
 
 // POST - Admin login (owner and barber)
 async function POST(request) {
@@ -30,6 +19,9 @@ async function POST(request) {
                 { status: 400 }
             );
         }
+
+        // Initialize barber accounts if they don't exist
+        SimpleFileDB.initializeBarbers();
 
         // Owner login
         if (type === 'owner') {
@@ -53,19 +45,14 @@ async function POST(request) {
             }
         }
 
-        // Barber login - Test barbers
+        // Barber login - Use database
         if (type === 'barber') {
-            console.log('🔍 Processing barber login...');
-            const testBarbers = [
-                { username: 'hamid', name: 'حمید', password: 'barber123' },
-                { username: 'benyamin', name: 'بنیامین', password: 'barber123' },
-                { username: 'mohammad', name: 'محمد', password: 'barber123' }
-            ];
-
-            const barber = testBarbers.find(b => b.username === username);
-            console.log('  - Barber found:', !!barber);
-
-            if (!barber) {
+            console.log('🔍 Processing barber login from database...');
+            
+            const barber = SimpleFileDB.getUserByUsername(username);
+            console.log('  - Barber found in database:', !!barber);
+            
+            if (!barber || barber.role !== 'barber') {
                 console.log('❌ Barber not found for username:', username);
                 return NextResponse.json(
                     { success: false, error: 'آرایشگری با این نام یافت نشد' },
