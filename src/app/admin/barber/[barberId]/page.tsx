@@ -71,10 +71,13 @@ export default function SecureBarberDashboard() {
 
             if (response.ok) {
                 setBarberData(data);
+                console.log('✅ Fetched barber data from file database:', data);
+                setError('');
             } else {
                 setError(data.error || 'خطا در دریافت اطلاعات');
             }
         } catch (err) {
+            console.error('❌ API error:', err);
             setError('خطا در اتصال به سرور');
         } finally {
             setLoading(false);

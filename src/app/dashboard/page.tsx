@@ -26,46 +26,58 @@ export default function DashboardPage() {
             const bookings = data.bookings || [];
             console.log('📋 Fetched user bookings from database:', bookings);
             
-            // Sort by date and time (most recent first)
-            bookings.sort((a: any, b: any) => {
-              const dateA = new Date(a.date_key + 'T' + a.start_time);
-              const dateB = new Date(b.date_key + 'T' + b.start_time);
-              return dateB.getTime() - dateA.getTime();
-            });
-            setUserBookings(bookings);
+            if (bookings.length > 0) {
+              // Sort by date and time (most recent first)
+              bookings.sort((a: any, b: any) => {
+                const dateA = new Date(a.date_key + 'T' + a.start_time);
+                const dateB = new Date(b.date_key + 'T' + b.start_time);
+                return dateB.getTime() - dateA.getTime();
+              });
+              setUserBookings(bookings);
+            } else {
+              console.log('📱 No bookings from API, checking localStorage');
+              fetchFromLocalStorage();
+            }
           } else {
             console.warn('⚠️ API failed, falling back to localStorage');
-            // Fallback to localStorage if API fails
-            const allBookings = localStorage.getItem('allBookings');
-            if (allBookings) {
-              const bookings = JSON.parse(allBookings);
-              const userBookings = bookings.filter((booking: any) =>
-                booking.phone === user.phone || booking.user_phone === user.phone
-              );
+            fetchFromLocalStorage();
+          }
+        } catch (error) {
+          console.error('❌ Error fetching bookings:', error);
+          fetchFromLocalStorage();
+        }
+      };
+
+      const fetchFromLocalStorage = () => {
+        try {
+          const allBookings = localStorage.getItem('allBookings');
+          if (allBookings) {
+            const bookings = JSON.parse(allBookings);
+            const userBookings = bookings.filter((booking: any) =>
+              booking.phone === user.phone || 
+              booking.user_phone === user.phone ||
+              booking.user_id === user.phone
+            );
+            
+            if (userBookings.length > 0) {
               userBookings.sort((a: any, b: any) => {
                 const dateA = new Date((a.dateKey || a.date_key) + 'T' + (a.startTime || a.start_time));
                 const dateB = new Date((b.dateKey || b.date_key) + 'T' + (b.startTime || b.start_time));
                 return dateB.getTime() - dateA.getTime();
               });
               setUserBookings(userBookings);
+              console.log('📱 Loaded user bookings from localStorage:', userBookings);
+            } else {
+              console.log('📝 No bookings found in localStorage for user:', user.phone);
+              setUserBookings([]);
             }
+          } else {
+            console.log('📝 No bookings found in localStorage');
+            setUserBookings([]);
           }
         } catch (error) {
-          console.error('❌ Error fetching bookings:', error);
-          // Fallback to localStorage
-          const allBookings = localStorage.getItem('allBookings');
-          if (allBookings) {
-            const bookings = JSON.parse(allBookings);
-            const userBookings = bookings.filter((booking: any) =>
-              booking.phone === user.phone || booking.user_phone === user.phone
-            );
-            userBookings.sort((a: any, b: any) => {
-              const dateA = new Date((a.dateKey || a.date_key) + 'T' + (a.startTime || a.start_time));
-              const dateB = new Date((b.dateKey || b.date_key) + 'T' + (b.startTime || b.start_time));
-              return dateB.getTime() - dateA.getTime();
-            });
-            setUserBookings(userBookings);
-          }
+          console.error('❌ Error reading localStorage:', error);
+          setUserBookings([]);
         }
       };
 
@@ -107,8 +119,13 @@ export default function DashboardPage() {
         {userBookings.length > 0 ? (
           <div>
             <h2 className="text-lg font-semibold mb-4 text-white">نوبت‌های رزرو شده شما:</h2>
-            <div className="space-y-4">
-              {userBookings.map((booking: any, index: number) => (
+            <div className="p-6">
+              {userBookings.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="text-center text-sm text-white/70 mb-4">
+                    📱 رزروهای شما از localStorage بارگذاری شده‌اند
+                  </div>
+                  {userBookings.map((booking: any, index: number) => (
                 <div key={index} className="glass-card p-4 space-y-2 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl">
                   <h3 className="text-base font-semibold text-white">
                     رزرو شماره {index + 1}
@@ -134,12 +151,12 @@ export default function DashboardPage() {
                   )}
                 </div>
               ))}
-            </div>
-            <p className="text-center font-medium mt-5 text-white">
-              مجموع رزروها: {userBookings.length}
-            </p>
-          </div>
-        ) : (
+                </div>
+                <p className="text-center font-medium mt-5 text-white">
+                  مجموع رزروها: {userBookings.length}
+                </p>
+              </div>
+            ) : (
           <div className="text-center space-y-4">
             <h2 className="text-lg font-semibold text-white">
               شما هیچ نوبتی رزرو نکرده‌اید
@@ -152,6 +169,7 @@ export default function DashboardPage() {
             </Link>
           </div>
         )}
+            </div>
 
         {/* Navigation back to home */}
         <div className="text-center">

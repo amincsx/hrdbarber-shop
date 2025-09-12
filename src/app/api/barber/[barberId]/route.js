@@ -1,24 +1,10 @@
-// JavaScript version of barber route to bypass TypeScript module detection
+// JavaScript version of barber route with file-based database
 import { NextResponse } from 'next/server';
-
-let isInitialized = false;
-let Database;
-
-async function initializeDatabase() {
-    if (!isInitialized) {
-        // Dynamic import to avoid module resolution issues
-        const { default: DatabaseClass } = await import('../../../../lib/database');
-        Database = DatabaseClass;
-        await Database.initializeDatabase();
-        isInitialized = true;
-    }
-}
+import { SimpleFileDB } from '../../../../lib/fileDatabase.js';
 
 // GET - Get bookings for specific barber
 async function GET(request, { params }) {
     try {
-        await initializeDatabase();
-
         const resolvedParams = await params;
         const { barberId } = resolvedParams;
 
@@ -37,11 +23,11 @@ async function GET(request, { params }) {
 
         if (date) {
             // Get bookings for specific date
-            const allBookings = await Database.getBookingsByDate(date);
+            const allBookings = SimpleFileDB.getBookingsByDate(date);
             bookings = allBookings.filter(booking => booking.barber === barberId);
         } else {
             // Get all bookings for this barber
-            bookings = await Database.getBookingsByBarber(barberId);
+            bookings = SimpleFileDB.getBookingsByBarber(barberId);
         }
 
         // Filter by status if provided
@@ -49,13 +35,16 @@ async function GET(request, { params }) {
             bookings = bookings.filter(booking => booking.status === status);
         }
 
+        console.log(`📊 Retrieved ${bookings.length} bookings for barber ${barberId}`);
+
         return NextResponse.json({
             barber: barberId,
-            bookings: bookings
+            bookings: bookings,
+            total_bookings: bookings.length
         });
 
     } catch (error) {
-        console.error('Barber bookings fetch error:', error);
+        console.error('❌ Barber bookings fetch error:', error);
         return NextResponse.json(
             { error: 'خطا در دریافت رزروهای آرایشگر' },
             { status: 500 }
@@ -66,8 +55,6 @@ async function GET(request, { params }) {
 // POST - Update booking status for barber
 async function POST(request, { params }) {
     try {
-        await initializeDatabase();
-
         const resolvedParams = await params;
         const { barberId } = resolvedParams;
 
@@ -88,7 +75,7 @@ async function POST(request, { params }) {
         }
 
         // Find the booking
-        const booking = await Database.getBookingById(bookingId);
+        const booking = SimpleFileDB.getBookingById(bookingId);
 
         if (!booking) {
             return NextResponse.json(
@@ -106,19 +93,22 @@ async function POST(request, { params }) {
         }
 
         // Update booking status
-        const updatedBooking = await Database.updateBooking(bookingId, {
+        const updatedBooking = SimpleFileDB.updateBooking(bookingId, {
             status: status,
-            notes: notes || booking.notes,
-            updated_at: new Date().toISOString()
+            notes: notes || booking.notes
         });
 
-        return NextResponse.json({
-            message: 'وضعیت رزرو با موفقیت به‌روزرسانی شد',
-            booking: updatedBooking
-        });
+        if (updatedBooking) {
+            return NextResponse.json({
+                message: 'وضعیت رزرو با موفقیت به‌روزرسانی شد',
+                booking: updatedBooking
+            });
+        } else {
+            throw new Error('Failed to update booking');
+        }
 
     } catch (error) {
-        console.error('Booking status update error:', error);
+        console.error('❌ Booking status update error:', error);
         return NextResponse.json(
             { error: 'خطا در به‌روزرسانی وضعیت رزرو' },
             { status: 500 }

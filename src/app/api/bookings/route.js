@@ -1,26 +1,14 @@
-// JavaScript version of bookings route to bypass TypeScript module detection
+// JavaScript version of bookings route with file-based database
 import { NextResponse } from 'next/server';
-
-let isInitialized = false;
-let Database;
-
-async function initializeDatabase() {
-    if (!isInitialized) {
-        // Dynamic import to avoid module resolution issues
-        const { default: DatabaseClass } = await import('../../../lib/database');
-        Database = DatabaseClass;
-        await Database.initializeDatabase();
-        isInitialized = true;
-    }
-}
+import { SimpleFileDB } from '../../../lib/fileDatabase.js';
 
 // POST - Create new booking
 async function POST(request) {
     try {
-        await initializeDatabase();
-
         const bookingData = await request.json();
-        const { user_id, date_key, start_time, end_time, barber, services, total_duration } = bookingData;
+        const { user_id, date_key, start_time, end_time, barber, services, total_duration, user_name, user_phone } = bookingData;
+
+        console.log('📝 Received booking data:', bookingData);
 
         if (!user_id || !date_key || !start_time || !end_time || !barber || !services) {
             return NextResponse.json(
@@ -30,19 +18,7 @@ async function POST(request) {
         }
 
         // Check for booking conflicts
-        const existingBookings = await Database.getBookingsByDate(date_key);
-        const hasConflict = existingBookings.some(booking => {
-            if (booking.barber !== barber) return false;
-            
-            const existingStart = booking.start_time;
-            const existingEnd = booking.end_time;
-            
-            return (
-                (start_time >= existingStart && start_time < existingEnd) ||
-                (end_time > existingStart && end_time <= existingEnd) ||
-                (start_time <= existingStart && end_time >= existingEnd)
-            );
-        });
+        const hasConflict = SimpleFileDB.hasConflict(date_key, start_time, end_time, barber);
 
         if (hasConflict) {
             return NextResponse.json(
@@ -52,7 +28,7 @@ async function POST(request) {
         }
 
         // Create new booking
-        const newBooking = await Database.createBooking({
+        const newBooking = SimpleFileDB.addBooking({
             user_id,
             date_key,
             start_time,
@@ -61,16 +37,24 @@ async function POST(request) {
             services: Array.isArray(services) ? services : [services],
             total_duration: total_duration || 60,
             status: 'confirmed',
-            created_at: new Date().toISOString()
+            user_name: user_name || 'کاربر',
+            user_phone: user_phone || user_id,
+            persian_date: bookingData.persian_date
         });
 
-        return NextResponse.json({
-            message: 'رزرو با موفقیت ثبت شد',
-            booking: newBooking
-        });
+        if (newBooking) {
+            console.log('✅ Booking saved successfully to file database');
+            return NextResponse.json({
+                message: 'رزرو با موفقیت ثبت شد',
+                booking: newBooking,
+                source: 'file-database'
+            });
+        } else {
+            throw new Error('Failed to save booking');
+        }
 
     } catch (error) {
-        console.error('Booking creation error:', error);
+        console.error('❌ Booking creation error:', error);
         return NextResponse.json(
             { error: 'خطا در ثبت رزرو' },
             { status: 500 }
@@ -81,37 +65,40 @@ async function POST(request) {
 // GET - Get bookings by date or user
 async function GET(request) {
     try {
-        await initializeDatabase();
-
         const { searchParams } = new URL(request.url);
         const date = searchParams.get('date');
         const user_id = searchParams.get('user_id');
         const barber = searchParams.get('barber');
 
+        let bookings = [];
+
         if (date) {
-            const bookings = await Database.getBookingsByDate(date);
-            let filteredBookings = bookings;
-
+            bookings = SimpleFileDB.getBookingsByDate(date);
             if (barber) {
-                filteredBookings = bookings.filter(booking => booking.barber === barber);
+                bookings = bookings.filter(booking => booking.barber === barber);
             }
-
-            return NextResponse.json({ bookings: filteredBookings });
+        } else if (user_id) {
+            bookings = SimpleFileDB.getBookingsByUser(user_id);
+        } else {
+            bookings = SimpleFileDB.getAllBookings();
         }
 
-        if (user_id) {
-            const bookings = await Database.getBookingsByUser(user_id);
-            return NextResponse.json({ bookings });
-        }
+        console.log(`📊 Retrieved ${bookings.length} bookings from file database`);
 
-        // Get all bookings if no filter specified
-        const allBookings = await Database.getAllBookings();
-        return NextResponse.json({ bookings: allBookings });
+        return NextResponse.json({ 
+            bookings,
+            source: 'file-database',
+            total: bookings.length
+        });
 
     } catch (error) {
-        console.error('Booking fetch error:', error);
+        console.error('❌ Booking fetch error:', error);
         return NextResponse.json(
-            { error: 'خطا در دریافت رزروها' },
+            { 
+                bookings: [],
+                error: 'خطا در دریافت رزروها',
+                source: 'error'
+            },
             { status: 500 }
         );
     }
@@ -225,6 +212,110 @@ async function PUT(request) {
 
     } catch (error) {
         console.error('Booking update error:', error);
+        return NextResponse.json(
+            { error: 'خطا در به‌روزرسانی رزرو' },
+            { status: 500 }
+        );
+    }
+}
+
+// DELETE - Cancel booking
+async function DELETE(request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const bookingId = searchParams.get('id');
+
+        if (!bookingId) {
+            return NextResponse.json(
+                { error: 'شناسه رزرو الزامی است' },
+                { status: 400 }
+            );
+        }
+
+        // Find booking
+        const booking = SimpleFileDB.getBookingById(bookingId);
+
+        if (!booking) {
+            return NextResponse.json(
+                { error: 'رزرو یافت نشد' },
+                { status: 404 }
+            );
+        }
+
+        // Delete booking
+        const success = SimpleFileDB.deleteBooking(bookingId);
+
+        if (success) {
+            return NextResponse.json({
+                message: 'رزرو با موفقیت لغو شد'
+            });
+        } else {
+            throw new Error('Failed to delete booking');
+        }
+
+    } catch (error) {
+        console.error('❌ Booking deletion error:', error);
+        return NextResponse.json(
+            { error: 'خطا در لغو رزرو' },
+            { status: 500 }
+        );
+    }
+}
+
+// PUT - Update booking
+async function PUT(request) {
+    try {
+        const updateData = await request.json();
+        const { id, ...bookingUpdates } = updateData;
+
+        if (!id) {
+            return NextResponse.json(
+                { error: 'شناسه رزرو الزامی است' },
+                { status: 400 }
+            );
+        }
+
+        // Find existing booking
+        const existingBooking = SimpleFileDB.getBookingById(id);
+
+        if (!existingBooking) {
+            return NextResponse.json(
+                { error: 'رزرو یافت نشد' },
+                { status: 404 }
+            );
+        }
+
+        // Check for conflicts if time or date is being changed
+        if (bookingUpdates.date_key || bookingUpdates.start_time || bookingUpdates.end_time || bookingUpdates.barber) {
+            const checkDate = bookingUpdates.date_key || existingBooking.date_key;
+            const checkStart = bookingUpdates.start_time || existingBooking.start_time;
+            const checkEnd = bookingUpdates.end_time || existingBooking.end_time;
+            const checkBarber = bookingUpdates.barber || existingBooking.barber;
+
+            const hasConflict = SimpleFileDB.hasConflict(checkDate, checkStart, checkEnd, checkBarber, id);
+
+            if (hasConflict) {
+                return NextResponse.json(
+                    { error: 'این زمان قبلاً رزرو شده است' },
+                    { status: 409 }
+                );
+            }
+        }
+
+        // Update booking
+        const updatedBooking = SimpleFileDB.updateBooking(id, bookingUpdates);
+
+        if (updatedBooking) {
+            return NextResponse.json({
+                message: 'رزرو با موفقیت به‌روزرسانی شد',
+                booking: updatedBooking
+            });
+        } else {
+            throw new Error('Failed to update booking');
+        }
+
+    } catch (error) {
+        console.error('❌ Booking update error:', error);
         return NextResponse.json(
             { error: 'خطا در به‌روزرسانی رزرو' },
             { status: 500 }

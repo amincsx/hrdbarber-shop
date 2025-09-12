@@ -62,14 +62,14 @@ export default function OwnerDashboard() {
         try {
             setLoading(true);
             
-            // Fetch all bookings from the bookings API
+            // Fetch all bookings from the file database API
             const response = await fetch('/api/bookings');
             
             if (response.ok) {
                 const data = await response.json();
                 const bookings: Booking[] = data.bookings || [];
                 
-                console.log('📊 Fetched bookings from database:', bookings);
+                console.log('📊 Fetched bookings from file database:', bookings);
                 setAllBookings(bookings);
 
                 // Calculate stats for each barber
@@ -106,13 +106,11 @@ export default function OwnerDashboard() {
                 setBarberStats(stats);
             } else {
                 console.error('❌ Failed to fetch bookings from database');
-                // Fallback to empty data
                 setAllBookings([]);
                 setBarberStats([]);
             }
         } catch (error) {
             console.error('❌ Error fetching bookings:', error);
-            // Fallback to empty data
             setAllBookings([]);
             setBarberStats([]);
         } finally {
