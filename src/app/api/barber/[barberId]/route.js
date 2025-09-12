@@ -1,6 +1,6 @@
-// JavaScript version of barber route with file-based database
+// JavaScript version of barber route with MongoDB database
 import { NextResponse } from 'next/server';
-import { SimpleFileDB } from '../../../../lib/fileDatabase.js';
+import MongoDatabase from '../../../../lib/mongoDatabase.js';
 
 // GET - Get bookings for specific barber
 async function GET(request, { params }) {
@@ -33,12 +33,12 @@ async function GET(request, { params }) {
 
         if (date) {
             // Get bookings for specific date
-            const allBookings = SimpleFileDB.getBookingsByDate(date);
+            const allBookings = await MongoDatabase.getBookingsByDate(date);
             bookings = allBookings.filter(booking => booking.barber === decodedBarberId);
             console.log(`📅 Found ${bookings.length} bookings for ${decodedBarberId} on ${date}`);
         } else {
             // Get all bookings for this barber
-            bookings = SimpleFileDB.getBookingsByBarber(decodedBarberId);
+            bookings = await MongoDatabase.getBookingsByBarber(decodedBarberId);
             console.log(`📊 Found ${bookings.length} total bookings for ${decodedBarberId}`);
         }
 

@@ -227,6 +227,37 @@ export default function BookingPage() {
     const [existingBookings, setExistingBookings] = useState<any[]>([]);
     const [showAllTimeSlots, setShowAllTimeSlots] = useState(false);
     const [selectedBarber, setSelectedBarber] = useState<string>('');
+    const [availableBarbers, setAvailableBarbers] = useState<any[]>([]);
+
+    // Load barbers from MongoDB
+    const loadBarbersFromDatabase = async () => {
+        try {
+            const response = await fetch('/api/admin?action=barbers');
+            if (response.ok) {
+                const data = await response.json();
+                setAvailableBarbers(data.barbers || []);
+                console.log('Loaded barbers from MongoDB:', data.barbers?.length || 0);
+            } else {
+                console.error('Failed to load barbers from database');
+                // Fallback to hardcoded list
+                setAvailableBarbers([
+                    { name: 'حمید', _id: 'hamid' },
+                    { name: 'بنیامین', _id: 'benyamin' },
+                    { name: 'محمد', _id: 'mohammad' },
+                    { name: 'آقای احمدی', _id: 'ahmadi' }
+                ]);
+            }
+        } catch (error) {
+            console.error('Error loading barbers:', error);
+            // Fallback to hardcoded list
+            setAvailableBarbers([
+                { name: 'حمید', _id: 'hamid' },
+                { name: 'بنیامین', _id: 'benyamin' },
+                { name: 'محمد', _id: 'mohammad' },
+                { name: 'آقای احمدی', _id: 'ahmadi' }
+            ]);
+        }
+    };
 
     // Individual barber schedules - all barbers have same working hours
     const barberSchedules = {
@@ -238,6 +269,7 @@ export default function BookingPage() {
 
     // Generate time slots based on selected barber's schedule
     const generateTimeSlots = (barberName: string) => {
+        // Check if barber has custom schedule, otherwise use default
         const schedule = barberSchedules[barberName as keyof typeof barberSchedules] || { start: 10, end: 21 };
         const slots = [];
 
@@ -455,6 +487,9 @@ export default function BookingPage() {
 
         // Load existing bookings from file database
         loadBookingsFromDatabase();
+        
+        // Load available barbers from MongoDB
+        loadBarbersFromDatabase();
     }, []);
 
     // Load bookings from file database
@@ -914,19 +949,19 @@ export default function BookingPage() {
                                         gap: '8px'
                                     }}
                                 >
-                                    {['حمید', 'بنیامین', 'محمد'].map((barber) => {
-                                        const isSelected = selectedBarber === barber;
+                                    {availableBarbers.map((barber) => {
+                                        const isSelected = selectedBarber === barber.name;
                                         return (
                                             <button
-                                                key={barber}
+                                                key={barber._id || barber.name}
                                                 type="button"
-                                                onClick={() => setSelectedBarber(barber)}
+                                                onClick={() => setSelectedBarber(barber.name)}
                                                 className={`p-3 rounded-2xl text-center backdrop-blur-xl border transition-all duration-300 ${isSelected
                                                     ? 'bg-white/20 text-white border-white/30'
                                                     : 'bg-white/10 text-white/80 border-white/20 hover:bg-white/15'
                                                     }`}
                                             >
-                                                {barber}
+                                                {barber.name}
                                             </button>
                                         );
                                     })}

@@ -1,6 +1,6 @@
-// JavaScript version of bookings route with file-based database
+// JavaScript version of bookings route with MongoDB database
 import { NextResponse } from 'next/server';
-import { SimpleFileDB } from '../../../lib/fileDatabase.js';
+import MongoDatabase from '../../../lib/mongoDatabase.js';
 
 // POST - Create new booking
 async function POST(request) {
@@ -17,8 +17,18 @@ async function POST(request) {
             );
         }
 
-        // Check for booking conflicts
-        const hasConflict = SimpleFileDB.hasConflict(date_key, start_time, end_time, barber);
+        // Check for booking conflicts by getting existing bookings for the same date and barber
+        const existingBookings = await MongoDatabase.getBookingsByDate(date_key);
+        const hasConflict = existingBookings.some(booking => {
+            if (booking.barber !== barber) return false;
+            
+            const requestStart = start_time;
+            const requestEnd = end_time;
+            const existingStart = booking.start_time;
+            const existingEnd = booking.end_time;
+            
+            return (requestStart < existingEnd && requestEnd > existingStart);
+        });
 
         if (hasConflict) {
             return NextResponse.json(
@@ -28,7 +38,7 @@ async function POST(request) {
         }
 
         // Create new booking
-        const newBooking = SimpleFileDB.addBooking({
+        const newBooking = await MongoDatabase.addBooking({
             user_id,
             date_key,
             start_time,
@@ -43,11 +53,11 @@ async function POST(request) {
         });
 
         if (newBooking) {
-            console.log('✅ Booking saved successfully to file database');
+            console.log('✅ Booking saved successfully to MongoDB');
             return NextResponse.json({
                 message: 'رزرو با موفقیت ثبت شد',
                 booking: newBooking,
-                source: 'file-database'
+                source: 'mongodb'
             });
         } else {
             throw new Error('Failed to save booking');
@@ -73,21 +83,24 @@ async function GET(request) {
         let bookings = [];
 
         if (date) {
-            bookings = SimpleFileDB.getBookingsByDate(date);
+            bookings = await MongoDatabase.getBookingsByDate(date);
             if (barber) {
                 bookings = bookings.filter(booking => booking.barber === barber);
             }
+        } else if (barber) {
+            bookings = await MongoDatabase.getBookingsByBarber(barber);
         } else if (user_id) {
-            bookings = SimpleFileDB.getBookingsByUser(user_id);
+            const allBookings = await MongoDatabase.getAllBookings();
+            bookings = allBookings.filter(booking => booking.user_id === user_id);
         } else {
-            bookings = SimpleFileDB.getAllBookings();
+            bookings = await MongoDatabase.getAllBookings();
         }
 
-        console.log(`📊 Retrieved ${bookings.length} bookings from file database`);
+        console.log(`📊 Retrieved ${bookings.length} bookings from MongoDB`);
 
         return NextResponse.json({
             bookings,
-            source: 'file-database',
+            source: 'mongodb',
             total: bookings.length
         });
 

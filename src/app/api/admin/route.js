@@ -1,6 +1,6 @@
 // JavaScript version of admin route to bypass TypeScript module detection
 import { NextResponse } from 'next/server';
-import { SimpleFileDB } from '../../../lib/fileDatabase.js';
+import MongoDatabase from '../../../lib/mongoDatabase.js';
 
 // POST - Admin login (owner and barber)
 async function POST(request) {
@@ -20,8 +20,8 @@ async function POST(request) {
             );
         }
 
-        // Initialize barber accounts if they don't exist
-        SimpleFileDB.initializeBarbers();
+        // Initialize barber authentication accounts if needed
+        await MongoDatabase.initializeBarberAuth();
 
         // Owner login
         if (type === 'owner') {
@@ -45,14 +45,14 @@ async function POST(request) {
             }
         }
 
-        // Barber login - Use database
+        // Barber login - Use MongoDB
         if (type === 'barber') {
-            console.log('🔍 Processing barber login from database...');
+            console.log('🔍 Processing barber login from MongoDB...');
             
-            const barber = SimpleFileDB.getUserByUsername(username);
-            console.log('  - Barber found in database:', !!barber);
+            const user = await MongoDatabase.getUserByUsername(username);
+            console.log('  - User found in database:', !!user);
             
-            if (!barber || barber.role !== 'barber') {
+            if (!user || user.role !== 'barber') {
                 console.log('❌ Barber not found for username:', username);
                 return NextResponse.json(
                     { success: false, error: 'آرایشگری با این نام یافت نشد' },
@@ -60,8 +60,8 @@ async function POST(request) {
                 );
             }
 
-            console.log('  - Password check:', password === barber.password);
-            if (password !== barber.password) {
+            console.log('  - Password check:', password === user.password);
+            if (password !== user.password) {
                 console.log('❌ Wrong password for barber:', username);
                 return NextResponse.json(
                     { success: false, error: 'رمز عبور اشتباه است' },
@@ -69,15 +69,16 @@ async function POST(request) {
                 );
             }
 
-            console.log('✅ Barber login successful:', barber.name);
+            console.log('✅ Barber login successful:', user.name);
             return NextResponse.json({
                 success: true,
                 message: 'ورود آرایشگر موفقیت‌آمیز',
                 user: {
-                    id: `barber-${barber.username}`,
-                    name: barber.name,
+                    id: `barber-${user.username}`,
+                    name: user.name,
                     type: 'barber',
-                    username: barber.username
+                    username: user.username,
+                    barber_id: user.barber_id
                 }
             });
         }
@@ -102,70 +103,25 @@ async function GET(request) {
         const { searchParams } = new URL(request.url);
         const action = searchParams.get('action');
 
-        // Mock data for local development
-        const testBarbers = [
-            {
-                _id: 'barber-hamid',
-                name: 'حمید',
-                username: 'hamid',
-                specialties: ['کوتاهی مو', 'اصلاح', 'رنگ مو'],
-                workingHours: {
-                    saturday: { start: '09:00', end: '21:00', isAvailable: true },
-                    sunday: { start: '09:00', end: '21:00', isAvailable: true },
-                    monday: { start: '09:00', end: '21:00', isAvailable: true },
-                    tuesday: { start: '09:00', end: '21:00', isAvailable: true },
-                    wednesday: { start: '09:00', end: '21:00', isAvailable: true },
-                    thursday: { start: '09:00', end: '21:00', isAvailable: true },
-                    friday: { start: '14:00', end: '21:00', isAvailable: true }
-                }
-            },
-            {
-                _id: 'barber-benyamin',
-                name: 'بنیامین',
-                username: 'benyamin',
-                specialties: ['کوتاهی مو', 'اصلاح', 'فشن مو'],
-                workingHours: {
-                    saturday: { start: '09:00', end: '21:00', isAvailable: true },
-                    sunday: { start: '09:00', end: '21:00', isAvailable: true },
-                    monday: { start: '09:00', end: '21:00', isAvailable: true },
-                    tuesday: { start: '09:00', end: '21:00', isAvailable: true },
-                    wednesday: { start: '09:00', end: '21:00', isAvailable: true },
-                    thursday: { start: '09:00', end: '21:00', isAvailable: true },
-                    friday: { start: '14:00', end: '21:00', isAvailable: true }
-                }
-            },
-            {
-                _id: 'barber-mohammad',
-                name: 'محمد',
-                username: 'mohammad',
-                specialties: ['کوتاهی مو', 'اصلاح', 'اتو مو'],
-                workingHours: {
-                    saturday: { start: '09:00', end: '21:00', isAvailable: true },
-                    sunday: { start: '09:00', end: '21:00', isAvailable: true },
-                    monday: { start: '09:00', end: '21:00', isAvailable: true },
-                    tuesday: { start: '09:00', end: '21:00', isAvailable: true },
-                    wednesday: { start: '09:00', end: '21:00', isAvailable: true },
-                    thursday: { start: '09:00', end: '21:00', isAvailable: true },
-                    friday: { start: '14:00', end: '21:00', isAvailable: true }
-                }
-            }
-        ];
-
-        // Get bookings from localStorage fallback
-        const mockBookings = [];
-
         if (action === 'barbers') {
-            return NextResponse.json({ barbers: testBarbers });
+            const barbers = await MongoDatabase.getAllBarbers();
+            return NextResponse.json({ barbers: barbers });
         }
 
         if (action === 'bookings') {
-            return NextResponse.json({ bookings: mockBookings });
+            const bookings = await MongoDatabase.getAllBookings();
+            return NextResponse.json({ bookings: bookings });
         }
 
         // Default: return both
+        const [barbers, bookings] = await Promise.all([
+            MongoDatabase.getAllBarbers(),
+            MongoDatabase.getAllBookings()
+        ]);
+
         return NextResponse.json({
-            barbers: testBarbers,
-            bookings: mockBookings
+            barbers: barbers,
+            bookings: bookings
         });
 
     } catch (error) {
