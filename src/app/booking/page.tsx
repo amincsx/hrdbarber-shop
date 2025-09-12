@@ -585,6 +585,7 @@ export default function BookingPage() {
         // Save to API/database first
         let bookingSavedToDatabase = false;
         try {
+            console.log('📤 Sending booking to API:', apiBooking);
             const response = await fetch('/api/bookings', {
                 method: 'POST',
                 headers: {
@@ -593,16 +594,20 @@ export default function BookingPage() {
                 body: JSON.stringify(apiBooking)
             });
 
+            console.log('📡 API Response status:', response.status);
+            
             if (response.ok) {
                 const result = await response.json();
                 console.log('✅ Booking saved to database successfully:', result);
                 bookingSavedToDatabase = true;
             } else {
                 const errorData = await response.json();
-                console.error('❌ Failed to save booking to database:', errorData);
+                console.error('❌ Failed to save booking to database. Status:', response.status, 'Error:', errorData);
+                alert(`خطا در ذخیره رزرو: ${errorData.error || 'خطای ناشناخته'}`);
             }
         } catch (error) {
-            console.error('❌ Error saving booking to database:', error);
+            console.error('❌ Network error saving booking to database:', error);
+            alert(`خطا در اتصال به سرور: ${error instanceof Error ? error.message : 'خطای ناشناخته'}`);
         }
 
         // Save to individual user booking (backup)
@@ -619,9 +624,9 @@ export default function BookingPage() {
 
         // Show success message
         if (bookingSavedToDatabase) {
-            alert('✅ رزرو شما با موفقیت در سیستم ثبت شد!');
+            alert('✅ رزرو شما با موفقیت در سیستم ثبت شد و برای آرایشگران قابل مشاهده است!');
         } else {
-            alert('⚠️ رزرو شما به صورت موقت ذخیره شد. لطفاً دوباره تلاش کنید.');
+            alert('⚠️ خطا در اتصال به سرور. رزرو شما به صورت موقت ذخیره شد.');
         }
 
         // Store confirmation details instead of showing alert
