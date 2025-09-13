@@ -1,5 +1,6 @@
 import dbConnect from './mongodb.js';
 import { Barber, Booking, User } from './models.js';
+import { initializeProductionDatabase } from './initProductionDB.js';
 
 class MongoDatabase {
 
@@ -7,6 +8,12 @@ class MongoDatabase {
     static async getAllBarbers() {
         try {
             await dbConnect();
+            
+            // Initialize production database on first connection
+            if (process.env.NODE_ENV === 'production') {
+                await initializeProductionDatabase();
+            }
+            
             const barbers = await Barber.find({ isActive: true }).sort({ name: 1 });
             return barbers;
         } catch (error) {

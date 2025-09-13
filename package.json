@@ -8,7 +8,10 @@
     "build:liara": "cross-env SKIP_ENV_VALIDATION=true TSC_COMPILE_ON_ERROR=true DISABLE_ESLINT=true SKIP_TYPE_CHECK=true ESLint_NO_DEV_ERRORS=true next build",
     "build:force": "cross-env SKIP_ENV_VALIDATION=true TSC_COMPILE_ON_ERROR=true DISABLE_ESLINT=true SKIP_TYPE_CHECK=true ESLint_NO_DEV_ERRORS=true ESLINT_NO_DEV_ERRORS=true next build --no-lint",
     "start": "next start",
-    "lint": "echo 'Linting disabled for deployment'"
+    "lint": "echo 'Linting disabled for deployment'",
+    "setup:production": "node setup-production-db.js",
+    "test:production": "node test-production-api.js",
+    "fix:auth": "node fix-production-auth.js"
   },
   "dependencies": {
     "dotenv": "^17.2.2",
