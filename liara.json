@@ -8,7 +8,7 @@
     "next": {
         "mirror": false
     },
-    "env": {
+    "environment": {
         "MONGODB_URI": "mongodb://root:HezBrylIIfJuZhRzudMR9qOQ@hrddatabase:27017/my-app?authSource=admin",
         "NODE_ENV": "production",
         "SKIP_ENV_VALIDATION": "true",
