@@ -6,7 +6,7 @@ Add these environment variables in your Liara dashboard:
 
 ### Required Variables:
 ```
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/hrdbarber
+MONGODB_URI=mongodb://root:HezBrylIIfJuZhRzudMR9qOQ@hrddatabase:27017/my-app?authSource=admin
 NODE_ENV=production
 SKIP_ENV_VALIDATION=true
 TSC_COMPILE_ON_ERROR=true
@@ -15,8 +15,8 @@ DISABLE_ESLINT=true
 
 ### Alternative Variable Names (if MONGODB_URI doesn't work):
 ```
-DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/hrdbarber
-MONGODB_URL=mongodb+srv://username:password@cluster.mongodb.net/hrdbarber
+DATABASE_URL=mongodb://root:HezBrylIIfJuZhRzudMR9qOQ@hrddatabase:27017/my-app?authSource=admin
+MONGODB_URL=mongodb://root:HezBrylIIfJuZhRzudMR9qOQ@hrddatabase:27017/my-app?authSource=admin
 ```
 
 ## How to Set Environment Variables in Liara:
