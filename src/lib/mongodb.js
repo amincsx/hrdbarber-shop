@@ -6,11 +6,19 @@ const MONGODB_URI = process.env.MONGODB_URI ||
                    process.env.MONGODB_URL ||
                    'mongodb://localhost:27017/hrdbarber';
 
-// Better error handling for production
-if (!MONGODB_URI || MONGODB_URI === 'mongodb://localhost:27017/hrdbarber') {
-    if (process.env.NODE_ENV === 'production') {
-        console.error('❌ CRITICAL: MONGODB_URI not set in production environment!');
-        console.error('Please set MONGODB_URI environment variable in your hosting platform.');
+// Debug environment variables in production
+if (process.env.NODE_ENV === 'production') {
+    console.log('🔍 PRODUCTION ENVIRONMENT DEBUG:');
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log('MONGODB_URI set:', !!process.env.MONGODB_URI);
+    console.log('DATABASE_URL set:', !!process.env.DATABASE_URL);
+    console.log('MONGODB_URL set:', !!process.env.MONGODB_URL);
+    console.log('Using URI:', MONGODB_URI.replace(/\/\/.*@/, '//***:***@'));
+    
+    if (!process.env.MONGODB_URI && !process.env.DATABASE_URL && !process.env.MONGODB_URL) {
+        console.error('❌ CRITICAL: No MongoDB environment variables found!');
+        console.error('Please set MONGODB_URI in Liara dashboard:');
+        console.error('MONGODB_URI=mongodb://root:HezBrylIIfJuZhRzudMR9qOQ@hrddatabase:27017/my-app?authSource=admin');
     }
 }
 
