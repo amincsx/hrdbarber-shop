@@ -9,10 +9,8 @@ class MongoDatabase {
         try {
             await dbConnect();
             
-            // Initialize production database on first connection
-            if (process.env.NODE_ENV === 'production') {
-                await initializeProductionDatabase();
-            }
+            // Production database initialization temporarily disabled to fix connection issues
+            // Will be re-enabled once basic connection is working
             
             const barbers = await Barber.find({ isActive: true }).sort({ name: 1 });
             return barbers;

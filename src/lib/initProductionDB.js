@@ -13,7 +13,8 @@ export async function initializeProductionDatabase() {
     console.log('🚀 Initializing Production Database...');
     
     try {
-        // Test database connection
+        // Test database connection first
+        console.log('🔍 Testing database connection...');
         const barbers = await MongoDatabase.getAllBarbers();
         console.log('✅ Database connection verified');
 
@@ -62,7 +63,5 @@ export async function initializeProductionDatabase() {
     }
 }
 
-// Auto-initialize when this module is imported
-if (process.env.NODE_ENV === 'production') {
-    initializeProductionDatabase().catch(console.error);
-}
+// Note: Auto-initialization removed to prevent circular import issues
+// The initialization will be called manually from mongoDatabase.js
