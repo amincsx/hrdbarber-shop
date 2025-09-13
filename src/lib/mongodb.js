@@ -1,13 +1,10 @@
 import mongoose from 'mongoose';
 
 // Support multiple environment variable names for different hosting platforms
-// TEMPORARY FIX: Hardcoded production MongoDB URI for Liara deployment
-const PRODUCTION_MONGODB_URI = 'mongodb://root:HezBrylIIfJuZhRzudMR9qOQ@hrddatabase:27017/my-app?authSource=admin';
-
 const MONGODB_URI = process.env.MONGODB_URI || 
                    process.env.DATABASE_URL || 
                    process.env.MONGODB_URL ||
-                   (process.env.NODE_ENV === 'production' ? PRODUCTION_MONGODB_URI : 'mongodb://localhost:27017/hrdbarber');
+                   'mongodb://localhost:27017/hrdbarber';
 
 // Debug environment variables in production
 if (process.env.NODE_ENV === 'production') {
@@ -19,8 +16,12 @@ if (process.env.NODE_ENV === 'production') {
     console.log('Using URI:', MONGODB_URI.replace(/\/\/.*@/, '//***:***@'));
     
     if (!process.env.MONGODB_URI && !process.env.DATABASE_URL && !process.env.MONGODB_URL) {
-        console.log('⚠️ No environment variables found, using hardcoded production URI');
-        console.log('✅ Using hardcoded MongoDB URI for production deployment');
+        console.error('❌ CRITICAL: No MongoDB environment variables found!');
+        console.error('🔧 To fix this, set one of these environment variables:');
+        console.error('   MONGODB_URI=mongodb://username:password@host:port/database');
+        console.error('   DATABASE_URL=mongodb://username:password@host:port/database');
+        console.error('   MONGODB_URL=mongodb://username:password@host:port/database');
+        console.error('🚨 Using localhost fallback - this will NOT work in production!');
     } else {
         console.log('✅ Using environment variable MongoDB URI');
     }
