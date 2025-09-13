@@ -11,7 +11,8 @@
     "lint": "echo 'Linting disabled for deployment'",
     "setup:production": "node setup-production-db.js",
     "test:production": "node test-production-api.js",
-    "fix:auth": "node fix-production-auth.js"
+    "fix:auth": "node fix-production-auth.js",
+    "diagnose:connection": "node diagnose-connection.js"
   },
   "dependencies": {
     "dotenv": "^17.2.2",

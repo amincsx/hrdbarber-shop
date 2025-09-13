@@ -42,10 +42,28 @@ async function dbConnect() {
         cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
             console.log('✅ MongoDB connected successfully');
             console.log('📍 Database:', mongoose.connection.db.databaseName);
+            console.log('🌐 Host:', mongoose.connection.host);
             return mongoose;
         }).catch((error) => {
             console.error('❌ MongoDB connection failed:', error.message);
-            console.error('🔧 Check your MONGODB_URI environment variable');
+            console.error('🔧 Connection details:');
+            console.error('   - URI length:', MONGODB_URI.length);
+            console.error('   - URI starts with:', MONGODB_URI.substring(0, 20) + '...');
+            console.error('   - Error type:', error.name);
+            
+            if (error.message.includes('ECONNREFUSED')) {
+                console.error('🚨 ECONNREFUSED - Connection refused by server');
+                console.error('   Solutions:');
+                console.error('   1. Set MONGODB_URI in Liara dashboard');
+                console.error('   2. Check MongoDB server is running');
+                console.error('   3. Verify network access (allow 0.0.0.0/0 in Atlas)');
+            } else if (error.message.includes('authentication failed')) {
+                console.error('🚨 Authentication failed');
+                console.error('   Solutions:');
+                console.error('   1. Check username/password in connection string');
+                console.error('   2. Verify database user permissions');
+            }
+            
             cached.promise = null; // Reset promise on error
             throw error;
         });
