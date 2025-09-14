@@ -147,6 +147,15 @@ export default function SecureBarberDashboard() {
         const matchesDate = !selectedDate || booking.date_key === selectedDate;
         const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
         return matchesDate && matchesStatus;
+    }).sort((a, b) => {
+        // Sort by creation time (newest first), then by booking date (newest first), then by start time (latest first)
+        const aCreated = new Date(a.created_at).getTime();
+        const bCreated = new Date(b.created_at).getTime();
+        if (bCreated !== aCreated) return bCreated - aCreated;
+        
+        if (b.date_key !== a.date_key) return b.date_key.localeCompare(a.date_key);
+        
+        return b.start_time.localeCompare(a.start_time);
     }) || [];
 
     const getUniquesDates = () => {

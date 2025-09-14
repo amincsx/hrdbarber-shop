@@ -467,7 +467,7 @@ export default function BookingPage() {
 
     useEffect(() => {
         // Check authentication first
-        const storedData = localStorage.getItem('userData');
+        const storedData = localStorage.getItem('user');
         if (!storedData) {
             // No user data means not logged in
             console.log('❌ No authentication found, redirecting to login');
@@ -479,10 +479,10 @@ export default function BookingPage() {
             const userData = JSON.parse(storedData);
             setUserData(userData);
             setIsAuthenticated(true);
-            console.log('✅ User authenticated:', userData.first_name || userData.firstName);
+            console.log('✅ User authenticated:', userData.name || userData.first_name || userData.firstName);
         } catch (error) {
             console.error('❌ Invalid user data, redirecting to login');
-            localStorage.removeItem('userData');
+            localStorage.removeItem('user');
             router.push('/login');
             return;
         }
@@ -713,9 +713,7 @@ export default function BookingPage() {
             barber: selectedBarber,
             services: selectedServices,
             total_duration: totalDuration,
-            user_name: userData?.first_name && userData?.last_name
-                ? `${userData.first_name} ${userData.last_name}`
-                : userData?.first_name || userData?.firstName || 'کاربر',
+            user_name: userData?.name || userData?.first_name || userData?.username || userData?.phone || 'کاربر',
             user_phone: userData?.phone || '',
             persian_date: formatPersianDateSync(selectedDateObj)
         };
@@ -730,9 +728,7 @@ export default function BookingPage() {
             services: selectedServices,
             barber: selectedBarber,
             totalDuration: totalDuration,
-            userName: userData?.first_name && userData?.last_name
-                ? `${userData.first_name} ${userData.last_name}`
-                : userData?.first_name || userData?.firstName || 'کاربر',
+            userName: userData?.name || userData?.first_name || userData?.username || userData?.phone || 'کاربر',
             phone: userData?.phone || '',
             bookedAt: new Date().toISOString()
         };

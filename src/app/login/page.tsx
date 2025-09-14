@@ -33,8 +33,8 @@ export default function LoginPage() {
       const result = await response.json();
 
       if (response.ok) {
-        // Store user data in localStorage
-        localStorage.setItem('userData', JSON.stringify(result.user));
+  // Store user data in localStorage
+  localStorage.setItem('user', JSON.stringify(result.user));
         router.push('/dashboard');
         return;
       }
@@ -44,7 +44,7 @@ export default function LoginPage() {
       const existingUser = storedUsers.find((u: any) => u.phone === phone && u.password === password);
 
       if (existingUser) {
-        localStorage.setItem('userData', JSON.stringify(existingUser));
+  localStorage.setItem('user', JSON.stringify(existingUser));
         router.push('/dashboard');
         return;
       }
@@ -58,7 +58,7 @@ export default function LoginPage() {
         const existingUser = storedUsers.find((u: any) => u.phone === phone && u.password === password);
 
         if (existingUser) {
-          localStorage.setItem('userData', JSON.stringify(existingUser));
+          localStorage.setItem('user', JSON.stringify(existingUser));
           router.push('/dashboard');
           return;
         }

@@ -88,6 +88,18 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        {/* PWA and Apple Touch Icons */}
+        <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
+        <link rel="icon" href="/icon-192x192.svg" />
+        <link rel="shortcut icon" href="/icon-192x192.svg" />
+        
+        {/* iOS Status Bar */}
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="آرایشگاه HRD" />
+        
+        {/* PWA Theme Colors */}
+        <meta name="theme-color" content="#1e40af" />
+        <meta name="msapplication-TileColor" content="#1e40af" />
       </head>
       <body
         className={`${inter.variable} antialiased safe-top safe-bottom`}

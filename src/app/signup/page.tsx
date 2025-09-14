@@ -99,7 +99,7 @@ export default function SignupPage() {
         storedUsers.push(newUser);
         localStorage.setItem('users', JSON.stringify(storedUsers));
 
-        localStorage.setItem('userData', JSON.stringify(newUser));
+        localStorage.setItem('user', JSON.stringify(newUser));
         router.push('/booking');
       } catch (err) {
         // Fallback to localStorage
@@ -125,7 +125,7 @@ export default function SignupPage() {
 
           storedUsers.push(newUser);
           localStorage.setItem('users', JSON.stringify(storedUsers));
-          localStorage.setItem('userData', JSON.stringify(newUser));
+          localStorage.setItem('user', JSON.stringify(newUser));
 
           router.push('/booking');
         } catch (localErr) {

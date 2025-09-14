@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
   const [userData, setUserData] = useState<any>(null);
+  const router = typeof window !== 'undefined' ? require('next/navigation').useRouter() : null;
   const [userBookings, setUserBookings] = useState<any[]>([]);
   const [canBookNew, setCanBookNew] = useState<boolean>(true);
   const [nextAvailableTime, setNextAvailableTime] = useState<string>('');
@@ -63,8 +64,8 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    // Get user data from localStorage
-    const storedData = localStorage.getItem('userData');
+    // Get user data from localStorage (use 'user' key for consistency)
+    const storedData = localStorage.getItem('user');
     if (storedData) {
       const user = JSON.parse(storedData);
       setUserData(user);
@@ -100,6 +101,9 @@ export default function DashboardPage() {
       };
 
       fetchUserBookings();
+    } else {
+      // If no user, redirect to login
+      if (router) router.replace('/login');
     }
   }, []);
 
@@ -155,9 +159,9 @@ export default function DashboardPage() {
                     {booking.status && (
                       <p className="text-sm text-white/90"><strong>وضعیت:</strong>
                         <span className={`ml-1 px-2 py-1 rounded text-xs ${booking.status === 'confirmed' ? 'bg-green-500/20 text-green-300' :
-                            booking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
-                              booking.status === 'cancelled' ? 'bg-red-500/20 text-red-300' :
-                                'bg-gray-500/20 text-gray-300'
+                          booking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
+                            booking.status === 'cancelled' ? 'bg-red-500/20 text-red-300' :
+                              'bg-gray-500/20 text-gray-300'
                           }`}>
                           {booking.status === 'confirmed' ? 'تایید شده' :
                             booking.status === 'pending' ? 'در انتظار' :

@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import PWAInstall from '../components/PWAInstall';
+import PWAInstructions from '../components/PWAInstructions';
 
 export default function HomePage() {
   const [currentMessage, setCurrentMessage] = useState(0);
@@ -75,7 +77,7 @@ export default function HomePage() {
   }, [motivationalMessages.length]);
 
   return (
-    <div className="relative min-h-screen min-h-[100dvh] w-full flex flex-col items-center justify-center overflow-hidden px-4 py-8" dir="rtl">
+    <div className="relative min-h-screen min-h-[100dvh] w-full flex flex-col items-center justify-end overflow-hidden px-4 pb-70" dir="rtl">
       {/* Blurry Black-Orange Background */}
       <div
         style={{
@@ -147,6 +149,9 @@ export default function HomePage() {
             ورود
           </Link>
         </div>
+
+        {/* PWA Install Button - Below other buttons */}
+        <PWAInstall />
       </div>
 
       {/* Motivational Messages - Mobile optimized */}
@@ -158,6 +163,9 @@ export default function HomePage() {
           {motivationalMessages[currentMessage]}
         </p>
       </div>
+
+      {/* PWA Installation Instructions */}
+      <PWAInstructions />
     </div>
   );
 }

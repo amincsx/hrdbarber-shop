@@ -46,7 +46,12 @@ class MongoDatabase {
     static async getAllBookings() {
         try {
             await dbConnect();
-            const bookings = await Booking.find().sort({ created_at: -1 });
+            // Sort by creation time (newest first), then by booking date (newest first), then by start time (latest first)
+            const bookings = await Booking.find().sort({ 
+                created_at: -1,
+                date_key: -1, 
+                start_time: -1 
+            });
             return bookings;
         } catch (error) {
             console.error('Error getting bookings:', error);
@@ -78,7 +83,12 @@ class MongoDatabase {
     static async getBookingsByBarber(barberName) {
         try {
             await dbConnect();
-            const bookings = await Booking.find({ barber: barberName }).sort({ created_at: -1 });
+            // Sort by creation time (newest first), then by booking date (newest first), then by start time (latest first)
+            const bookings = await Booking.find({ barber: barberName }).sort({ 
+                created_at: -1,
+                date_key: -1, 
+                start_time: -1 
+            });
             return bookings;
         } catch (error) {
             console.error('Error getting bookings by barber:', error);
