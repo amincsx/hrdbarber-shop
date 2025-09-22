@@ -1,6 +1,7 @@
 // JavaScript version of auth route to bypass TypeScript module detection
 import { NextResponse } from 'next/server';
 import MongoDatabase from '../../../lib/mongoDatabase.js';
+import jwt from 'jsonwebtoken';
 
 // POST - Register new user
 async function POST(request) {
@@ -136,6 +137,7 @@ async function PUT(request) {
             { status: 500 }
         );
     }
+    
 }
 
 // GET - Login user (alternative method)

@@ -7,7 +7,6 @@ import PWAInstructions from '../components/PWAInstructions';
 
 export default function HomePage() {
   const [currentMessage, setCurrentMessage] = useState(0);
-  const [currentVideo, setCurrentVideo] = useState('BG1');
 
   const motivationalMessages = [
     "باور داشته باش، می‌تونی",
@@ -64,15 +63,9 @@ export default function HomePage() {
       setCurrentMessage((prev) => (prev + 1) % motivationalMessages.length);
     }, 8000);
 
-    // Video rotation every 30 minutes (1800000 ms)
-    const videoInterval = setInterval(() => {
-      setCurrentVideo((prev) => prev === 'BG1' ? 'BG2' : 'BG1');
-    }, 1800000); // 30 minutes = 30 * 60 * 1000 ms
-
-    // Cleanup intervals on component unmount
+    // Cleanup interval on component unmount
     return () => {
       clearInterval(messageInterval);
-      clearInterval(videoInterval);
     };
   }, [motivationalMessages.length]);
 
@@ -92,26 +85,17 @@ export default function HomePage() {
         }}
       ></div>
 
-      {/* Video Background - Mobile-first vertical display */}
-      <video
-        key={currentVideo} // Force re-render when video changes
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-        className="fixed inset-0 w-full h-full md:blur-lg"
+      {/* Background Image */}
+      <div
+        className="fixed inset-0 w-full h-full"
         style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'fill',
-          objectPosition: 'center center',
+          backgroundImage: 'url(/BG.jpg)',
+          backgroundSize: '100% 100%',
+          backgroundPosition: 'center center',
+          backgroundRepeat: 'no-repeat',
           zIndex: -10
         }}
-      >
-        <source src={`/${currentVideo}.mp4`} type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
+      ></div>
 
       {/* Dark overlay for better readability */}
       <div

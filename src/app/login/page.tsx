@@ -28,45 +28,78 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // Try API first
-      const response = await fetch(`/api/auth?phone=${encodeURIComponent(phone)}&password=${encodeURIComponent(password)}`);
-      const result = await response.json();
+      console.log('🔐 Attempting login for phone:', phone);
+      
+      // Try API first with better error handling
+      const response = await fetch(`/api/auth?phone=${encodeURIComponent(phone)}&password=${encodeURIComponent(password)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
+      console.log('📡 Login API response status:', response.status);
+      
       if (response.ok) {
-  // Store user data in localStorage
-  localStorage.setItem('user', JSON.stringify(result.user));
+        const result = await response.json();
+        console.log('✅ Login successful via API');
+        localStorage.setItem('user', JSON.stringify(result.user));
         router.push('/dashboard');
         return;
       }
 
-      // Fallback to localStorage if API fails
-      const storedUsers = localStorage.getItem('users') ? JSON.parse(localStorage.getItem('users')!) : [];
-      const existingUser = storedUsers.find((u: any) => u.phone === phone && u.password === password);
-
-      if (existingUser) {
-  localStorage.setItem('user', JSON.stringify(existingUser));
-        router.push('/dashboard');
+      // Handle specific error responses
+      if (response.status === 401) {
+        setError('شماره تلفن یا رمز عبور اشتباه است');
         return;
       }
 
-      // If no user found
-      setError('شماره تلفن یا رمز عبور اشتباه است');
+      if (response.status === 404) {
+        setError('کاربری با این شماره تلفن یافت نشد');
+        return;
+      }
+
+      if (response.status >= 500) {
+        console.log('🔄 Server error, trying localStorage fallback...');
+        // Only use localStorage fallback for server errors
+        const storedUsers = localStorage.getItem('users') ? JSON.parse(localStorage.getItem('users')!) : [];
+        const existingUser = storedUsers.find((u: any) => u.phone === phone && u.password === password);
+
+        if (existingUser) {
+          console.log('✅ Login successful via localStorage fallback');
+          localStorage.setItem('user', JSON.stringify(existingUser));
+          router.push('/dashboard');
+          return;
+        }
+      }
+
+      // For other errors, try to get the error message
+      try {
+        const errorResult = await response.json();
+        setError(errorResult.error || 'خطا در ورود');
+      } catch {
+        setError('خطا در ورود به سرور');
+      }
+
     } catch (err) {
-      // Fallback to localStorage on network error
+      console.error('🚨 Network error during login:', err);
+      
+      // Only fallback to localStorage on complete network failure
       try {
         const storedUsers = localStorage.getItem('users') ? JSON.parse(localStorage.getItem('users')!) : [];
         const existingUser = storedUsers.find((u: any) => u.phone === phone && u.password === password);
 
         if (existingUser) {
+          console.log('✅ Login successful via localStorage (network error fallback)');
           localStorage.setItem('user', JSON.stringify(existingUser));
           router.push('/dashboard');
           return;
         }
       } catch (localErr) {
-        // Ignore localStorage errors
+        console.error('❌ localStorage fallback failed:', localErr);
       }
 
-      setError('خطا در ورود. لطفا دوباره تلاش کنید');
+      setError('خطا در اتصال به سرور. لطفا اتصال اینترنت خود را بررسی کنید');
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +112,23 @@ export default function LoginPage() {
     setForgotSuccess('');
 
     try {
+      console.log('🔄 Forgot password step:', forgotStep);
+      
       if (forgotStep === 'phone') {
+        if (!forgotPhone) {
+          setForgotError('لطفاً شماره تلفن را وارد کنید');
+          return;
+        }
+
+        // Validate Iranian phone number
+        const phoneRegex = /^09\d{9}$/;
+        if (!phoneRegex.test(forgotPhone)) {
+          setForgotError('شماره تلفن معتبر نیست');
+          return;
+        }
+
+        console.log('📱 Checking if user exists for phone:', forgotPhone);
+        
         // Step 1: Check if user exists first
         const checkResponse = await fetch('/api/forgot-password', {
           method: 'POST',
@@ -89,13 +138,17 @@ export default function LoginPage() {
           body: JSON.stringify({ phone: forgotPhone }),
         });
 
-        const checkResult = await checkResponse.json();
+        console.log('📡 User check response status:', checkResponse.status);
 
         if (!checkResponse.ok) {
-          setForgotError(checkResult.error);
+          const checkResult = await checkResponse.json();
+          console.log('❌ User check failed:', checkResult.error);
+          setForgotError(checkResult.error || 'خطا در بررسی کاربر');
           return;
         }
 
+        console.log('✅ User exists, sending OTP...');
+        
         // Step 2: Send OTP using the same API as signup
         const otpResponse = await fetch('/api/send-otp', {
           method: 'POST',
@@ -105,18 +158,28 @@ export default function LoginPage() {
           body: JSON.stringify({ phone: forgotPhone }),
         });
 
-        const otpResult = await otpResponse.json();
+        console.log('📡 OTP send response status:', otpResponse.status);
 
         if (otpResponse.ok) {
+          console.log('✅ OTP sent successfully');
           setForgotSuccess('کد تأیید به شماره شما ارسال شد');
           setForgotStep('otp');
         } else {
-          setForgotError(otpResult.error || 'خطا در ارسال کد تایید');
+          const otpResult = await otpResponse.json();
+          console.log('❌ OTP send failed:', otpResult.error);
+          setForgotError(otpResult.error || 'خطا در ارسال کد تایید. لطفا مجددا تلاش کنید');
         }
       } else if (forgotStep === 'otp') {
+        console.log('🔑 Resetting password with OTP...');
+        
         // Step 3: Verify OTP and reset password
         if (!newPassword) {
           setForgotError('لطفاً رمز عبور جدید را وارد کنید');
+          return;
+        }
+
+        if (newPassword.length < 4) {
+          setForgotError('رمز عبور باید حداقل ۴ کاراکتر باشد');
           return;
         }
 
@@ -132,19 +195,24 @@ export default function LoginPage() {
           }),
         });
 
-        const result = await response.json();
+        console.log('📡 Password reset response status:', response.status);
 
         if (response.ok) {
+          const result = await response.json();
+          console.log('✅ Password reset successful');
           setForgotSuccess('رمز عبور با موفقیت تغییر کرد');
           setTimeout(() => {
             resetForgotPassword();
           }, 2000);
         } else {
-          setForgotError(result.error);
+          const result = await response.json();
+          console.log('❌ Password reset failed:', result.error);
+          setForgotError(result.error || 'خطا در تغییر رمز عبور');
         }
       }
     } catch (err) {
-      setForgotError('خطا در اتصال به سرور');
+      console.error('🚨 Network error during password reset:', err);
+      setForgotError('خطا در اتصال به سرور. لطفا اتصال اینترنت خود را بررسی کنید');
     } finally {
       setForgotLoading(false);
     }

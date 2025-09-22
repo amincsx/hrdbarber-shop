@@ -226,14 +226,13 @@ export default function BookingPage() {
         return getSimplePersianDate(date);
     };
     const [availableDates, setAvailableDates] = useState<Date[]>([]);
-    const [showMoreDates, setShowMoreDates] = useState(false);
     const [selectedServices, setSelectedServices] = useState<string[]>([]);
     const [existingBookings, setExistingBookings] = useState<any[]>([]);
     const [showAllTimeSlots, setShowAllTimeSlots] = useState(false);
     const [selectedBarber, setSelectedBarber] = useState<string>('');
     const [availableBarbers, setAvailableBarbers] = useState<any[]>([
-        { name: 'حمید', _id: 'hamid' },
         { name: 'بنیامین', _id: 'benyamin' },
+        { name: 'حمید', _id: 'hamid' },
         { name: 'محمد', _id: 'mohammad' }
     ]);
 
@@ -260,11 +259,29 @@ export default function BookingPage() {
         }
     };
 
-    // Individual barber schedules - all barbers have same working hours
+    // Individual barber schedules with off days and lunch breaks
     const barberSchedules = {
-        'حمید': { start: 10, end: 21 }, // 10:00 - 21:00
-        'بنیامین': { start: 10, end: 21 }, // 10:00 - 21:00  
-        'محمد': { start: 10, end: 21 } // 10:00 - 21:00
+        'حمید': { 
+            start: 10, 
+            end: 21, 
+            offDays: ['یکشنبه'], // Off on Sunday
+            lunchStart: 14, // 2:00 PM
+            lunchEnd: 15    // 3:00 PM
+        },
+        'محمد': { 
+            start: 10, 
+            end: 21, 
+            offDays: ['شنبه'], // Off on Saturday
+            lunchStart: 14, // 2:00 PM
+            lunchEnd: 16    // 4:00 PM
+        },
+        'بنیامین': { 
+            start: 10, 
+            end: 21, 
+            offDays: ['دوشنبه'], // Off on Monday
+            lunchStart: 14, // 2:00 PM
+            lunchEnd: 16    // 4:00 PM
+        }
     };
 
     // Generate time slots based on selected barber's schedule
@@ -273,19 +290,17 @@ export default function BookingPage() {
         const schedule = barberSchedules[barberName as keyof typeof barberSchedules] || { start: 10, end: 21 };
         const slots = [];
 
-        for (let hour = schedule.start; hour <= schedule.end - 1; hour++) {
-            for (let minute = 0; minute < 60; minute += 15) {
-                // Don't add slots that would end after closing time
-                const endHour = minute === 45 ? hour + 1 : hour;
-                const endMinute = minute === 45 ? 0 : minute + 15;
-
-                if (endHour > schedule.end || (endHour === schedule.end && endMinute > 0)) {
-                    break;
+        // Only generate o'clock times (no :15, :30, :45)
+        for (let hour = schedule.start; hour < schedule.end; hour++) {
+            // Skip lunch break times
+            if ('lunchStart' in schedule && 'lunchEnd' in schedule && schedule.lunchStart && schedule.lunchEnd) {
+                if (hour >= schedule.lunchStart && hour < schedule.lunchEnd) {
+                    continue; // Skip this hour (it's lunch time)
                 }
-
-                const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-                slots.push(timeStr);
             }
+
+            const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+            slots.push(timeStr);
         }
 
         return slots;
@@ -312,40 +327,154 @@ export default function BookingPage() {
 
     const allTimeSlots = generateAllTimeSlots();
 
-    // Generate 30-minute basic slots for display based on selected barber
+    const services = [
+        { name: 'اصلاح vip (اصلاح + شست و شو + ماساژ صورت)', duration: 60 },
+        { name: 'اصلاح سر و صورت', duration: 45 },
+        { name: 'اصلاح سر', duration: 30 },
+        { name: 'اصلاح صورت', duration: 15 },
+        { name: 'وکس', duration: 15 },
+        { name: 'پروتین', duration: 90 },
+        { name: 'کراتین', duration: 90 },
+        { name: 'فیشیال', duration: 60 },
+        { name: 'حالت', duration: 0, isSpecial: true }
+    ];
+
+    // Generate time slots based on selected services and existing bookings
     const getBasicTimeSlots = () => {
         if (!selectedBarber) {
-            // Default slots
+            // Default slots - only o'clock times
             return [
-                '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
-                '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
-                '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
-                '19:00', '19:30', '20:00', '20:30', '21:00'
+                '10:00', '11:00', '12:00', '13:00', '14:00', '15:00',
+                '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
             ];
         }
 
         const schedule = barberSchedules[selectedBarber as keyof typeof barberSchedules] || { start: 10, end: 21 };
         const slots = [];
 
-        for (let hour = schedule.start; hour < schedule.end; hour++) {
-            slots.push(`${hour.toString().padStart(2, '0')}:00`);
-            if (hour + 0.5 < schedule.end) {
-                slots.push(`${hour.toString().padStart(2, '0')}:30`);
+        // Check if face cut or wax is selected
+        const hasFaceCutOrWax = selectedServices.some(service => 
+            service === 'اصلاح صورت' || service === 'وکس'
+        );
+
+        if (hasFaceCutOrWax) {
+            // For face cut and wax, show ONLY :30 times (no o'clock times)
+            for (let hour = schedule.start; hour < schedule.end - 0.5; hour++) {
+                // Skip lunch break times
+                if ('lunchStart' in schedule && 'lunchEnd' in schedule && schedule.lunchStart && schedule.lunchEnd) {
+                    if (hour + 0.5 >= schedule.lunchStart && hour + 0.5 < schedule.lunchEnd) {
+                        continue; // Skip this :30 slot (it's lunch time)
+                    }
+                }
+
+                // Check if selected date is today
+                const isToday = selectedDateObj &&
+                    selectedDateObj.toDateString() === currentTime.toDateString();
+
+                if (isToday) {
+                    // If it's today, check if there are at least 30 minutes until this :30 time
+                    const currentHours = currentTime.getHours();
+                    const currentMinutes = currentTime.getMinutes();
+                    const currentTimeInMinutes = currentHours * 60 + currentMinutes;
+                    const targetTimeInMinutes = hour * 60 + 30; // :30 time
+                    const minutesUntilTarget = targetTimeInMinutes - currentTimeInMinutes;
+
+                    // Only show if there are at least 30 minutes until this time
+                    if (minutesUntilTarget >= 30) {
+                        slots.push(`${hour.toString().padStart(2, '0')}:30`);
+                    }
+                } else {
+                    // For future dates, show all :30 times
+                    slots.push(`${hour.toString().padStart(2, '0')}:30`);
+                }
+            }
+        } else {
+            // For other services, show only o'clock times
+            for (let hour = schedule.start; hour < schedule.end; hour++) {
+                // Skip lunch break times
+                if ('lunchStart' in schedule && 'lunchEnd' in schedule && schedule.lunchStart && schedule.lunchEnd) {
+                    if (hour >= schedule.lunchStart && hour < schedule.lunchEnd) {
+                        continue; // Skip this hour (it's lunch time)
+                    }
+                }
+
+                // Check if selected date is today
+                const isToday = selectedDateObj &&
+                    selectedDateObj.toDateString() === currentTime.toDateString();
+
+                if (isToday) {
+                    // If it's today, check if there are at least 30 minutes until this o'clock time
+                    const currentHours = currentTime.getHours();
+                    const currentMinutes = currentTime.getMinutes();
+                    const currentTimeInMinutes = currentHours * 60 + currentMinutes;
+                    const targetTimeInMinutes = hour * 60;
+                    const minutesUntilTarget = targetTimeInMinutes - currentTimeInMinutes;
+
+                    // Only show if there are at least 30 minutes until this time
+                    if (minutesUntilTarget >= 30) {
+                        slots.push(`${hour.toString().padStart(2, '0')}:00`);
+                    }
+                } else {
+                    // For future dates, show all o'clock times
+                    slots.push(`${hour.toString().padStart(2, '0')}:00`);
+                }
             }
         }
 
-        return slots;
+        // Add :45 times if there are existing bookings that end at :45
+        if (selectedDateObj && selectedBarber) {
+            const dateKey = selectedDateObj.toISOString().split('T')[0];
+            const existingBookingsForDate = existingBookings.filter(booking => 
+                booking.date === dateKey && booking.barber === selectedBarber
+            );
+
+            existingBookingsForDate.forEach(booking => {
+                const startTime = timeToMinutes(booking.time);
+                const duration = getServiceDuration(booking.services);
+                const endTime = startTime + duration;
+                const endHour = Math.floor(endTime / 60);
+                const endMinute = endTime % 60;
+
+                // If booking ends at :45, add that time slot
+                if (endMinute === 45 && endHour < schedule.end) {
+                    const timeSlot = `${endHour.toString().padStart(2, '0')}:45`;
+                    if (!slots.includes(timeSlot)) {
+                        slots.push(timeSlot);
+                    }
+                }
+            });
+        }
+
+        // Sort slots by time
+        return slots.sort((a, b) => {
+            const [hourA, minA] = a.split(':').map(Number);
+            const [hourB, minB] = b.split(':').map(Number);
+            return (hourA * 60 + minA) - (hourB * 60 + minB);
+        });
+    };
+
+    // Get duration for services
+    const getServiceDuration = (serviceNames: string[]): number => {
+        return serviceNames.reduce((total, serviceName) => {
+            const service = services.find(s => s.name === serviceName);
+            return total + (service?.duration || 0);
+        }, 0);
     };
 
     const timeSlots = getBasicTimeSlots();
 
-    const services = [
-        { name: 'اصلاح سر', duration: 30 },
-        { name: 'اصلاح صورت', duration: 15 },
-        { name: 'حالت مو', duration: 15 },
-        { name: 'کراتین', duration: 30 },
-        { name: 'فیشیال', duration: 30 }
-    ];
+    // Check if barber is available on selected date
+    const isBarberAvailableOnDate = (barberName: string, date: Date) => {
+        const schedule = barberSchedules[barberName as keyof typeof barberSchedules];
+        if (!schedule || !schedule.offDays) return true;
+
+        // Get Persian day name for the selected date
+        const persianDate = formatPersianDateSync(date);
+        const dayName = persianDate.split(' ')[0]; // Get the day name (first word)
+
+        // Check if this day is in the barber's off days
+        return !schedule.offDays.includes(dayName);
+    };
 
     const getTotalDuration = () => {
         return selectedServices.reduce((total, serviceName) => {
@@ -359,7 +488,13 @@ export default function BookingPage() {
             if (prev.includes(serviceName)) {
                 return prev.filter(s => s !== serviceName);
             } else {
-                return [...prev, serviceName];
+                // If selecting "حالت", clear other services
+                if (serviceName === 'حالت') {
+                    return [serviceName];
+                }
+                // If selecting other services, remove "حالت"
+                const filtered = prev.filter(s => s !== 'حالت');
+                return [...filtered, serviceName];
             }
         });
         // Reset selected time when services change
@@ -375,6 +510,15 @@ export default function BookingPage() {
         // Check if selected date is today
         const isToday = selectedDateObj &&
             selectedDateObj.toDateString() === currentTime.toDateString();
+
+        // Check if barber is available on selected date
+        const isBarberAvailable = selectedBarber && selectedDateObj ? 
+            isBarberAvailableOnDate(selectedBarber, selectedDateObj) : true;
+
+        // If barber is not available on this date, return empty array
+        if (!isBarberAvailable) {
+            return [];
+        }
 
         const baseSlotsToUse = totalDuration === 0 ? timeSlots : timeSlots;
         const blockedSlots = new Set<string>();
@@ -471,6 +615,7 @@ export default function BookingPage() {
         if (!storedData) {
             // No user data means not logged in
             console.log('❌ No authentication found, redirecting to login');
+            setIsLoading(false);
             router.push('/login');
             return;
         }
@@ -479,10 +624,12 @@ export default function BookingPage() {
             const userData = JSON.parse(storedData);
             setUserData(userData);
             setIsAuthenticated(true);
+            setIsLoading(false);
             console.log('✅ User authenticated:', userData.name || userData.first_name || userData.firstName);
         } catch (error) {
             console.error('❌ Invalid user data, redirecting to login');
             localStorage.removeItem('user');
+            setIsLoading(false);
             router.push('/login');
             return;
         }
@@ -497,8 +644,8 @@ export default function BookingPage() {
         }
         setAvailableDates(dates);
 
-        // Set today as default selected date
-        setSelectedDateObj(today);
+        // Don't set default date - let user choose
+        // setSelectedDateObj(today);
 
         // Load existing bookings from file database
         loadBookingsFromDatabase();
@@ -565,12 +712,23 @@ export default function BookingPage() {
         }
     }, [availableDates, persianDateCache]);
 
-    // Reset selected time when barber changes
+    // Reset selected time and date when barber changes
     useEffect(() => {
         if (selectedBarber) {
             setSelectedTime(''); // Reset time selection when barber changes
+            
+            // Check if currently selected date is available for this barber
+            if (selectedDateObj && !isBarberAvailableOnDate(selectedBarber, selectedDateObj)) {
+                setSelectedDateObj(null); // Reset date if not available for this barber
+                setSelectedServices([]); // Also reset services
+            }
         }
-    }, [selectedBarber]);
+    }, [selectedBarber, selectedDateObj]);
+
+    // Reset selected time when services change (to refresh available time slots)
+    useEffect(() => {
+        setSelectedTime('');
+    }, [selectedServices]);
 
     // Convert time string to minutes since midnight
     const timeToMinutes = (timeStr: string): number => {
@@ -631,7 +789,7 @@ export default function BookingPage() {
             }
         });
 
-        const availableTimes = allTimeSlots.filter(slot => {
+        const availableTimes = timeSlots.filter(slot => {
             const startMinutes = timeToMinutes(slot);
             const endMinutes = startMinutes + totalDuration;
 
@@ -800,6 +958,18 @@ export default function BookingPage() {
         );
     }
 
+    // Show loading state while checking authentication
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+                    <p className="text-white text-lg">در حال بررسی احراز هویت...</p>
+                </div>
+            </div>
+        );
+    }
+
     // If not authenticated, return null (user will be redirected)
     if (!isAuthenticated) {
         return null;
@@ -829,149 +999,30 @@ export default function BookingPage() {
             <div className="w-full max-w-md glass-card p-6 sm:p-8 floating relative z-10">
                 {!isBooked ? (
                     <>
-                        <div className="text-center mb-6">
-                            <div className="w-16 h-16 bg-white/20 rounded-full mx-auto mb-4 flex items-center justify-center backdrop-blur-sm">
-                                <span className="text-2xl text-glass">✂️</span>
-                            </div>
-                            <h1 className="text-xl sm:text-2xl font-bold text-glass mb-2">
+                        <div className="text-center mb-4">
+                            <h1 className="text-lg font-bold text-glass mb-1">
                                 رزرو نوبت آرایشگاه
                             </h1>
-                            <p className="text-glass-secondary text-sm">
-                                لطفاً تاریخ، آرایشگر و سرویس‌های مورد نظر خود را انتخاب کنید
+                            <p className="text-glass-secondary text-xs">
+                                لطفاً مراحل را به ترتیب تکمیل کنید
                             </p>
                         </div>
 
-                        <form onSubmit={handleBooking} className="space-y-4">
-                            <div style={{ marginBottom: '16px' }}>
+                        <form onSubmit={handleBooking} className="space-y-3">
+                            {/* Step 1: Barber Selection - Always Active */}
+                            <div style={{ marginBottom: '12px' }}>
                                 <label
-                                    className="block text-sm font-medium text-gray-700 mb-2"
+                                    className="block text-sm font-medium text-white mb-2"
                                     style={{
                                         display: 'block',
-                                        fontSize: '14px',
-                                        fontWeight: '500',
-                                        color: '#374151',
-                                        marginBottom: '8px'
+                                        fontSize: '16px',
+                                        fontWeight: '600',
+                                        color: '#ffffff',
+                                        marginBottom: '12px',
+                                        textShadow: '0 1px 2px rgba(0,0,0,0.5)'
                                     }}
                                 >
-                                    انتخاب تاریخ
-                                </label>
-
-                                {/* Today and Tomorrow - Always visible */}
-                                <div
-                                    className="grid grid-cols-2 gap-2 mb-3"
-                                    style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: 'repeat(2, 1fr)',
-                                        gap: '8px',
-                                        marginBottom: '12px'
-                                    }}
-                                >
-                                    {availableDates.slice(0, 2).map((date, index) => {
-                                        const isSelected = selectedDateObj?.getTime() === date.getTime();
-                                        const persianDate = formatPersianDateSync(date);
-                                        const label = index === 0 ? 'امروز' : 'فردا';
-                                        return (
-                                            <button
-                                                key={index}
-                                                type="button"
-                                                onClick={() => setSelectedDateObj(date)}
-                                                className={`p-3 rounded-xl text-xs text-center transition-all ${isSelected
-                                                    ? 'glass-button'
-                                                    : 'glass-secondary'
-                                                    }`}
-                                            >
-                                                <div className="font-semibold mb-1">
-                                                    {label}
-                                                </div>
-                                                <div className="text-xs opacity-80">
-                                                    {persianDate}
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-                                {/* Toggle button for more dates */}
-                                <button
-                                    type="button"
-                                    onClick={() => setShowMoreDates(!showMoreDates)}
-                                    className="w-full p-3 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all duration-300 text-white text-sm flex items-center justify-center"
-                                >
-                                    <span style={{ marginLeft: '4px' }}>
-                                        {showMoreDates ? 'بستن' : 'مشاهده روزهای بیشتر'}
-                                    </span>
-                                    <span
-                                        style={{
-                                            transform: showMoreDates ? 'rotate(180deg)' : 'rotate(0deg)',
-                                            transition: 'transform 0.2s',
-                                            fontSize: '10px'
-                                        }}
-                                    >
-                                        ▼
-                                    </span>
-                                </button>
-
-                                {/* Other dates - Collapsible */}
-                                {showMoreDates && (
-                                    <div
-                                        className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto mt-2"
-                                        style={{
-                                            display: 'grid',
-                                            gridTemplateColumns: 'repeat(2, 1fr)',
-                                            gap: '8px',
-                                            maxHeight: '192px',
-                                            overflowY: 'auto',
-                                            border: '1px solid #e5e7eb',
-                                            borderRadius: '4px',
-                                            padding: '8px',
-                                            marginTop: '8px'
-                                        }}
-                                    >
-                                        {availableDates.slice(2).map((date, index) => {
-                                            const isSelected = selectedDateObj?.getTime() === date.getTime();
-                                            const persianDate = formatPersianDateSync(date);
-                                            return (
-                                                <button
-                                                    key={index + 2}
-                                                    type="button"
-                                                    onClick={() => setSelectedDateObj(date)}
-                                                    className={`p-2 border rounded text-xs text-right ${isSelected
-                                                        ? 'bg-black text-white border-black'
-                                                        : 'bg-white text-gray-700 border-gray-300 hover:border-black'
-                                                        }`}
-                                                    style={{
-                                                        padding: '8px',
-                                                        border: isSelected ? '1px solid black' : '1px solid #d1d5db',
-                                                        borderRadius: '4px',
-                                                        fontSize: '11px',
-                                                        backgroundColor: isSelected ? 'black' : 'white',
-                                                        color: isSelected ? 'white' : '#374151',
-                                                        cursor: 'pointer',
-                                                        textAlign: 'right',
-                                                        lineHeight: '1.2'
-                                                    }}
-                                                >
-                                                    {persianDate}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Barber Selection */}
-                            <div style={{ marginBottom: '16px' }}>
-                                <label
-                                    className="block text-sm font-medium text-gray-700 mb-2"
-                                    style={{
-                                        display: 'block',
-                                        fontSize: '14px',
-                                        fontWeight: '500',
-                                        color: '#374151',
-                                        marginBottom: '8px'
-                                    }}
-                                >
-                                    انتخاب آرایشگر
+                                    ✂️ انتخاب آرایشگر
                                 </label>
                                 <div
                                     className="grid grid-cols-3 gap-2"
@@ -989,8 +1040,8 @@ export default function BookingPage() {
                                                 type="button"
                                                 onClick={() => setSelectedBarber(barber.name)}
                                                 className={`p-3 rounded-2xl text-center backdrop-blur-xl border transition-all duration-300 ${isSelected
-                                                    ? 'bg-white/20 text-white border-white/30'
-                                                    : 'bg-white/10 text-white/80 border-white/20 hover:bg-white/15'
+                                                    ? 'bg-white/30 text-white border-white/50 shadow-lg'
+                                                    : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
                                                     }`}
                                             >
                                                 {barber.name}
@@ -1000,39 +1051,233 @@ export default function BookingPage() {
                                 </div>
                             </div>
 
-                            {/* Service Selection */}
-                            <div style={{ marginBottom: '16px' }}>
+                            {/* Step 2: Date Selection - Active after barber is selected */}
+                            <div style={{ 
+                                marginBottom: '12px',
+                                opacity: selectedBarber ? '1' : '0.4',
+                                pointerEvents: selectedBarber ? 'auto' : 'none',
+                                transform: selectedBarber ? 'scale(1)' : 'scale(0.95)',
+                                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                            }}>
                                 <label
-                                    className="block text-sm font-medium text-gray-700 mb-2"
+                                    className="block text-sm font-medium mb-2"
                                     style={{
                                         display: 'block',
-                                        fontSize: '14px',
-                                        fontWeight: '500',
-                                        color: '#374151',
-                                        marginBottom: '8px'
+                                        fontSize: selectedBarber ? '16px' : '12px',
+                                        fontWeight: selectedBarber ? '600' : '400',
+                                        color: selectedBarber ? '#ffffff' : '#9ca3af',
+                                        marginBottom: selectedBarber ? '12px' : '8px',
+                                        textShadow: selectedBarber ? '0 1px 2px rgba(0,0,0,0.5)' : 'none',
+                                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
                                     }}
                                 >
-                                    انتخاب سرویس
+                                    📅 انتخاب تاریخ
                                 </label>
+
+                                {/* Today and Tomorrow - Filtered by barber availability */}
                                 <div
-                                    className="grid grid-cols-2 gap-2"
+                                    className="grid grid-cols-2 gap-2 mb-3"
                                     style={{
                                         display: 'grid',
                                         gridTemplateColumns: 'repeat(2, 1fr)',
-                                        gap: '8px'
+                                        gap: '8px',
+                                        marginBottom: '12px',
+                                        transform: selectedBarber ? 'scale(1)' : 'scale(0.98)',
+                                        transition: 'transform 0.3s ease'
                                     }}
                                 >
-                                    {services.map((service) => {
+                                    {(() => {
+                                        // Filter dates based on barber availability
+                                        const filteredDates = [];
+                                        let dateIndex = 0;
+                                        
+                                        while (filteredDates.length < 2 && dateIndex < availableDates.length) {
+                                            const date = availableDates[dateIndex];
+                                            
+                                            // If no barber selected, show all dates
+                                            if (!selectedBarber) {
+                                                filteredDates.push({ date, index: dateIndex });
+                                            } else {
+                                                // Check if barber is available on this date
+                                                if (isBarberAvailableOnDate(selectedBarber, date)) {
+                                                    filteredDates.push({ date, index: dateIndex });
+                                                }
+                                            }
+                                            dateIndex++;
+                                        }
+                                        
+                                        return filteredDates.map(({ date, index }) => {
+                                            const isSelected = selectedDateObj?.getTime() === date.getTime();
+                                            const persianDate = formatPersianDateSync(date);
+                                            
+                                            // Determine label based on actual date position
+                                            let label;
+                                            if (index === 0) {
+                                                label = 'امروز';
+                                            } else if (index === 1) {
+                                                label = 'فردا';
+                                            } else if (index === 2) {
+                                                label = 'پس فردا';
+                                            } else {
+                                                label = persianDate.split(' ')[0]; // Use day name
+                                            }
+                                            
+                                            return (
+                                                <button
+                                                    key={index}
+                                                    type="button"
+                                                    onClick={() => setSelectedDateObj(date)}
+                                                    className={`p-3 rounded-xl text-xs text-center transition-all ${isSelected
+                                                        ? 'bg-white/30 text-white border-white/50 shadow-lg'
+                                                        : 'bg-white/5 text-white/60 border-white/10'
+                                                        }`}
+                                                >
+                                                    <div className="font-semibold mb-1">
+                                                        {label}
+                                                    </div>
+                                                    <div className="text-xs opacity-80">
+                                                        {persianDate}
+                                                    </div>
+                                                </button>
+                                            );
+                                        });
+                                    })()}
+                                </div>
+
+                                {/* 4 Future Days - Filtered by barber availability */}
+                                <div
+                                    className="grid grid-cols-4 gap-1"
+                                    style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(4, 1fr)',
+                                        gap: '4px',
+                                        transform: selectedBarber ? 'scale(1)' : 'scale(0.98)',
+                                        transition: 'transform 0.3s ease'
+                                    }}
+                                >
+                                    {(() => {
+                                        // Filter future dates based on barber availability
+                                        const filteredFutureDates = [];
+                                        let dateIndex = 2; // Start from day 3 (after today and tomorrow)
+                                        
+                                        while (filteredFutureDates.length < 4 && dateIndex < availableDates.length) {
+                                            const date = availableDates[dateIndex];
+                                            
+                                            // If no barber selected, show all dates
+                                            if (!selectedBarber) {
+                                                filteredFutureDates.push({ date, originalIndex: dateIndex });
+                                            } else {
+                                                // Check if barber is available on this date
+                                                if (isBarberAvailableOnDate(selectedBarber, date)) {
+                                                    filteredFutureDates.push({ date, originalIndex: dateIndex });
+                                                }
+                                            }
+                                            dateIndex++;
+                                        }
+                                        
+                                        return filteredFutureDates.map(({ date, originalIndex }, index) => {
+                                            const isSelected = selectedDateObj?.getTime() === date.getTime();
+                                            const persianDate = formatPersianDateSync(date);
+                                            return (
+                                                <button
+                                                    key={originalIndex}
+                                                    type="button"
+                                                    onClick={() => setSelectedDateObj(date)}
+                                                    className={`p-2 rounded-lg text-xs text-center transition-all ${isSelected
+                                                        ? 'bg-white/30 text-white border-white/50 shadow-lg'
+                                                        : 'bg-white/5 text-white/60 border-white/10'
+                                                        }`}
+                                                    style={{
+                                                        padding: '6px',
+                                                        fontSize: '10px',
+                                                        lineHeight: '1.2'
+                                                    }}
+                                                >
+                                                    <div className="font-medium mb-0.5">
+                                                        {persianDate.split(' ')[0]}
+                                                    </div>
+                                                    <div className="text-xs opacity-70">
+                                                        {persianDate.split(' ')[1]} {persianDate.split(' ')[2]}
+                                                    </div>
+                                                </button>
+                                            );
+                                        });
+                                    })()}
+                                </div>
+                            </div>
+
+                            {/* Step 3: Service Selection - Active after date is selected */}
+                            <div style={{ 
+                                marginBottom: '12px',
+                                opacity: selectedDateObj ? '1' : '0.4',
+                                pointerEvents: selectedDateObj ? 'auto' : 'none',
+                                transform: selectedDateObj ? 'scale(1)' : 'scale(0.95)',
+                                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                            }}>
+                                <label
+                                    className="block text-sm font-medium mb-2"
+                                    style={{
+                                        display: 'block',
+                                        fontSize: selectedDateObj ? '16px' : '12px',
+                                        fontWeight: selectedDateObj ? '600' : '400',
+                                        color: selectedDateObj ? '#ffffff' : '#9ca3af',
+                                        marginBottom: selectedDateObj ? '12px' : '8px',
+                                        textShadow: selectedDateObj ? '0 1px 2px rgba(0,0,0,0.5)' : 'none',
+                                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                                    }}
+                                >
+                                    🎯 انتخاب سرویس
+                                </label>
+                                {/* VIP Service - Full Row */}
+                                <div
+                                    style={{
+                                        marginBottom: '8px',
+                                        transform: selectedDateObj ? 'scale(1)' : 'scale(0.98)',
+                                        transition: 'transform 0.3s ease'
+                                    }}
+                                >
+                                    {services.slice(0, 1).map((service) => {
                                         const isSelected = selectedServices.includes(service.name);
                                         return (
                                             <button
                                                 key={service.name}
                                                 type="button"
-                                                onClick={() => handleServiceToggle(service.name)}
-                                                className={`p-3 rounded-2xl text-right backdrop-blur-xl border transition-all duration-300 ${isSelected
-                                                    ? 'bg-white/20 text-white border-white/30'
-                                                    : 'bg-white/10 text-white/80 border-white/20 hover:bg-white/15'
+                                                onClick={() => selectedDateObj ? handleServiceToggle(service.name) : null}
+                                                className={`w-full p-3 rounded-2xl text-right backdrop-blur-xl border transition-all duration-300 ${isSelected
+                                                    ? 'bg-white/30 text-white border-white/50 shadow-lg'
+                                                    : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
                                                     }`}
+                                                style={{ fontSize: '13px' }}
+                                            >
+                                                {service.name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Other Services - 2 Column Grid */}
+                                <div
+                                    className="grid grid-cols-2 gap-2"
+                                    style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(2, 1fr)',
+                                        gap: '8px',
+                                        transform: selectedDateObj ? 'scale(1)' : 'scale(0.98)',
+                                        transition: 'transform 0.3s ease'
+                                    }}
+                                >
+                                    {services.slice(1).map((service) => {
+                                        const isSelected = selectedServices.includes(service.name);
+                                        return (
+                                            <button
+                                                key={service.name}
+                                                type="button"
+                                                onClick={() => selectedDateObj ? handleServiceToggle(service.name) : null}
+                                                className={`p-3 rounded-2xl text-right backdrop-blur-xl border transition-all duration-300 ${isSelected
+                                                    ? 'bg-white/30 text-white border-white/50 shadow-lg'
+                                                    : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
+                                                    }`}
+                                                style={{ fontSize: '12px' }}
                                             >
                                                 {service.name}
                                             </button>
@@ -1041,19 +1286,54 @@ export default function BookingPage() {
                                 </div>
                             </div>
 
-                            <div style={{ marginBottom: '24px' }}>
-                                <label
-                                    className="block text-sm font-medium text-gray-700 mb-2"
-                                    style={{
-                                        display: 'block',
-                                        fontSize: '14px',
-                                        fontWeight: '500',
-                                        color: '#374151',
-                                        marginBottom: '8px'
-                                    }}
-                                >
-                                    انتخاب ساعت
-                                </label>
+                            {/* Step 4: Time Selection or Phone Number - Active after service is selected */}
+                            <div style={{ 
+                                marginBottom: '24px',
+                                opacity: selectedServices.length > 0 ? '1' : '0.4',
+                                pointerEvents: selectedServices.length > 0 ? 'auto' : 'none',
+                                transform: selectedServices.length > 0 ? 'scale(1)' : 'scale(0.95)',
+                                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                            }}>
+                                {selectedServices.includes('حالت') ? (
+                                    /* Phone Number Display for حالت */
+                                    <div className="text-center p-4 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20">
+                                        <label
+                                            className="block text-sm font-medium mb-3"
+                                            style={{
+                                                display: 'block',
+                                                fontSize: '16px',
+                                                fontWeight: '600',
+                                                color: '#ffffff',
+                                                marginBottom: '12px',
+                                                textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                                            }}
+                                        >
+                                            📞 تماس با آرایشگاه
+                                        </label>
+                                        <div className="text-white/90 text-lg font-semibold mb-2">
+                                            ۰۹۱۲۳۴۵۶۷۸۹
+                                        </div>
+                                        <div className="text-white/70 text-sm">
+                                            لطفاً تماس بگیرید
+                                        </div>
+                                    </div>
+                                ) : (
+                                    /* Regular Time Selection */
+                                    <>
+                                        <label
+                                            className="block text-sm font-medium mb-2"
+                                            style={{
+                                                display: 'block',
+                                                fontSize: selectedServices.length > 0 ? '16px' : '12px',
+                                                fontWeight: selectedServices.length > 0 ? '600' : '400',
+                                                color: selectedServices.length > 0 ? '#ffffff' : '#9ca3af',
+                                                marginBottom: selectedServices.length > 0 ? '12px' : '8px',
+                                                textShadow: selectedServices.length > 0 ? '0 1px 2px rgba(0,0,0,0.5)' : 'none',
+                                                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                                            }}
+                                        >
+                                            ⏰ انتخاب ساعت
+                                        </label>
 
                                 {/* First row of times - Always visible */}
                                 <div
@@ -1062,7 +1342,9 @@ export default function BookingPage() {
                                         display: 'grid',
                                         gridTemplateColumns: 'repeat(3, 1fr)',
                                         gap: '8px',
-                                        marginBottom: '12px'
+                                        marginBottom: '12px',
+                                        transform: selectedServices.length > 0 ? 'scale(1)' : 'scale(0.98)',
+                                        transition: 'transform 0.3s ease'
                                     }}
                                 >
                                     {getAvailableStartTimes().slice(0, 3).map((time) => (
@@ -1071,8 +1353,8 @@ export default function BookingPage() {
                                             type="button"
                                             onClick={() => setSelectedTime(time)}
                                             className={`p-3 rounded-2xl text-sm backdrop-blur-xl border transition-all duration-300 ${selectedTime === time
-                                                ? 'bg-white/20 text-white border-white/30'
-                                                : 'bg-white/10 text-white/80 border-white/20 hover:bg-white/15'
+                                                ? 'bg-white/30 text-white border-white/50 shadow-lg'
+                                                : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
                                                 }`}
                                         >
                                             {time}
@@ -1118,8 +1400,8 @@ export default function BookingPage() {
                                                 type="button"
                                                 onClick={() => setSelectedTime(time)}
                                                 className={`p-3 rounded-2xl text-sm backdrop-blur-xl border transition-all duration-300 ${selectedTime === time
-                                                    ? 'bg-white/20 text-white border-white/30'
-                                                    : 'bg-white/10 text-white/80 border-white/20 hover:bg-white/15'
+                                                    ? 'bg-white/30 text-white border-white/50 shadow-lg'
+                                                    : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
                                                     }`}
                                             >
                                                 {time}
@@ -1154,7 +1436,10 @@ export default function BookingPage() {
                                             textAlign: 'center'
                                         }}
                                     >
-                                        در این تاریخ زمان آزادی برای سرویس‌های انتخابی وجود ندارد
+                                        {selectedBarber && selectedDateObj && !isBarberAvailableOnDate(selectedBarber, selectedDateObj)
+                                            ? `${selectedBarber} در این روز تعطیل است`
+                                            : 'در این تاریخ زمان آزادی برای سرویس‌های انتخابی وجود ندارد'
+                                        }
                                     </p>
                                 )}
 
@@ -1190,13 +1475,23 @@ export default function BookingPage() {
                                         زمان رزرو: {selectedTime} تا {minutesToTime(timeToMinutes(selectedTime) + getTotalDuration())}
                                     </div>
                                 )}
+                                    </>
+                                )}
                             </div>
 
                             <button
                                 type="submit"
-                                className="w-full p-4 rounded-2xl font-medium backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all duration-300 text-white shadow-xl"
+                                disabled={!selectedBarber || !selectedDateObj || selectedServices.length === 0 || (!selectedTime && !selectedServices.includes('حالت'))}
+                                className={`w-full p-4 rounded-2xl font-medium backdrop-blur-xl border transition-all duration-300 shadow-xl ${
+                                    selectedBarber && selectedDateObj && selectedServices.length > 0 && (selectedTime || selectedServices.includes('حالت'))
+                                        ? 'bg-white/10 border-white/20 hover:bg-white/20 text-white cursor-pointer'
+                                        : 'bg-white/5 border-white/10 text-white/50 cursor-not-allowed'
+                                }`}
                             >
-                                ثبت رزرو
+                                {selectedBarber && selectedDateObj && selectedServices.length > 0 && (selectedTime || selectedServices.includes('حالت'))
+                                    ? 'ثبت رزرو'
+                                    : 'لطفاً تمام مراحل را تکمیل کنید'
+                                }
                             </button>
                         </form>
                     </>
