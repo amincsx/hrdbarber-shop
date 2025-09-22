@@ -37,6 +37,7 @@ export default function OwnerDashboard() {
     const [selectedDate, setSelectedDate] = useState<string>('');
     const [selectedStatus, setSelectedStatus] = useState<string>('all');
     const [adminSession, setAdminSession] = useState<any>(null);
+    const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set());
 
     const availableBarbers = ['حمید', 'بنیامین', 'محمد'];
 
@@ -116,6 +117,18 @@ export default function OwnerDashboard() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const toggleBookingExpansion = (bookingId: string) => {
+        setExpandedBookings(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(bookingId)) {
+                newSet.delete(bookingId);
+            } else {
+                newSet.add(bookingId);
+            }
+            return newSet;
+        });
     };
 
     const handleLogout = () => {
@@ -385,42 +398,91 @@ export default function OwnerDashboard() {
                         </div>
                     ) : (
                         <div className="divide-y divide-white/10">
-                            {filteredBookings.map((booking) => (
-                                <div key={booking.id} className="p-6 hover:bg-white/5 transition-colors">
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                        <div>
-                                            <h3 className="font-semibold text-glass mb-2 flex items-center">
-                                                👤 مشتری
-                                            </h3>
-                                            <p className="text-glass">{booking.user_name}</p>
-                                            <p className="text-glass-secondary text-sm">📞 {booking.user_phone}</p>
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-glass mb-2 flex items-center">
-                                                ✂️ آرایشگر
-                                            </h3>
-                                            <p className="text-glass">{booking.barber}</p>
-                                            <p className="text-glass-secondary text-sm">📅 {formatDate(booking.date_key)}</p>
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-glass mb-2 flex items-center">
-                                                ⏰ زمان
-                                            </h3>
-                                            <p className="text-glass">{booking.start_time} - {booking.end_time}</p>
-                                            <p className="text-glass-secondary text-sm">⏱️ {booking.total_duration} دقیقه</p>
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-glass mb-2">وضعیت</h3>
-                                            {getStatusBadge(booking.status)}
-                                            <div className="mt-2">
-                                                <p className="text-xs text-glass-secondary">
-                                                    🛠️ {booking.services.join('، ')}
-                                                </p>
+                            {filteredBookings.map((booking) => {
+                                const isExpanded = expandedBookings.has(booking.id);
+                                return (
+                                    <div key={booking.id} className="p-4 hover:bg-white/5 transition-colors">
+                                        {/* Summary View (Always Visible) */}
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex-1">
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                    <div>
+                                                        <p className="text-glass font-medium">👤 {booking.user_name}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-glass">✂️ {booking.barber}</p>
+                                                        <p className="text-glass text-sm">📅 {formatDate(booking.date_key)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-glass">🕐 {booking.start_time} - {booking.end_time}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-glass">🛠️ {booking.services.join('، ')}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="ml-4 flex items-center space-x-3 space-x-reverse">
+                                                {getStatusBadge(booking.status)}
+                                                
+                                                <button
+                                                    onClick={() => toggleBookingExpansion(booking.id)}
+                                                    className="px-3 py-1 glass-button text-sm"
+                                                >
+                                                    {isExpanded ? '📄 خلاصه' : '📋 جزئیات'}
+                                                </button>
                                             </div>
                                         </div>
+
+                                        {/* Expanded View (Conditional) */}
+                                        {isExpanded && (
+                                            <div className="mt-4 pt-4 border-t border-white/10">
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                    <div>
+                                                        <h3 className="font-semibold text-glass mb-2 flex items-center">
+                                                            👤 مشتری
+                                                        </h3>
+                                                        <p className="text-glass">{booking.user_name}</p>
+                                                        <p className="text-glass-secondary text-sm">📞 {booking.user_phone}</p>
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-semibold text-glass mb-2 flex items-center">
+                                                            ✂️ آرایشگر
+                                                        </h3>
+                                                        <p className="text-glass">{booking.barber}</p>
+                                                        <p className="text-glass-secondary text-sm">📅 {formatDate(booking.date_key)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-semibold text-glass mb-2 flex items-center">
+                                                            ⏰ زمان
+                                                        </h3>
+                                                        <p className="text-glass">{booking.start_time} - {booking.end_time}</p>
+                                                        <p className="text-glass-secondary text-sm">⏱️ {booking.total_duration} دقیقه</p>
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-semibold text-glass mb-2">وضعیت</h3>
+                                                        {getStatusBadge(booking.status)}
+                                                        <div className="mt-2">
+                                                            <p className="text-xs text-glass-secondary">
+                                                                🛠️ {booking.services.join('، ')}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {booking.notes && (
+                                                    <div className="mt-4 p-3 bg-white/10 rounded-xl border border-white/20">
+                                                        <h4 className="font-semibold text-glass flex items-center mb-2">
+                                                            📝 یادداشت:
+                                                        </h4>
+                                                        <p className="text-glass-secondary text-sm">{booking.notes}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

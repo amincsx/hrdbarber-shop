@@ -11,13 +11,18 @@ export const metadata: Metadata = {
   title: "آرایشگاه HRD | رزرو نوبت",
   description: "سامانه رزرو نوبت آرایشگاه HRD - بهترین خدمات آرایشگری",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/logo.jpg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "آرایشگاه HRD",
     startupImage: [
       {
-        url: "/icon-512x512.svg",
+        url: "/logo.jpg",
         media: "(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)",
       },
     ],
@@ -42,7 +47,7 @@ export const metadata: Metadata = {
     url: "/",
     images: [
       {
-        url: "/icon-512x512.svg",
+        url: "/logo.jpg",
         width: 512,
         height: 512,
         alt: "آرایشگاه HRD",
@@ -53,7 +58,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: "آرایشگاه HRD | رزرو نوبت",
     description: "سامانه رزرو نوبت آرایشگاه HRD - بهترین خدمات آرایشگری",
-    images: ["/icon-512x512.svg"],
+    images: ["/logo.jpg"],
   },
   robots: {
     index: true,
@@ -89,9 +94,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
         {/* PWA and Apple Touch Icons */}
-        <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
-        <link rel="icon" href="/icon-192x192.svg" />
-        <link rel="shortcut icon" href="/icon-192x192.svg" />
+        <link rel="apple-touch-icon" href="/logo.jpg" />
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         
         {/* iOS Status Bar */}
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

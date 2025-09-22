@@ -35,6 +35,7 @@ export default function SecureBarberDashboard() {
     const [selectedDate, setSelectedDate] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [adminSession, setAdminSession] = useState<any>(null);
+    const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         // Check if user is authenticated barber
@@ -109,6 +110,18 @@ export default function SecureBarberDashboard() {
         } catch (err) {
             alert('خطا در اتصال به سرور');
         }
+    };
+
+    const toggleBookingExpansion = (bookingId: string) => {
+        setExpandedBookings(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(bookingId)) {
+                newSet.delete(bookingId);
+            } else {
+                newSet.add(bookingId);
+            }
+            return newSet;
+        });
     };
 
     const handleLogout = () => {
@@ -379,89 +392,119 @@ export default function SecureBarberDashboard() {
                         </div>
                     ) : (
                         <div className="divide-y divide-white/10">
-                            {filteredBookings.map((booking) => (
-                                <div key={booking.id} className="p-6 hover:bg-white/5 transition-colors">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex-1">
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div>
-                                                    <h3 className="font-semibold text-glass mb-2 flex items-center">
-                                                        👤 اطلاعات مشتری
-                                                    </h3>
-                                                    <p className="text-glass"><strong>نام:</strong> {booking.user_name}</p>
-                                                    <p className="text-glass"><strong>📞 تلفن:</strong> {booking.user_phone}</p>
-                                                </div>
-                                                <div>
-                                                    <h3 className="font-semibold text-glass mb-2 flex items-center">
-                                                        ⏰ زمان رزرو
-                                                    </h3>
-                                                    <p className="text-glass"><strong>📅 تاریخ:</strong> {formatDate(booking.date_key)}</p>
-                                                    <p className="text-glass">
-                                                        <strong>🕐 ساعت:</strong> {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
-                                                    </p>
-                                                    <p className="text-glass"><strong>⏱️ مدت:</strong> {booking.total_duration} دقیقه</p>
-                                                </div>
-                                                <div>
-                                                    <h3 className="font-semibold text-glass mb-2 flex items-center">
-                                                        🛠️ خدمات
-                                                    </h3>
-                                                    <ul className="text-glass">
-                                                        {booking.services.map((service, index) => (
-                                                            <li key={index} className="text-sm">• {service}</li>
-                                                        ))}
-                                                    </ul>
+                            {filteredBookings.map((booking) => {
+                                const isExpanded = expandedBookings.has(booking.id);
+                                return (
+                                    <div key={booking.id} className="p-4 hover:bg-white/5 transition-colors">
+                                        {/* Summary View (Always Visible) */}
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex-1">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div>
+                                                        <p className="text-glass font-medium">👤 {booking.user_name}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-glass">📅 {formatDate(booking.date_key)}</p>
+                                                        <p className="text-glass text-sm">🕐 {formatTime(booking.start_time)} - {formatTime(booking.end_time)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-glass">🛠️ {booking.services.join(', ')}</p>
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            {booking.notes && (
-                                                <div className="mt-4 p-3 bg-white/10 rounded-xl border border-white/20">
-                                                    <h4 className="font-semibold text-glass flex items-center mb-2">
-                                                        📝 یادداشت:
-                                                    </h4>
-                                                    <p className="text-glass-secondary text-sm">{booking.notes}</p>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="ml-4 flex flex-col items-end space-y-3">
-                                            {getStatusBadge(booking.status)}
-
-                                            <div className="flex space-x-2 space-x-reverse">
-                                                {(!booking.status || booking.status === 'pending') && (
-                                                    <button
-                                                        onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                                                        className="px-4 py-2 glass-button glass-success text-sm"
-                                                    >
-                                                        ✅ تأیید
-                                                    </button>
-                                                )}
-
-                                                {booking.status === 'confirmed' && (
-                                                    <button
-                                                        onClick={() => updateBookingStatus(booking.id, 'completed')}
-                                                        className="px-4 py-2 glass-button text-sm"
-                                                    >
-                                                        🎉 تکمیل
-                                                    </button>
-                                                )}
-
-                                                {booking.status !== 'cancelled' && booking.status !== 'completed' && (
-                                                    <button
-                                                        onClick={() => {
-                                                            if (confirm('آیا مطمئن هستید که می‌خواهید این رزرو را لغو کنید؟')) {
-                                                                updateBookingStatus(booking.id, 'cancelled');
-                                                            }
-                                                        }}
-                                                        className="px-4 py-2 glass-button glass-danger text-sm"
-                                                    >
-                                                        ❌ لغو
-                                                    </button>
-                                                )}
+                                            <div className="ml-4 flex items-center space-x-3 space-x-reverse">
+                                                {getStatusBadge(booking.status)}
+                                                
+                                                <button
+                                                    onClick={() => toggleBookingExpansion(booking.id)}
+                                                    className="px-3 py-1 glass-button text-sm"
+                                                >
+                                                    {isExpanded ? '📄 خلاصه' : '📋 جزئیات'}
+                                                </button>
                                             </div>
                                         </div>
+
+                                        {/* Expanded View (Conditional) */}
+                                        {isExpanded && (
+                                            <div className="mt-4 pt-4 border-t border-white/10">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div>
+                                                        <h3 className="font-semibold text-glass mb-2 flex items-center">
+                                                            👤 اطلاعات مشتری
+                                                        </h3>
+                                                        <p className="text-glass"><strong>نام:</strong> {booking.user_name}</p>
+                                                        <p className="text-glass"><strong>📞 تلفن:</strong> {booking.user_phone}</p>
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-semibold text-glass mb-2 flex items-center">
+                                                            ⏰ زمان رزرو
+                                                        </h3>
+                                                        <p className="text-glass"><strong>📅 تاریخ:</strong> {formatDate(booking.date_key)}</p>
+                                                        <p className="text-glass">
+                                                            <strong>🕐 ساعت:</strong> {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                                                        </p>
+                                                        <p className="text-glass"><strong>⏱️ مدت:</strong> {booking.total_duration} دقیقه</p>
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-semibold text-glass mb-2 flex items-center">
+                                                            🛠️ خدمات
+                                                        </h3>
+                                                        <ul className="text-glass">
+                                                            {booking.services.map((service, index) => (
+                                                                <li key={index} className="text-sm">• {service}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                </div>
+
+                                                {booking.notes && (
+                                                    <div className="mt-4 p-3 bg-white/10 rounded-xl border border-white/20">
+                                                        <h4 className="font-semibold text-glass flex items-center mb-2">
+                                                            📝 یادداشت:
+                                                        </h4>
+                                                        <p className="text-glass-secondary text-sm">{booking.notes}</p>
+                                                    </div>
+                                                )}
+
+                                                {/* Action Buttons */}
+                                                <div className="mt-4 flex space-x-2 space-x-reverse">
+                                                    {(!booking.status || booking.status === 'pending') && (
+                                                        <button
+                                                            onClick={() => updateBookingStatus(booking.id, 'confirmed')}
+                                                            className="px-4 py-2 glass-button glass-success text-sm"
+                                                        >
+                                                            ✅ تأیید
+                                                        </button>
+                                                    )}
+
+                                                    {booking.status === 'confirmed' && (
+                                                        <button
+                                                            onClick={() => updateBookingStatus(booking.id, 'completed')}
+                                                            className="px-4 py-2 glass-button text-sm"
+                                                        >
+                                                            🎉 تکمیل
+                                                        </button>
+                                                    )}
+
+                                                    {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                                                        <button
+                                                            onClick={() => {
+                                                                if (confirm('آیا مطمئن هستید که می‌خواهید این رزرو را لغو کنید؟')) {
+                                                                    updateBookingStatus(booking.id, 'cancelled');
+                                                                }
+                                                            }}
+                                                            className="px-4 py-2 glass-button glass-danger text-sm"
+                                                        >
+                                                            ❌ لغو
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

@@ -1,74 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
 
 export default function HomePage() {
-  const [currentMessage, setCurrentMessage] = useState(0);
-
-  const motivationalMessages = [
-    "باور داشته باش، می‌تونی",
-    "امروز روز جدیدی است",
-    "قدم به قدم تا موفقیت",
-    "هیچ وقت تسلیم نشو",
-    "رویاهایت را دنبال کن",
-    "تو قوی‌تر از تصورت هستی",
-    "تغییر از خودت شروع می‌شود",
-    "هر روز فرصت جدیدی است",
-    "به خودت ایمان داشته باش",
-    "کوچک شروع کن، بزرگ بیندیش",
-    "شکست پایان راه نیست",
-    "انرژی مثبت جذب می‌کنی",
-    "آینده در دستان توست",
-    "محدودیت فقط در ذهن است",
-    "امروز بهتر از دیروز باش",
-    "موفقیت حق توست",
-    "خودت را دست کم نگیر",
-    "هدفت را گم نکن",
-    "یادگیری هیچ وقت تمام نمی‌شود",
-    "شادی را انتخاب کن",
-    // Complete Persian Poetry Verses (مصراع)
-    "اگر نتوانی چو شمع سر و سامان بسوزی، چراغ راه کسی نتوانی شدن",
-    "بیا که غم خوردن آسان نگیرند از ما، که سخت عاشق و رند و جوانیم ما",
-    "دوش از مسجد سوی میخانه آمدم، پیر مغان مرا گفت ای جان جان",
-    "گر عاشق شدی هویت ببازی، گر نشدی هویت نداری",
-    "دل برده‌ام به صحرای خیال آن یار، که آن جا نه خزان است نه بهار",
-    "صبا به لطف بگو آن غزال رعنا را، که سر به کوه و بیابان تو دادهایم",
-    "گل همچو عارض جانان سرخ است، خار همچو موی سیاه او",
-    "سر زلف تو پریشان من پریشانم، دل از کف رفته و جان پریشانم",
-    "بگذار تا نفسی آسوده بکشم، از غم عشق تو جانی شاده بکشم",
-    "عشق است و کار او آسان نمی‌شود، تا نکشی در این ره جان نمی‌شود",
-    "خوشا کسی که در آسایش جان باشد، چو من اسیر محبت نهان باشد",
-    "دل که آینه خاطر صافی ست، عکس روی همه چیز در وی هست",
-    "دریای دل که از توفان خاموشی، هر موج آن هزار طوفان پیدا کرد",
-    "مهر آن ماه که بر عرش معلی می‌تابد، تا ابد در دل عاشقان پیدا کرد",
-    "در طلب آن نگار گم گشته‌ام، در کوی او چو خاک رهگذار شده‌ام",
-    "ساقی بیا که عالم پر شور و شر است، کار جهان همه بر خلاف مقرر است",
-    "در کوی تو اگر خاری در پا کند، آن خار نعمتی است که خدا کند",
-    "عاشق شدن خوش است ولیکن در خفا، کز عشق آشکار بلا خیزد",
-    "دل زنده است و دریا و کوه و بیابان، زنده و پیوسته در شور",
-    "مرا به سینه چون طوفان دلی هست، که می‌خواهد زمین را برکند",
-    "بهار آمد و نوید صلح آورد، گل آمد و قدوم رقیب آورد",
-    "شب تاریک و بیم موج و گردابی چنین هائل، کجا دانند حال ما سبکباران ساحل",
-    "عاقبت کار عالم تاریکی است، این چراغ آخر شب روشن کن",
-    "باز آ ای بلبل خوش نوا باز آ، که گل بی تو چه معنی دارد",
-    "چون صبح صادق آمد شمع را چه کار است، روی یار آمد رقیب را چه کار است"
-  ];
-
-  useEffect(() => {
-    // Message rotation every 8 seconds
-    const messageInterval = setInterval(() => {
-      setCurrentMessage((prev) => (prev + 1) % motivationalMessages.length);
-    }, 8000);
-
-    // Cleanup interval on component unmount
-    return () => {
-      clearInterval(messageInterval);
-    };
-  }, [motivationalMessages.length]);
+  const welcomeMessage = "به آرایشگاه HRD خوش آمدید - برای رزرو وقت وارد شوید";
 
   return (
-    <div className="relative min-h-screen min-h-[100dvh] w-full flex flex-col items-center justify-start overflow-hidden px-4 pt-90" dir="rtl">
+    <div className="relative min-h-screen min-h-[100dvh] w-full flex flex-col items-center justify-center overflow-hidden px-4 sm:px-8 lg:px-12" dir="rtl">
       {/* Blurry Black-Orange Background */}
       <div
         style={{
@@ -83,9 +21,9 @@ export default function HomePage() {
         }}
       ></div>
 
-      {/* Background Image */}
+      {/* Background Image - Mobile */}
       <div
-        className="fixed inset-0 w-full h-full"
+        className="fixed inset-0 w-full h-full lg:hidden"
         style={{
           backgroundImage: 'url(/BG.jpg)',
           backgroundSize: '100% 100%',
@@ -95,38 +33,53 @@ export default function HomePage() {
         }}
       ></div>
 
-      {/* Dark overlay for better readability */}
+      {/* Background Image - Desktop (same as login page) */}
       <div
+        className="hidden lg:block fixed inset-0 w-full h-full"
         style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          backgroundColor: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 0
+          backgroundImage: 'url(/PICBG1.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          zIndex: -10
         }}
       ></div>
 
-      {/* Content - Mobile-optimized buttons */}
-      <div className="flex gap-3 flex-col w-full max-w-64 relative z-10">
-        {/* Neon glow behind signup button */}
+      {/* Enhanced Background Elements - Responsive */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 sm:w-96 sm:h-96 lg:w-[500px] lg:h-[500px] bg-white/8 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 sm:w-[500px] sm:h-[500px] lg:w-[600px] lg:h-[600px] bg-gray-100/15 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96 bg-blue-400/15 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/4 right-1/4 w-48 h-48 sm:w-64 sm:h-64 lg:w-80 lg:h-80 bg-cyan-400/15 rounded-full blur-3xl"></div>
+        <div className="absolute top-3/4 left-1/3 w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48 bg-white/6 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/6 left-1/6 w-40 h-40 sm:w-48 sm:h-48 lg:w-56 lg:h-56 bg-blue-300/12 rounded-full blur-3xl"></div>
+        {/* Desktop-only additional elements */}
+        <div className="hidden lg:block absolute top-1/3 right-1/3 w-32 h-32 bg-cyan-300/10 rounded-full blur-2xl"></div>
+        <div className="hidden lg:block absolute bottom-1/4 right-1/6 w-40 h-40 bg-white/5 rounded-full blur-3xl"></div>
+      </div>
+
+
+      {/* Content - Responsive buttons */}
+      <div className="flex gap-4 sm:gap-6 lg:gap-8 flex-col sm:flex-row w-full max-w-xs sm:max-w-md lg:max-w-2xl relative z-10">
+        {/* Enhanced Neon glow behind signup button */}
         <div className="relative">
-          <div className="absolute inset-0 bg-blue-400/50 rounded-xl blur-md animate-pulse"></div>
+          <div className="absolute inset-0 bg-blue-400/60 rounded-xl blur-lg animate-pulse"></div>
+          <div className="absolute inset-0 bg-blue-500/30 rounded-xl blur-xl animate-pulse" style={{animationDelay: '0.5s'}}></div>
           <Link
             href="/signup"
-            className="relative glass-button w-full px-6 py-4 text-center font-bold text-lg rounded-xl backdrop-blur-xl bg-white/30 border border-white/40 hover:bg-white/40 transition-all duration-300 shadow-2xl block text-white"
+            className="relative glass-button w-full px-6 py-4 sm:px-8 sm:py-5 lg:px-10 lg:py-6 text-center font-bold text-lg sm:text-xl lg:text-2xl rounded-xl backdrop-blur-xl bg-white/35 border border-white/50 hover:bg-white/45 transition-all duration-300 shadow-2xl block text-white hover:shadow-blue-500/25 hover:shadow-3xl"
           >
             ثبت نام
           </Link>
         </div>
 
-        {/* Neon glow behind login button */}
+        {/* Enhanced Neon glow behind login button */}
         <div className="relative">
-          <div className="absolute inset-0 bg-cyan-400/50 rounded-xl blur-md animate-pulse"></div>
+          <div className="absolute inset-0 bg-cyan-400/60 rounded-xl blur-lg animate-pulse"></div>
+          <div className="absolute inset-0 bg-cyan-500/30 rounded-xl blur-xl animate-pulse" style={{animationDelay: '0.5s'}}></div>
           <Link
             href="/login"
-            className="relative glass-button w-full px-6 py-4 text-center font-bold text-lg rounded-xl backdrop-blur-xl bg-white/25 border border-white/40 hover:bg-white/35 transition-all duration-300 shadow-2xl block text-white"
+            className="relative glass-button w-full px-6 py-4 sm:px-8 sm:py-5 lg:px-10 lg:py-6 text-center font-bold text-lg sm:text-xl lg:text-2xl rounded-xl backdrop-blur-xl bg-white/30 border border-white/50 hover:bg-white/40 transition-all duration-300 shadow-2xl block text-white hover:shadow-cyan-500/25 hover:shadow-3xl"
           >
             ورود
           </Link>
@@ -134,13 +87,10 @@ export default function HomePage() {
 
       </div>
 
-      {/* Motivational Messages - Mobile optimized */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10 px-4 text-center">
-        <p
-          key={currentMessage}
-          className="text-white/80 text-sm sm:text-base font-light animate-fade-in-out max-w-xs"
-        >
-          {motivationalMessages[currentMessage]}
+      {/* Welcome Message - Responsive */}
+      <div className="absolute bottom-50 left-1/2 transform -translate-x-1/2 z-10 px-4 text-center">
+        <p className="text-white/80 text-sm sm:text-lg lg:text-xl font-medium max-w-xs sm:max-w-sm lg:max-w-md">
+          {welcomeMessage}
         </p>
       </div>
 

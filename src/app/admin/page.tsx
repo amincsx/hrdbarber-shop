@@ -123,7 +123,7 @@ export default function AdminLogin() {
                             type="text"
                             value={loginData.username}
                             onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
-                            className="w-full p-4 glass-input text-glass"
+                            className="w-full p-4 rounded-xl bg-white/90 text-gray-800 border border-white/40 placeholder-gray-500 focus:bg-white focus:border-white/60 focus:outline-none transition-all duration-300"
                             placeholder={loginData.type === 'owner' ? 'ceo' : 'نام انگلیسی آرایشگر (مثلا hamid)'}
                             required
                         />
@@ -138,7 +138,7 @@ export default function AdminLogin() {
                             type="password"
                             value={loginData.password}
                             onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                            className="w-full p-4 glass-input text-glass"
+                            className="w-full p-4 rounded-xl bg-white/90 text-gray-800 border border-white/40 placeholder-gray-500 focus:bg-white focus:border-white/60 focus:outline-none transition-all duration-300"
                             placeholder="رمز عبور"
                             required
                         />
