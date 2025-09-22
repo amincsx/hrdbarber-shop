@@ -1,0 +1,26 @@
+# Database Configuration
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/hrdbarber?retryWrites=true&w=majority
+
+# Next.js Configuration
+NEXTAUTH_URL=https://your-app-name.liara.run
+NEXTAUTH_SECRET=your-nextauth-secret-key-here
+
+# API Configuration
+API_BASE_URL=https://your-app-name.liara.run
+
+# Melipayamak SMS API (for OTP)
+MELIPAYAMAK_USERNAME=your-melipayamak-username
+MELIPAYAMAK_PASSWORD=your-melipayamak-password
+MELIPAYAMAK_FROM=your-sender-number
+
+# Environment
+NODE_ENV=production
+
+# Optional: Redis (if you plan to use it)
+REDIS_URL=redis://localhost:6379
+
+# Optional: Email Configuration (if you plan to use email)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password

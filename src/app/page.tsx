@@ -2,8 +2,6 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import PWAInstall from '../components/PWAInstall';
-import PWAInstructions from '../components/PWAInstructions';
 
 export default function HomePage() {
   const [currentMessage, setCurrentMessage] = useState(0);
@@ -70,7 +68,7 @@ export default function HomePage() {
   }, [motivationalMessages.length]);
 
   return (
-    <div className="relative min-h-screen min-h-[100dvh] w-full flex flex-col items-center justify-end overflow-hidden px-4 pb-70" dir="rtl">
+    <div className="relative min-h-screen min-h-[100dvh] w-full flex flex-col items-center justify-start overflow-hidden px-4 pt-90" dir="rtl">
       {/* Blurry Black-Orange Background */}
       <div
         style={{
@@ -111,13 +109,13 @@ export default function HomePage() {
       ></div>
 
       {/* Content - Mobile-optimized buttons */}
-      <div className="flex gap-1.5 flex-col w-full max-w-52 relative z-10">
+      <div className="flex gap-3 flex-col w-full max-w-64 relative z-10">
         {/* Neon glow behind signup button */}
         <div className="relative">
-          <div className="absolute inset-0 bg-blue-400/30 rounded-lg blur-sm animate-pulse"></div>
+          <div className="absolute inset-0 bg-blue-400/50 rounded-xl blur-md animate-pulse"></div>
           <Link
             href="/signup"
-            className="relative glass-button w-full px-2.5 py-1.5 text-center font-medium text-xs rounded-lg backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-2xl block"
+            className="relative glass-button w-full px-6 py-4 text-center font-bold text-lg rounded-xl backdrop-blur-xl bg-white/30 border border-white/40 hover:bg-white/40 transition-all duration-300 shadow-2xl block text-white"
           >
             ثبت نام
           </Link>
@@ -125,17 +123,15 @@ export default function HomePage() {
 
         {/* Neon glow behind login button */}
         <div className="relative">
-          <div className="absolute inset-0 bg-cyan-400/30 rounded-lg blur-sm animate-pulse"></div>
+          <div className="absolute inset-0 bg-cyan-400/50 rounded-xl blur-md animate-pulse"></div>
           <Link
             href="/login"
-            className="relative glass-button w-full px-2.5 py-1.5 text-center font-medium text-xs rounded-lg backdrop-blur-xl bg-white/5 border border-white/20 hover:bg-white/15 transition-all duration-300 shadow-2xl block"
+            className="relative glass-button w-full px-6 py-4 text-center font-bold text-lg rounded-xl backdrop-blur-xl bg-white/25 border border-white/40 hover:bg-white/35 transition-all duration-300 shadow-2xl block text-white"
           >
             ورود
           </Link>
         </div>
 
-        {/* PWA Install Button - Below other buttons */}
-        <PWAInstall />
       </div>
 
       {/* Motivational Messages - Mobile optimized */}
@@ -148,8 +144,6 @@ export default function HomePage() {
         </p>
       </div>
 
-      {/* PWA Installation Instructions */}
-      <PWAInstructions />
     </div>
   );
 }
