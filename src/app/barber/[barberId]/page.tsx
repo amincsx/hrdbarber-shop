@@ -9,9 +9,9 @@ export default function BarberDashboard() {
     const barberId = params.barberId as string;
 
     useEffect(() => {
-        // Always redirect to admin login with barber pre-selected
+        // Always redirect to barber login with barber pre-selected
         // This page is just a redirect for direct access
-        window.location.href = `/admin?barber=${encodeURIComponent(barberId)}`;
+        window.location.href = `/barber-login?barber=${encodeURIComponent(barberId)}`;
     }, [barberId]);
 
     return (
