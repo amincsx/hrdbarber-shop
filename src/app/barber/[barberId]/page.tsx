@@ -9,26 +9,10 @@ export default function BarberDashboard() {
     const barberId = params.barberId as string;
 
     useEffect(() => {
-        // Check if user is already logged in as this barber
-        const session = localStorage.getItem('adminSession');
-        if (session) {
-            try {
-                const parsedSession = JSON.parse(session);
-                const decodedBarberId = decodeURIComponent(barberId);
-                
-                // If user is already logged in as this barber, go to dashboard
-                if (parsedSession.user && parsedSession.user.name === decodedBarberId) {
-                    router.push(`/admin/barber/${encodeURIComponent(barberId)}`);
-                    return;
-                }
-            } catch (err) {
-                // Invalid session, continue to login
-            }
-        }
-
-        // Redirect to admin login with barber pre-selected
-        router.push(`/admin?barber=${encodeURIComponent(barberId)}`);
-    }, [barberId, router]);
+        // Always redirect to admin login with barber pre-selected
+        // This page is just a redirect for direct access
+        window.location.href = `/admin?barber=${encodeURIComponent(barberId)}`;
+    }, [barberId]);
 
     return (
         <div className="min-h-screen relative flex items-center justify-center"
