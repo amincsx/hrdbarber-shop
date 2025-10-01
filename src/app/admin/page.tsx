@@ -43,11 +43,20 @@ function AdminLoginContent() {
             const result = await response.json();
 
             if (response.ok && result.success) {
-                // Store admin session
-                localStorage.setItem('adminSession', JSON.stringify({
-                    user: result.user,
-                    loginTime: new Date().toISOString()
-                }));
+                // Store session based on user type
+                if (result.user.type === 'barber') {
+                    // Store barber session for barber dashboard compatibility
+                    localStorage.setItem('barberSession', JSON.stringify({
+                        user: result.user,
+                        loginTime: new Date().toISOString()
+                    }));
+                } else {
+                    // Store admin session for owner/admin
+                    localStorage.setItem('adminSession', JSON.stringify({
+                        user: result.user,
+                        loginTime: new Date().toISOString()
+                    }));
+                }
 
                 // Redirect based on user type
                 if (result.user.type === 'owner') {

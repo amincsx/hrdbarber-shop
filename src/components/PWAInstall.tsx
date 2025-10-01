@@ -85,6 +85,10 @@ export default function PWAInstall() {
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
   const handleInstallClick = async () => {
+    console.log('🔧 User PWA install button clicked');
+    console.log('🔧 isIOS:', isIOS);
+    console.log('🔧 deferredPrompt:', deferredPrompt);
+    
     if (isIOS) {
       // Show iOS install instructions in a better modal
       setShowIOSInstructions(true);
@@ -92,6 +96,9 @@ export default function PWAInstall() {
     }
 
     if (!deferredPrompt) {
+      console.log('❌ No deferred prompt available for user PWA');
+      // Show manual install instructions
+      alert(`برای نصب اپلیکیشن آرایشگاه HRD:\n\n1. روی منوی سه نقطه (⋮) در مرورگر کلیک کنید\n2. "افزودن به صفحه اصلی" یا "Install app" را انتخاب کنید\n3. "نصب" یا "Install" را بزنید`);
       return;
     }
 
@@ -117,7 +124,15 @@ export default function PWAInstall() {
   };
 
   // Don't show install button if app is already installed
-  if (isInstalled || !showInstallButton) {
+  console.log('🔧 User PWA Install render check:', { isInstalled, showInstallButton, isIOS, deferredPrompt: !!deferredPrompt });
+  
+  if (isInstalled) {
+    console.log('🔧 User PWA already installed, not showing button');
+    return null;
+  }
+  
+  if (!showInstallButton) {
+    console.log('🔧 User PWA install button not ready yet');
     return null;
   }
 

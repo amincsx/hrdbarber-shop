@@ -93,9 +93,15 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
       const manifestURL = URL.createObjectURL(blob);
       
       // Remove existing barber manifest link if any
-      const existingLink = document.querySelector('link[rel="manifest"][data-barber="true"]');
-      if (existingLink) {
-        existingLink.remove();
+      const existingBarberLink = document.querySelector('link[rel="manifest"][data-barber="true"]');
+      if (existingBarberLink) {
+        existingBarberLink.remove();
+      }
+      
+      // Also temporarily remove the main manifest to avoid conflicts
+      const mainManifestLink = document.querySelector('link[rel="manifest"]:not([data-barber])');
+      if (mainManifestLink) {
+        mainManifestLink.style.display = 'none';
       }
 
       // Add new manifest link
