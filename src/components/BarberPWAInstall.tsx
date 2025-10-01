@@ -99,7 +99,7 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
       }
       
       // Also temporarily remove the main manifest to avoid conflicts
-      const mainManifestLink = document.querySelector('link[rel="manifest"]:not([data-barber])');
+      const mainManifestLink = document.querySelector('link[rel="manifest"]:not([data-barber])') as HTMLLinkElement;
       if (mainManifestLink) {
         mainManifestLink.style.display = 'none';
       }
