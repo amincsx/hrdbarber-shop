@@ -56,7 +56,7 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
         name: `داشبورد ${barberName} - آرایشگاه HRD`,
         short_name: `${barberName} - HRD`,
         description: `پنل مدیریت رزروها برای ${barberName}`,
-        start_url: `/admin/barber/${encodeURIComponent(barberId)}`,
+        start_url: `/admin/barber/${encodeURIComponent(barberId)}?pwa=1`,
         display: "standalone",
         background_color: "#1e293b",
         theme_color: "#1e293b",
@@ -104,6 +104,8 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
       manifestLink.href = manifestURL;
       manifestLink.setAttribute('data-barber', 'true');
       document.head.appendChild(manifestLink);
+      
+      console.log('🔧 Created barber manifest:', manifest);
     };
 
     // Listen for beforeinstallprompt event
@@ -165,8 +167,8 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
 
     if (!deferredPrompt) {
       console.log('❌ No deferred prompt available');
-      // Try to trigger install manually for testing
-      alert('برای نصب اپلیکیشن:\n\n1. روی منوی سه نقطه (⋮) در مرورگر کلیک کنید\n2. "افزودن به صفحه اصلی" را انتخاب کنید\n3. "نصب" را بزنید');
+      // Show manual install instructions
+      alert(`برای نصب اپلیکیشن ${barberName}:\n\n1. روی منوی سه نقطه (⋮) در مرورگر کلیک کنید\n2. "افزودن به صفحه اصلی" یا "Install app" را انتخاب کنید\n3. "نصب" یا "Install" را بزنید\n\nنام اپ: داشبورد ${barberName} - HRD`);
       return;
     }
 

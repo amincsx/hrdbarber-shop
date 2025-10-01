@@ -41,15 +41,32 @@ export default function SecureBarberDashboard() {
     const [showNewBookingAlert, setShowNewBookingAlert] = useState(false);
 
     useEffect(() => {
+        // Check if this is a PWA launch (has pwa=1 parameter)
+        const urlParams = new URLSearchParams(window.location.search);
+        const isPWA = urlParams.get('pwa') === '1';
+        
+        if (isPWA) {
+            console.log('🔧 PWA launch detected for barber:', barberId);
+        }
+
         // Check if user is authenticated barber
         const session = localStorage.getItem('adminSession');
         if (!session) {
+            if (isPWA) {
+                // For PWA, redirect to login with barber pre-selected
+                window.location.href = `/admin?barber=${encodeURIComponent(barberId)}`;
+                return;
+            }
             router.push('/admin');
             return;
         }
 
         const parsedSession = JSON.parse(session);
         if (parsedSession.user.type !== 'barber') {
+            if (isPWA) {
+                window.location.href = `/admin?barber=${encodeURIComponent(barberId)}`;
+                return;
+            }
             router.push('/admin');
             return;
         }
@@ -57,6 +74,10 @@ export default function SecureBarberDashboard() {
         // Check if barber is accessing their own dashboard
         const decodedBarberId = decodeURIComponent(barberId);
         if (parsedSession.user.name !== decodedBarberId) {
+            if (isPWA) {
+                window.location.href = `/admin/barber/${encodeURIComponent(parsedSession.user.name)}?pwa=1`;
+                return;
+            }
             router.push(`/admin/barber/${encodeURIComponent(parsedSession.user.name)}`);
             return;
         }

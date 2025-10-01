@@ -18,6 +18,7 @@ function AdminLoginContent() {
     useEffect(() => {
         const barberParam = searchParams.get('barber');
         if (barberParam) {
+            console.log('🔧 Barber parameter detected:', barberParam);
             setLoginData(prev => ({
                 ...prev,
                 username: decodeURIComponent(barberParam)
@@ -52,7 +53,17 @@ function AdminLoginContent() {
                 if (result.user.type === 'owner') {
                     router.push('/admin/owner');
                 } else {
-                    router.push(`/admin/barber/${result.user.name}`);
+                    // Check if this is a PWA login
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const isPWA = urlParams.get('pwa') === '1';
+                    const barberParam = urlParams.get('barber');
+                    
+                    if (isPWA || barberParam) {
+                        // For PWA, use window.location to ensure proper navigation
+                        window.location.href = `/admin/barber/${encodeURIComponent(result.user.name)}?pwa=1`;
+                    } else {
+                        router.push(`/admin/barber/${result.user.name}`);
+                    }
                 }
             } else {
                 setError(result.error || 'خطا در ورود');
