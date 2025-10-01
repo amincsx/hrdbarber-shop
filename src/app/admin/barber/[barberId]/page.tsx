@@ -38,6 +38,7 @@ export default function SecureBarberDashboard() {
     const [adminSession, setAdminSession] = useState<any>(null);
     const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set());
     const [lastBookingCount, setLastBookingCount] = useState<number>(0);
+    const [showNewBookingAlert, setShowNewBookingAlert] = useState(false);
 
     useEffect(() => {
         // Check if user is authenticated barber
@@ -91,38 +92,76 @@ export default function SecureBarberDashboard() {
                     // New booking detected!
                     const newBookings = (data.bookings || []).slice(0, newBookingCount - lastBookingCount);
                     
-                    // Show browser notification
+                    // Show browser notification with sound
                     if ('Notification' in window && Notification.permission === 'granted') {
                         const latestBooking = newBookings[0];
-                        new Notification('🎉 رزرو جدید!', {
-                            body: `${latestBooking.user_name}\n${latestBooking.services.join(', ')}\n${latestBooking.start_time}`,
+                        const notification = new Notification('🎉 رزرو جدید!', {
+                            body: `مشتری: ${latestBooking.user_name}\nخدمات: ${latestBooking.services.join(', ')}\nساعت: ${latestBooking.start_time}`,
                             icon: '/icon-192x192.png',
                             badge: '/icon-192x192.png',
                             tag: 'new-booking',
-                            requireInteraction: true
+                            requireInteraction: true,
+                            silent: false // Ensure sound plays
                         });
-                    }
-                    
-                    // Play notification sound
-                    try {
-                        // Create a simple beep sound using Web Audio API
-                        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-                        const oscillator = audioContext.createOscillator();
-                        const gainNode = audioContext.createGain();
                         
-                        oscillator.connect(gainNode);
-                        gainNode.connect(audioContext.destination);
-                        
-                        oscillator.frequency.value = 800; // Frequency in Hz
-                        oscillator.type = 'sine';
-                        
-                        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-                        
-                        oscillator.start(audioContext.currentTime);
-                        oscillator.stop(audioContext.currentTime + 0.5);
-                    } catch (err) {
-                        console.log('Could not play notification sound:', err);
+                        // Play notification sound
+                        try {
+                            // Create a more noticeable notification sound
+                            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+                            
+                            // Play a sequence of beeps for better attention
+                            const playBeep = (frequency: number, duration: number, delay: number) => {
+                                setTimeout(() => {
+                                    const oscillator = audioContext.createOscillator();
+                                    const gainNode = audioContext.createGain();
+                                    
+                                    oscillator.connect(gainNode);
+                                    gainNode.connect(audioContext.destination);
+                                    
+                                    oscillator.frequency.value = frequency;
+                                    oscillator.type = 'sine';
+                                    
+                                    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                                    
+                                    oscillator.start(audioContext.currentTime);
+                                    oscillator.stop(audioContext.currentTime + duration);
+                                }, delay);
+                            };
+                            
+                            // Play 3 beeps: high, low, high
+                            playBeep(1000, 0.2, 0);    // High beep
+                            playBeep(600, 0.2, 300);   // Low beep  
+                            playBeep(1000, 0.2, 600);  // High beep
+                            
+                            // Show visual alert on page
+                            setShowNewBookingAlert(true);
+                            setTimeout(() => setShowNewBookingAlert(false), 5000);
+                            
+                        } catch (err) {
+                            console.log('Could not play notification sound:', err);
+                        }
+                    } else {
+                        // If notifications not allowed, still try to play sound
+                        try {
+                            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+                            const oscillator = audioContext.createOscillator();
+                            const gainNode = audioContext.createGain();
+                            
+                            oscillator.connect(gainNode);
+                            gainNode.connect(audioContext.destination);
+                            
+                            oscillator.frequency.value = 1000;
+                            oscillator.type = 'sine';
+                            
+                            gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                            
+                            oscillator.start(audioContext.currentTime);
+                            oscillator.stop(audioContext.currentTime + 0.3);
+                        } catch (err) {
+                            console.log('Could not play notification sound:', err);
+                        }
                     }
                 }
                 
@@ -329,6 +368,19 @@ export default function SecureBarberDashboard() {
             </div>
 
             <div className="max-w-6xl mx-auto relative z-10 px-4">
+                {/* New Booking Alert */}
+                {showNewBookingAlert && (
+                    <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-xl shadow-2xl animate-pulse">
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl">🎉</span>
+                            <div>
+                                <p className="font-bold">رزرو جدید!</p>
+                                <p className="text-sm">لطفاً صفحه را تازه‌سازی کنید</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Header */}
                 <div className="glass-card p-4 sm:p-6 mb-6 floating">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

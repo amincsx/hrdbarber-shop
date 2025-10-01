@@ -127,15 +127,17 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Show install button for iOS devices
+    // Show install button for iOS devices (they don't fire beforeinstallprompt)
     if (isIOS && !isInstalled) {
       setShowInstallButton(true);
     }
 
-    // Always show the button for testing
+    // Show install button for Android/Chrome after a short delay
     setTimeout(() => {
-      setShowInstallButton(true);
-    }, 1000);
+      if (!isInstalled) {
+        setShowInstallButton(true);
+      }
+    }, 2000);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
