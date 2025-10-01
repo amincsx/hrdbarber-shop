@@ -9,9 +9,36 @@ export default function BarberDashboard() {
     const barberId = params.barberId as string;
 
     useEffect(() => {
-        // Always redirect to barber login with barber pre-selected
-        // This page is just a redirect for direct access
-        window.location.href = `/barber-login?barber=${encodeURIComponent(barberId)}`;
+        // Check if this is a PWA launch
+        const urlParams = new URLSearchParams(window.location.search);
+        const isPWA = urlParams.get('pwa') === '1';
+        
+        // Check if barber is already logged in
+        const session = localStorage.getItem('barberSession');
+        if (session) {
+            try {
+                const parsedSession = JSON.parse(session);
+                const decodedBarberId = decodeURIComponent(barberId);
+                
+                // If user is already logged in as this barber, go to dashboard
+                if (parsedSession.user && parsedSession.user.name === decodedBarberId) {
+                    console.log('🔧 Barber already logged in, going to dashboard');
+                    window.location.href = `/barber-dashboard/${encodeURIComponent(barberId)}?pwa=1`;
+                    return;
+                }
+            } catch (err) {
+                // Invalid session, continue to login
+            }
+        }
+        
+        if (isPWA) {
+            console.log('🔧 PWA launch detected for barber:', barberId);
+            // For PWA, go to barber login with PWA context
+            window.location.href = `/barber-login?barber=${encodeURIComponent(barberId)}&pwa=1`;
+        } else {
+            // For direct access, go to barber login
+            window.location.href = `/barber-login?barber=${encodeURIComponent(barberId)}`;
+        }
     }, [barberId]);
 
     return (

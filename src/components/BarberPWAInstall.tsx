@@ -56,7 +56,7 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
         name: `داشبورد ${barberName} - آرایشگاه HRD`,
         short_name: `${barberName} - HRD`,
         description: `پنل مدیریت رزروها برای ${barberName}`,
-        start_url: `/barber-dashboard/${encodeURIComponent(barberId)}?pwa=1`,
+        start_url: `/barber/${encodeURIComponent(barberId)}?pwa=1`,
         display: "standalone",
         background_color: "#1e293b",
         theme_color: "#1e293b",

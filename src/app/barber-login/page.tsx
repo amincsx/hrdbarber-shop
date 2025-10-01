@@ -54,8 +54,10 @@ function BarberLoginContent() {
                 // Redirect to barber dashboard
                 const urlParams = new URLSearchParams(window.location.search);
                 const isPWA = urlParams.get('pwa') === '1';
+                const barberParam = urlParams.get('barber');
                 
-                if (isPWA) {
+                if (isPWA || barberParam) {
+                    // For PWA, use window.location to ensure proper navigation
                     window.location.href = `/barber-dashboard/${encodeURIComponent(result.user.name)}?pwa=1`;
                 } else {
                     router.push(`/barber-dashboard/${result.user.name}`);
