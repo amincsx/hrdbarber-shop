@@ -60,9 +60,9 @@ function AdminLoginContent() {
                     
                     if (isPWA || barberParam) {
                         // For PWA, use window.location to ensure proper navigation
-                        window.location.href = `/admin/barber/${encodeURIComponent(result.user.name)}?pwa=1`;
+                        window.location.href = `/barber-dashboard/${encodeURIComponent(result.user.name)}?pwa=1`;
                     } else {
-                        router.push(`/admin/barber/${result.user.name}`);
+                        router.push(`/barber-dashboard/${result.user.name}`);
                     }
                 }
             } else {

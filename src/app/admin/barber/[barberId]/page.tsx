@@ -75,10 +75,10 @@ export default function SecureBarberDashboard() {
         const decodedBarberId = decodeURIComponent(barberId);
         if (parsedSession.user.name !== decodedBarberId) {
             if (isPWA) {
-                window.location.href = `/admin/barber/${encodeURIComponent(parsedSession.user.name)}?pwa=1`;
+                window.location.href = `/barber-dashboard/${encodeURIComponent(parsedSession.user.name)}?pwa=1`;
                 return;
             }
-            router.push(`/admin/barber/${encodeURIComponent(parsedSession.user.name)}`);
+            router.push(`/barber-dashboard/${encodeURIComponent(parsedSession.user.name)}`);
             return;
         }
 

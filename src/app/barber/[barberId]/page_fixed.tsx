@@ -54,7 +54,7 @@ export default function BarberDashboard() {
             // Check if barber is accessing their own dashboard
             const decodedBarberId = decodeURIComponent(barberId);
             if (parsedSession.user.name !== decodedBarberId) {
-                router.push(`/admin/barber/${encodeURIComponent(parsedSession.user.name)}`);
+                router.push(`/barber-dashboard/${encodeURIComponent(parsedSession.user.name)}`);
                 return;
             }
 
