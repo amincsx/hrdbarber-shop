@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function AdminLogin() {
+function AdminLoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [loginData, setLoginData] = useState({
@@ -197,5 +197,28 @@ export default function AdminLogin() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function AdminLogin() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
+                style={{
+                    backgroundImage: 'url(/picbg2.jpg)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundAttachment: 'fixed'
+                }}>
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+                <div className="glass-card p-8 text-center relative z-10">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white/60 mx-auto"></div>
+                    <p className="mt-4 text-white/90">در حال بارگذاری...</p>
+                </div>
+            </div>
+        }>
+            <AdminLoginContent />
+        </Suspense>
     );
 }
