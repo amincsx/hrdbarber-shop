@@ -22,6 +22,7 @@ export default function PWAInstall() {
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isInstalling, setIsInstalling] = useState(false);
 
   useEffect(() => {
     // Check if app is already installed
@@ -58,6 +59,8 @@ export default function PWAInstall() {
       setIsInstalled(true);
       setShowInstallButton(false);
       setDeferredPrompt(null);
+      setIsInstalling(false);
+      console.log('✅ PWA installation completed');
     };
 
     checkIfInstalled();
@@ -71,10 +74,12 @@ export default function PWAInstall() {
       setShowInstallButton(true);
     }
 
-    // Always show the button for testing/demo purposes
+    // Show button faster - reduce delay for better UX
     setTimeout(() => {
-      setShowInstallButton(true);
-    }, 1000);
+      if (!isInstalled) {
+        setShowInstallButton(true);
+      }
+    }, 300);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -103,7 +108,10 @@ export default function PWAInstall() {
     }
 
     try {
-      // Show the install prompt
+      setIsInstalling(true);
+      console.log('🚀 Starting PWA installation...');
+      
+      // Show the install prompt immediately
       await deferredPrompt.prompt();
       
       // Wait for the user to respond
@@ -111,15 +119,18 @@ export default function PWAInstall() {
       
       if (outcome === 'accepted') {
         console.log('✅ PWA install accepted');
+        // Don't hide button immediately - let the appinstalled event handle it
       } else {
         console.log('❌ PWA install dismissed');
+        setIsInstalling(false);
       }
       
       // Clear the deferred prompt
       setDeferredPrompt(null);
-      setShowInstallButton(false);
     } catch (error) {
       console.error('PWA install error:', error);
+      setIsInstalling(false);
+      alert('خطا در نصب اپلیکیشن. لطفاً دوباره تلاش کنید.');
     }
   };
 
@@ -143,22 +154,36 @@ export default function PWAInstall() {
         <div className="relative inline-block">
           <button
             onClick={handleInstallClick}
-            className="relative w-20 h-20 rounded-xl backdrop-blur-xl bg-white/10 border border-white/30 hover:bg-white/20 transition-all duration-300 shadow-2xl flex items-center justify-center hover:scale-105 p-3"
+            disabled={isInstalling}
+            className={`relative w-20 h-20 rounded-xl backdrop-blur-xl border transition-all duration-300 shadow-2xl flex items-center justify-center p-3 ${
+              isInstalling 
+                ? 'bg-blue-500/20 border-blue-500/50 cursor-not-allowed' 
+                : 'bg-white/10 border-white/30 hover:bg-white/20 hover:scale-105'
+            }`}
             aria-label="نصب اپلیکیشن"
             title="نصب اپلیکیشن"
           >
-            <img 
-              src="/apple-touch-icon.png" 
-              alt="HRD Logo" 
-              className="w-full h-full object-contain rounded-lg"
-            />
+            {isInstalling ? (
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
+            ) : (
+              <img 
+                src="/apple-touch-icon.png" 
+                alt="HRD Logo" 
+                className="w-full h-full object-contain rounded-lg"
+              />
+            )}
           </button>
         </div>
         
         {/* Install instruction text */}
         <p className="text-white/70 text-xs mt-2 font-light">
-          نصب اپلیکیشن
+          {isInstalling ? 'در حال نصب...' : 'نصب اپلیکیشن'}
         </p>
+        
+        {/* Debug info */}
+        <div className="text-xs text-white/40 mt-1">
+          {deferredPrompt ? '✅ آماده' : '⏳ در انتظار'}
+        </div>
       </div>
 
       {/* iOS Install Instructions Modal */}

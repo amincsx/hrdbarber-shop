@@ -44,9 +44,9 @@
       "url": "/booking",
       "icons": [
         {
-          "src": "/logo.jpg",
+          "src": "/icon-192x192.png",
           "sizes": "192x192",
-          "type": "image/jpeg"
+          "type": "image/png"
         }
       ]
     },
@@ -57,9 +57,9 @@
       "url": "/admin",
       "icons": [
         {
-          "src": "/logo.jpg",
+          "src": "/icon-192x192.png",
           "sizes": "192x192",
-          "type": "image/jpeg"
+          "type": "image/png"
         }
       ]
     }
