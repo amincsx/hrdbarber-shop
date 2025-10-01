@@ -146,6 +146,11 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
   }, [barberName, barberId, isIOS, isInstalled]);
 
   const handleInstallClick = async () => {
+    console.log('🔧 Install button clicked');
+    console.log('🔧 isIOS:', isIOS);
+    console.log('🔧 deferredPrompt:', deferredPrompt);
+    console.log('🔧 showInstallButton:', showInstallButton);
+    
     if (isIOS) {
       // Show iOS instructions and guide user
       setShowIOSInstructions(true);
@@ -159,10 +164,14 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
     }
 
     if (!deferredPrompt) {
+      console.log('❌ No deferred prompt available');
+      // Try to trigger install manually for testing
+      alert('برای نصب اپلیکیشن:\n\n1. روی منوی سه نقطه (⋮) در مرورگر کلیک کنید\n2. "افزودن به صفحه اصلی" را انتخاب کنید\n3. "نصب" را بزنید');
       return;
     }
 
     try {
+      console.log('🚀 Triggering install prompt...');
       await deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       
@@ -176,10 +185,14 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
       setShowInstallButton(false);
     } catch (error) {
       console.error('PWA install error:', error);
+      alert('خطا در نصب اپلیکیشن');
     }
   };
 
+  console.log('🔧 Render check:', { isInstalled, showInstallButton, isIOS });
+  
   if (isInstalled || !showInstallButton) {
+    console.log('🔧 Not showing install button:', { isInstalled, showInstallButton });
     return null;
   }
 
@@ -195,6 +208,9 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
           <span className="text-lg">📱</span>
           <span className="text-white text-sm font-medium">نصب اپ</span>
         </button>
+        <div className="text-xs text-white/60 mt-1">
+          Debug: {isIOS ? 'iOS' : 'Android'} | {deferredPrompt ? 'Prompt Ready' : 'No Prompt'}
+        </div>
       </div>
 
       {/* iOS Install Instructions Modal */}
