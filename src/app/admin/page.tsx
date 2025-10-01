@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function AdminLogin() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [loginData, setLoginData] = useState({
         username: '',
         password: '',
@@ -12,6 +13,17 @@ export default function AdminLogin() {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    // Check for barber parameter in URL
+    useEffect(() => {
+        const barberParam = searchParams.get('barber');
+        if (barberParam) {
+            setLoginData(prev => ({
+                ...prev,
+                username: decodeURIComponent(barberParam)
+            }));
+        }
+    }, [searchParams]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
