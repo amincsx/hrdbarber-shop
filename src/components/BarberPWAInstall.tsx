@@ -139,7 +139,7 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
       if (!isInstalled) {
         setShowInstallButton(true);
       }
-    }, 2000);
+    }, 1000);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -191,10 +191,15 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
     }
   };
 
-  console.log('🔧 Render check:', { isInstalled, showInstallButton, isIOS });
+  console.log('🔧 Render check:', { isInstalled, showInstallButton, isIOS, deferredPrompt: !!deferredPrompt });
   
-  if (isInstalled || !showInstallButton) {
-    console.log('🔧 Not showing install button:', { isInstalled, showInstallButton });
+  if (isInstalled) {
+    console.log('🔧 App already installed, not showing button');
+    return null;
+  }
+  
+  if (!showInstallButton) {
+    console.log('🔧 Install button not ready yet');
     return null;
   }
 

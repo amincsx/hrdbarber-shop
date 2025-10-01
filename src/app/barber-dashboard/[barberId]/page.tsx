@@ -104,6 +104,22 @@ export default function BarberDashboard() {
                     router.push(`/barber-dashboard/${parsedSession.user.name}`);
                     return;
                 }
+            } else {
+                // For auto-login, check if the session matches the barber
+                const decodedBarberId = decodeURIComponent(barberId);
+                if (parsedSession.user.name !== decodedBarberId) {
+                    console.log('🔧 Auto-login: Session mismatch, updating session for:', decodedBarberId);
+                    const updatedSession = {
+                        user: {
+                            name: decodedBarberId,
+                            type: 'barber'
+                        },
+                        loginTime: new Date().toISOString(),
+                        auto: true
+                    };
+                    localStorage.setItem('barberSession', JSON.stringify(updatedSession));
+                    setBarberSession(updatedSession);
+                }
             }
         }
         if (barberId) {

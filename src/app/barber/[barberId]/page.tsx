@@ -12,6 +12,9 @@ export default function BarberDashboard() {
         // Check if this is a PWA launch
         const urlParams = new URLSearchParams(window.location.search);
         const isPWA = urlParams.get('pwa') === '1';
+        const isAuto = urlParams.get('auto') === '1';
+        
+        console.log('🔧 Barber page accessed:', { barberId, isPWA, isAuto });
         
         // Check if barber is already logged in
         const session = localStorage.getItem('barberSession');
@@ -23,17 +26,27 @@ export default function BarberDashboard() {
                 // If user is already logged in as this barber, go to dashboard
                 if (parsedSession.user && parsedSession.user.name === decodedBarberId) {
                     console.log('🔧 Barber already logged in, going to dashboard');
-                    window.location.href = `/barber-dashboard/${encodeURIComponent(barberId)}?pwa=1`;
+                    if (isPWA) {
+                        window.location.href = `/barber-dashboard/${encodeURIComponent(barberId)}?pwa=1`;
+                    } else {
+                        window.location.href = `/barber-dashboard/${encodeURIComponent(barberId)}`;
+                    }
                     return;
                 }
             } catch (err) {
                 // Invalid session, continue to login
+                console.log('🔧 Invalid session, clearing and redirecting');
+                localStorage.removeItem('barberSession');
             }
         }
         
-        if (isPWA) {
+        if (isPWA && isAuto) {
+            console.log('🔧 Auto-login PWA detected, going directly to dashboard');
+            // For auto-login PWA, go directly to dashboard with auto parameter
+            window.location.href = `/barber-dashboard/${encodeURIComponent(barberId)}?pwa=1&auto=1`;
+        } else if (isPWA) {
             console.log('🔧 PWA launch detected for barber:', barberId);
-            // For PWA, go to barber login with PWA context
+            // For regular PWA, go to barber login with PWA context
             window.location.href = `/barber-login?barber=${encodeURIComponent(barberId)}&pwa=1`;
         } else {
             // For direct access, go to barber login
