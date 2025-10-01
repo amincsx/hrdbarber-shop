@@ -89,7 +89,8 @@ async function POST(request, { params }) {
         }
 
         // Find the booking
-        const booking = SimpleFileDB.getBookingById(bookingId);
+        const allBookings = await MongoDatabase.getAllBookings();
+        const booking = allBookings.find(b => b._id === bookingId || b.id === bookingId);
 
         if (!booking) {
             return NextResponse.json(
@@ -107,10 +108,7 @@ async function POST(request, { params }) {
         }
 
         // Update booking status
-        const updatedBooking = SimpleFileDB.updateBooking(bookingId, {
-            status: status,
-            notes: notes || booking.notes
-        });
+        const updatedBooking = await MongoDatabase.updateBookingStatus(bookingId, status, notes || booking.notes);
 
         if (updatedBooking) {
             return NextResponse.json({

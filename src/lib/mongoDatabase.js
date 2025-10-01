@@ -52,7 +52,11 @@ class MongoDatabase {
                 date_key: -1, 
                 start_time: -1 
             });
-            return bookings;
+            // Add id field for compatibility with frontend
+            return bookings.map(booking => ({
+                ...booking.toObject(),
+                id: booking._id.toString()
+            }));
         } catch (error) {
             console.error('Error getting bookings:', error);
             return [];
@@ -89,7 +93,11 @@ class MongoDatabase {
                 date_key: -1, 
                 start_time: -1 
             });
-            return bookings;
+            // Add id field for compatibility with frontend
+            return bookings.map(booking => ({
+                ...booking.toObject(),
+                id: booking._id.toString()
+            }));
         } catch (error) {
             console.error('Error getting bookings by barber:', error);
             return [];
@@ -100,7 +108,11 @@ class MongoDatabase {
         try {
             await dbConnect();
             const bookings = await Booking.find({ date_key: dateKey }).sort({ start_time: 1 });
-            return bookings;
+            // Add id field for compatibility with frontend
+            return bookings.map(booking => ({
+                ...booking.toObject(),
+                id: booking._id.toString()
+            }));
         } catch (error) {
             console.error('Error getting bookings by date:', error);
             return [];
@@ -141,6 +153,25 @@ class MongoDatabase {
             return null;
         } catch (error) {
             console.error('Error updating booking status:', error);
+            return null;
+        }
+    }
+
+    static async updateBooking(bookingId, updateData) {
+        try {
+            await dbConnect();
+            const result = await Booking.findByIdAndUpdate(
+                bookingId,
+                { ...updateData, updated_at: new Date() },
+                { new: true }
+            );
+            if (result) {
+                console.log('✅ Booking updated in MongoDB:', bookingId);
+                return result;
+            }
+            return null;
+        } catch (error) {
+            console.error('Error updating booking:', error);
             return null;
         }
     }

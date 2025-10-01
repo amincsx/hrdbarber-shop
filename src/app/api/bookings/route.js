@@ -133,7 +133,7 @@ async function DELETE(request) {
 
         // Find booking in MongoDB
         const allBookings = await MongoDatabase.getAllBookings();
-        const booking = allBookings.find(b => b.id === booking_id);
+        const booking = allBookings.find(b => b._id === booking_id || b.id === booking_id);
 
         if (!booking) {
             return NextResponse.json(
@@ -197,7 +197,8 @@ async function PUT(request) {
         }
 
         // Find existing booking
-        const existingBooking = SimpleFileDB.getBookingById(id);
+        const allBookings = await MongoDatabase.getAllBookings();
+        const existingBooking = allBookings.find(b => b._id === id || b.id === id);
 
         if (!existingBooking) {
             return NextResponse.json(
@@ -213,7 +214,19 @@ async function PUT(request) {
             const checkEnd = bookingUpdates.end_time || existingBooking.end_time;
             const checkBarber = bookingUpdates.barber || existingBooking.barber;
 
-            const hasConflict = SimpleFileDB.hasConflict(checkDate, checkStart, checkEnd, checkBarber, id);
+            // Check for conflicts with other bookings
+            const existingBookings = await MongoDatabase.getBookingsByDate(checkDate);
+            const hasConflict = existingBookings.some(booking => {
+                if (booking.id === id) return false; // Skip current booking
+                if (booking.barber !== checkBarber) return false;
+                
+                const requestStart = checkStart;
+                const requestEnd = checkEnd;
+                const existingStart = booking.start_time;
+                const existingEnd = booking.end_time;
+                
+                return (requestStart < existingEnd && requestEnd > existingStart);
+            });
 
             if (hasConflict) {
                 return NextResponse.json(
@@ -224,7 +237,7 @@ async function PUT(request) {
         }
 
         // Update booking
-        const updatedBooking = SimpleFileDB.updateBooking(id, bookingUpdates);
+        const updatedBooking = await MongoDatabase.updateBooking(id, bookingUpdates);
 
         if (updatedBooking) {
             return NextResponse.json({
