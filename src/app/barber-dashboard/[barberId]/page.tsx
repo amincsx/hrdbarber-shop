@@ -44,45 +44,68 @@ export default function BarberDashboard() {
         // Check if this is a PWA launch (has pwa=1 parameter)
         const urlParams = new URLSearchParams(window.location.search);
         const isPWA = urlParams.get('pwa') === '1';
+        const isAuto = urlParams.get('auto') === '1';
         
         if (isPWA) {
             console.log('🔧 PWA launch detected for barber:', barberId);
+        }
+        
+        if (isAuto) {
+            console.log('🔧 Auto-login PWA detected for barber:', barberId);
         }
 
         // Check if user is authenticated barber
         const session = localStorage.getItem('barberSession');
         if (!session) {
-            if (isPWA) {
-                // For PWA, redirect to barber login with barber pre-selected
+            if (isAuto) {
+                // For auto PWA, create a temporary session for this barber
+                console.log('🔧 Creating auto-session for barber:', barberId);
+                const autoSession = {
+                    user: {
+                        name: decodeURIComponent(barberId),
+                        type: 'barber'
+                    },
+                    loginTime: new Date().toISOString(),
+                    auto: true
+                };
+                localStorage.setItem('barberSession', JSON.stringify(autoSession));
+                setBarberSession(autoSession);
+                // Continue to dashboard without redirect
+            } else if (isPWA) {
+                // For regular PWA, redirect to barber login with barber pre-selected
                 window.location.href = `/barber-login?barber=${encodeURIComponent(barberId)}&pwa=1`;
                 return;
-            }
-            router.push('/barber-login');
-            return;
-        }
-
-        const parsedSession = JSON.parse(session);
-        if (parsedSession.user.type !== 'barber') {
-            if (isPWA) {
-                window.location.href = `/barber-login?barber=${encodeURIComponent(barberId)}&pwa=1`;
+            } else {
+                router.push('/barber-login');
                 return;
             }
-            router.push('/barber-login');
-            return;
-        }
+        } else {
+            // Parse existing session
+            const parsedSession = JSON.parse(session);
+            setBarberSession(parsedSession);
+            
+            if (!isAuto) {
+                if (parsedSession.user.type !== 'barber') {
+                    if (isPWA) {
+                        window.location.href = `/barber-login?barber=${encodeURIComponent(barberId)}&pwa=1`;
+                        return;
+                    }
+                    router.push('/barber-login');
+                    return;
+                }
 
-        // Check if barber is accessing their own dashboard
-        const decodedBarberId = decodeURIComponent(barberId);
-        if (parsedSession.user.name !== decodedBarberId) {
-            if (isPWA) {
-                window.location.href = `/barber-dashboard/${encodeURIComponent(parsedSession.user.name)}?pwa=1`;
-                return;
+                // Check if barber is accessing their own dashboard
+                const decodedBarberId = decodeURIComponent(barberId);
+                if (parsedSession.user.name !== decodedBarberId) {
+                    if (isPWA) {
+                        window.location.href = `/barber-dashboard/${encodeURIComponent(parsedSession.user.name)}?pwa=1`;
+                        return;
+                    }
+                    router.push(`/barber-dashboard/${parsedSession.user.name}`);
+                    return;
+                }
             }
-            router.push(`/barber-dashboard/${parsedSession.user.name}`);
-            return;
         }
-
-        setBarberSession(parsedSession);
         if (barberId) {
             fetchBarberBookings();
             
