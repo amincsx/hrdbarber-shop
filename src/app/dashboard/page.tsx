@@ -25,8 +25,10 @@ export default function DashboardPage() {
 
     // Find the most recent booking that hasn't ended yet
     const activeOrUpcomingBookings = bookings.filter((booking: any) => {
-      const bookingDate = new Date(booking.date_key);
-      const endTime = new Date(booking.date_key + 'T' + booking.end_time);
+      // Create date in local timezone to avoid UTC conversion issues
+      const [year, month, day] = booking.date_key.split('-').map(Number);
+      const [hour, minute] = booking.end_time.split(':').map(Number);
+      const endTime = new Date(year, month - 1, day, hour, minute);
 
       return endTime.getTime() > currentTime;
     });
@@ -38,12 +40,20 @@ export default function DashboardPage() {
     } else {
       // Find the latest end time
       const latestBooking = activeOrUpcomingBookings.reduce((latest: any, current: any) => {
-        const latestEnd = new Date(latest.date_key + 'T' + latest.end_time);
-        const currentEnd = new Date(current.date_key + 'T' + current.end_time);
+        const [yearLatest, monthLatest, dayLatest] = latest.date_key.split('-').map(Number);
+        const [hourLatest, minuteLatest] = latest.end_time.split(':').map(Number);
+        const latestEnd = new Date(yearLatest, monthLatest - 1, dayLatest, hourLatest, minuteLatest);
+        
+        const [yearCurrent, monthCurrent, dayCurrent] = current.date_key.split('-').map(Number);
+        const [hourCurrent, minuteCurrent] = current.end_time.split(':').map(Number);
+        const currentEnd = new Date(yearCurrent, monthCurrent - 1, dayCurrent, hourCurrent, minuteCurrent);
+        
         return currentEnd > latestEnd ? current : latest;
       });
 
-      const latestEndTime = new Date(latestBooking.date_key + 'T' + latestBooking.end_time);
+      const [year, month, day] = latestBooking.date_key.split('-').map(Number);
+      const [hour, minute] = latestBooking.end_time.split(':').map(Number);
+      const latestEndTime = new Date(year, month - 1, day, hour, minute);
 
       if (latestEndTime.getTime() <= currentTime) {
         // Latest booking has ended, can book
@@ -84,8 +94,15 @@ export default function DashboardPage() {
             // Sort by date and time (most recent first)
             if (bookings.length > 0) {
               bookings.sort((a: any, b: any) => {
-                const dateA = new Date(a.date_key + 'T' + a.start_time);
-                const dateB = new Date(b.date_key + 'T' + b.start_time);
+                // Create dates in local timezone to avoid UTC conversion issues
+                const [yearA, monthA, dayA] = a.date_key.split('-').map(Number);
+                const [hourA, minuteA] = a.start_time.split(':').map(Number);
+                const dateA = new Date(yearA, monthA - 1, dayA, hourA, minuteA);
+                
+                const [yearB, monthB, dayB] = b.date_key.split('-').map(Number);
+                const [hourB, minuteB] = b.start_time.split(':').map(Number);
+                const dateB = new Date(yearB, monthB - 1, dayB, hourB, minuteB);
+                
                 return dateB.getTime() - dateA.getTime();
               });
             }
@@ -126,7 +143,11 @@ export default function DashboardPage() {
     }
     
     const now = new Date();
-    const bookingDateTime = new Date(booking.date_key + 'T' + booking.start_time);
+    // Create date in local timezone to avoid UTC conversion issues
+    const [year, month, day] = booking.date_key.split('-').map(Number);
+    const [hour, minute] = booking.start_time.split(':').map(Number);
+    const bookingDateTime = new Date(year, month - 1, day, hour, minute);
+    
     const hoursDifference = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
     
     // Can modify if more than 1 hour before start time and not cancelled
@@ -185,32 +206,52 @@ export default function DashboardPage() {
   // Filter bookings into upcoming and past
   const getUpcomingBookings = () => {
     const now = new Date();
-    // Add 5 minutes buffer to ensure new bookings stay in upcoming
-    const bufferTime = new Date(now.getTime() + 5 * 60 * 1000);
+    // Add 30 minutes buffer to ensure new bookings stay in upcoming (increased from 5 minutes)
+    const bufferTime = new Date(now.getTime() + 30 * 60 * 1000);
     
     return userBookings.filter(booking => {
-      const bookingDateTime = new Date(booking.date_key + 'T' + booking.start_time);
+      // Create date in local timezone to avoid UTC conversion issues
+      const [year, month, day] = booking.date_key.split('-').map(Number);
+      const [hour, minute] = booking.start_time.split(':').map(Number);
+      const bookingDateTime = new Date(year, month - 1, day, hour, minute);
+      
       // Booking is upcoming if it's in the future (with buffer) and not cancelled
       return bookingDateTime >= bufferTime && booking.status !== 'cancelled';
     }).sort((a, b) => {
-      const dateA = new Date(a.date_key + 'T' + a.start_time);
-      const dateB = new Date(b.date_key + 'T' + b.start_time);
+      const [yearA, monthA, dayA] = a.date_key.split('-').map(Number);
+      const [hourA, minuteA] = a.start_time.split(':').map(Number);
+      const dateA = new Date(yearA, monthA - 1, dayA, hourA, minuteA);
+      
+      const [yearB, monthB, dayB] = b.date_key.split('-').map(Number);
+      const [hourB, minuteB] = b.start_time.split(':').map(Number);
+      const dateB = new Date(yearB, monthB - 1, dayB, hourB, minuteB);
+      
       return dateA.getTime() - dateB.getTime();
     });
   };
 
   const getPastBookings = () => {
     const now = new Date();
-    // Add 5 minutes buffer to ensure past bookings go to past section
-    const bufferTime = new Date(now.getTime() + 5 * 60 * 1000);
+    // Add 30 minutes buffer to ensure past bookings go to past section (increased from 5 minutes)
+    const bufferTime = new Date(now.getTime() + 30 * 60 * 1000);
     
     return userBookings.filter(booking => {
-      const bookingDateTime = new Date(booking.date_key + 'T' + booking.start_time);
+      // Create date in local timezone to avoid UTC conversion issues
+      const [year, month, day] = booking.date_key.split('-').map(Number);
+      const [hour, minute] = booking.start_time.split(':').map(Number);
+      const bookingDateTime = new Date(year, month - 1, day, hour, minute);
+      
       // Booking is past if it's in the past (with buffer) or cancelled
       return bookingDateTime < bufferTime || booking.status === 'cancelled';
     }).sort((a, b) => {
-      const dateA = new Date(a.date_key + 'T' + a.start_time);
-      const dateB = new Date(b.date_key + 'T' + b.start_time);
+      const [yearA, monthA, dayA] = a.date_key.split('-').map(Number);
+      const [hourA, minuteA] = a.start_time.split(':').map(Number);
+      const dateA = new Date(yearA, monthA - 1, dayA, hourA, minuteA);
+      
+      const [yearB, monthB, dayB] = b.date_key.split('-').map(Number);
+      const [hourB, minuteB] = b.start_time.split(':').map(Number);
+      const dateB = new Date(yearB, monthB - 1, dayB, hourB, minuteB);
+      
       return dateB.getTime() - dateA.getTime();
     });
   };

@@ -890,9 +890,14 @@ export default function BookingPage() {
         const endTime = minutesToTime(endMinutes);
 
         // Create booking object for API (with correct field names)
+        // Use local date format instead of UTC to avoid timezone issues
+        const localDateKey = selectedDateObj.getFullYear() + '-' + 
+            String(selectedDateObj.getMonth() + 1).padStart(2, '0') + '-' + 
+            String(selectedDateObj.getDate()).padStart(2, '0');
+            
         const apiBooking = {
             user_id: userData?.phone || 'unknown',
-            date_key: selectedDateObj.toISOString().split('T')[0],
+            date_key: localDateKey,
             start_time: selectedTime,
             end_time: endTime,
             barber: selectedBarber,
@@ -906,7 +911,7 @@ export default function BookingPage() {
         // Create booking object for localStorage (with legacy field names)
         const localBooking = {
             id: Date.now().toString(),
-            dateKey: selectedDateObj.toISOString().split('T')[0],
+            dateKey: localDateKey,
             date: formatPersianDateSync(selectedDateObj),
             startTime: selectedTime,
             endTime: endTime,

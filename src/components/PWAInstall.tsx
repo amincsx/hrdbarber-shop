@@ -180,10 +180,6 @@ export default function PWAInstall() {
           {isInstalling ? 'در حال نصب...' : 'نصب اپلیکیشن'}
         </p>
         
-        {/* Debug info */}
-        <div className="text-xs text-white/40 mt-1">
-          {deferredPrompt ? '✅ آماده' : '⏳ در انتظار'}
-        </div>
       </div>
 
       {/* iOS Install Instructions Modal */}
