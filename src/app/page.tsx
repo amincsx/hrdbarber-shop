@@ -5,6 +5,19 @@ import PWAInstall from '@/components/PWAInstall';
 
 export default function HomePage() {
   const welcomeMessage = "به آرایشگاه HRD خوش آمدید - برای رزرو وقت وارد شوید";
+  
+  // Check if this is a barber PWA that somehow ended up here
+  if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPWA = urlParams.get('pwa') === '1';
+    const isAuto = urlParams.get('auto') === '1';
+    
+    if (isPWA || isAuto) {
+      console.error('🚨 Barber PWA opened main page instead of barber dashboard!');
+      console.log('Current URL:', window.location.href);
+      console.log('PWA params:', { isPWA, isAuto });
+    }
+  }
 
   return (
     <div className="relative min-h-screen min-h-[100dvh] w-full flex flex-col items-center justify-center overflow-hidden px-4 sm:px-8 lg:px-12" dir="rtl">
