@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const [userBookings, setUserBookings] = useState<any[]>([]);
   const [canBookNew, setCanBookNew] = useState<boolean>(true);
   const [nextAvailableTime, setNextAvailableTime] = useState<string>('');
+  const [showPastBookings, setShowPastBookings] = useState<boolean>(false);
 
   const checkBookingEligibility = (bookings: any[]) => {
     if (bookings.length === 0) {
@@ -117,6 +118,90 @@ export default function DashboardPage() {
     return date.toLocaleDateString('fa-IR', options);
   };
 
+  // Check if booking can be modified (more than 1 hour before start time)
+  const canModifyBooking = (booking: any): boolean => {
+    const now = new Date();
+    const bookingDateTime = new Date(booking.date_key + 'T' + booking.start_time);
+    const hoursDifference = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+    
+    // Can modify if more than 1 hour before start time and not cancelled
+    return hoursDifference > 1 && booking.status !== 'cancelled';
+  };
+
+  // Cancel booking
+  const handleCancelBooking = async (booking: any) => {
+    if (!canModifyBooking(booking)) {
+      alert('زمان تغییر یا لغو این رزرو به پایان رسیده است (کمتر از یک ساعت مانده)');
+      return;
+    }
+
+    if (!confirm('آیا مطمئن هستید که می‌خواهید این رزرو را لغو کنید؟')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/bookings', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          booking_id: booking.id,
+          user_phone: userData.phone
+        })
+      });
+
+      if (response.ok) {
+        alert('رزرو با موفقیت لغو شد');
+        // Reload bookings
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        alert('خطا در لغو رزرو: ' + (error.error || 'خطای نامشخص'));
+      }
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      alert('خطا در اتصال به سرور');
+    }
+  };
+
+  // Change booking - redirect to booking page with pre-filled data
+  const handleChangeBooking = (booking: any) => {
+    if (!canModifyBooking(booking)) {
+      alert('زمان تغییر این رزرو به پایان رسیده است (کمتر از یک ساعت مانده)');
+      return;
+    }
+
+    // Store booking data for editing
+    localStorage.setItem('editingBooking', JSON.stringify(booking));
+    if (router) router.push('/booking');
+  };
+
+  // Filter bookings into upcoming and past
+  const getUpcomingBookings = () => {
+    const now = new Date();
+    return userBookings.filter(booking => {
+      const bookingDateTime = new Date(booking.date_key + 'T' + booking.start_time);
+      return bookingDateTime >= now && booking.status !== 'cancelled';
+    }).sort((a, b) => {
+      const dateA = new Date(a.date_key + 'T' + a.start_time);
+      const dateB = new Date(b.date_key + 'T' + b.start_time);
+      return dateA.getTime() - dateB.getTime();
+    });
+  };
+
+  const getPastBookings = () => {
+    const now = new Date();
+    return userBookings.filter(booking => {
+      const bookingDateTime = new Date(booking.date_key + 'T' + booking.start_time);
+      return bookingDateTime < now || booking.status === 'cancelled';
+    }).sort((a, b) => {
+      const dateA = new Date(a.date_key + 'T' + a.start_time);
+      const dateB = new Date(b.date_key + 'T' + b.start_time);
+      return dateB.getTime() - dateA.getTime();
+    });
+  };
+
   if (!userData) {
     return <div>در حال بارگذاری...</div>;
   }
@@ -140,14 +225,28 @@ export default function DashboardPage() {
 
         {userBookings.length > 0 ? (
           <div>
-            <h2 className="text-lg font-semibold mb-4 text-white">نوبت‌های رزرو شده شما:</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-white">
+                {showPastBookings ? 'رزروهای گذشته' : 'رزروهای آینده'}
+              </h2>
+              <button
+                onClick={() => setShowPastBookings(!showPastBookings)}
+                className="px-4 py-2 text-sm rounded-lg backdrop-blur-xl bg-white/10 border border-white/30 text-white hover:bg-white/20 transition-colors"
+              >
+                {showPastBookings ? '📅 رزروهای آینده' : '🕐 رزروهای گذشته'}
+              </button>
+            </div>
             <div className="p-6">
               <div className="space-y-4">
-                <div className="text-center text-sm text-white/70 mb-4">
-                  🗄️ رزروهای شما از پایگاه داده بارگذاری شده‌اند
-                </div>
-                {userBookings.map((booking: any, index: number) => (
-                  <div key={index} className="glass-card p-4 space-y-2 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl">
+                {(showPastBookings ? getPastBookings() : getUpcomingBookings()).length === 0 ? (
+                  <div className="text-center text-white/70 py-8">
+                    {showPastBookings ? 'رزرو گذشته‌ای وجود ندارد' : 'رزرو آینده‌ای وجود ندارد'}
+                  </div>
+                ) : (
+                  (showPastBookings ? getPastBookings() : getUpcomingBookings()).map((booking: any, index: number) => {
+                  const canModify = canModifyBooking(booking);
+                  return (
+                  <div key={index} className="glass-card p-4 space-y-3 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl">
                     <h3 className="text-base font-semibold text-white">
                       رزرو شماره {index + 1}
                     </h3>
@@ -169,10 +268,44 @@ export default function DashboardPage() {
                         </span>
                       </p>
                     )}
+                    
+                    {/* Action Buttons */}
+                    {booking.status !== 'cancelled' && (
+                      <div className="flex gap-2 pt-2 border-t border-white/10">
+                        <button
+                          onClick={() => handleChangeBooking(booking)}
+                          disabled={!canModify}
+                          className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            canModify
+                              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30'
+                              : 'bg-gray-500/10 text-gray-500 border border-gray-500/20 cursor-not-allowed'
+                          }`}
+                        >
+                          🔄 تغییر
+                        </button>
+                        <button
+                          onClick={() => handleCancelBooking(booking)}
+                          disabled={!canModify}
+                          className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            canModify
+                              ? 'bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30'
+                              : 'bg-gray-500/10 text-gray-500 border border-gray-500/20 cursor-not-allowed'
+                          }`}
+                        >
+                          ❌ لغو
+                        </button>
+                      </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })
+                )}
+                
                 <p className="text-center font-medium mt-5 text-white">
-                  مجموع رزروها: {userBookings.length}
+                  {showPastBookings 
+                    ? `مجموع رزروهای گذشته: ${getPastBookings().length}`
+                    : `مجموع رزروهای آینده: ${getUpcomingBookings().length}`
+                  }
                 </p>
               </div>
             </div>

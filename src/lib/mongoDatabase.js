@@ -107,6 +107,44 @@ class MongoDatabase {
         }
     }
 
+    static async deleteBooking(bookingId) {
+        try {
+            await dbConnect();
+            const result = await Booking.findByIdAndDelete(bookingId);
+            if (result) {
+                console.log('✅ Booking deleted from MongoDB:', bookingId);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error deleting booking:', error);
+            return false;
+        }
+    }
+
+    static async updateBookingStatus(bookingId, status, notes) {
+        try {
+            await dbConnect();
+            const updateData = { status, updated_at: new Date() };
+            if (notes !== undefined) {
+                updateData.notes = notes;
+            }
+            const result = await Booking.findByIdAndUpdate(
+                bookingId,
+                updateData,
+                { new: true }
+            );
+            if (result) {
+                console.log('✅ Booking status updated in MongoDB:', bookingId);
+                return result;
+            }
+            return null;
+        } catch (error) {
+            console.error('Error updating booking status:', error);
+            return null;
+        }
+    }
+
     // User authentication operations
     static async getUserByUsername(username) {
         try {

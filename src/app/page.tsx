@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import PWAInstall from '@/components/PWAInstall';
 
 export default function HomePage() {
   const welcomeMessage = "به آرایشگاه HRD خوش آمدید - برای رزرو وقت وارد شوید";
@@ -59,32 +60,40 @@ export default function HomePage() {
       </div>
 
 
-      {/* Content - Responsive buttons */}
-      <div className="flex gap-4 sm:gap-6 lg:gap-8 flex-col sm:flex-row w-full max-w-xs sm:max-w-md lg:max-w-2xl relative z-10">
-        {/* Enhanced Neon glow behind signup button */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-blue-400/60 rounded-xl blur-lg animate-pulse"></div>
-          <div className="absolute inset-0 bg-blue-500/30 rounded-xl blur-xl animate-pulse" style={{animationDelay: '0.5s'}}></div>
-          <Link
-            href="/signup"
-            className="relative glass-button w-full px-6 py-4 sm:px-8 sm:py-5 lg:px-10 lg:py-6 text-center font-bold text-lg sm:text-xl lg:text-2xl rounded-xl backdrop-blur-xl bg-white/35 border border-white/50 hover:bg-white/45 transition-all duration-300 shadow-2xl block text-white hover:shadow-blue-500/25 hover:shadow-3xl"
-          >
-            ثبت نام
-          </Link>
+      {/* Main Content Container */}
+      <div className="mt-16 sm:mt-20 lg:mt-24 flex flex-col items-center w-full">
+        {/* Content - Responsive buttons */}
+        <div className="flex gap-4 sm:gap-6 lg:gap-8 flex-col sm:flex-row w-full max-w-xs sm:max-w-md lg:max-w-2xl relative z-10 px-4 sm:px-0">
+          {/* Enhanced Neon glow behind signup button */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-blue-400/60 rounded-xl blur-lg animate-pulse"></div>
+            <div className="absolute inset-0 bg-blue-500/30 rounded-xl blur-xl animate-pulse" style={{animationDelay: '0.5s'}}></div>
+            <Link
+              href="/signup"
+              className="relative glass-button w-full px-6 py-4 sm:px-8 sm:py-5 lg:px-10 lg:py-6 text-center font-bold text-lg sm:text-xl lg:text-2xl rounded-xl backdrop-blur-xl bg-white/35 border border-white/50 hover:bg-white/45 transition-all duration-300 shadow-2xl block text-white hover:shadow-blue-500/25 hover:shadow-3xl"
+            >
+              ثبت نام
+            </Link>
+          </div>
+
+          {/* Enhanced Neon glow behind login button */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-cyan-400/60 rounded-xl blur-lg animate-pulse"></div>
+            <div className="absolute inset-0 bg-cyan-500/30 rounded-xl blur-xl animate-pulse" style={{animationDelay: '0.5s'}}></div>
+            <Link
+              href="/login"
+              className="relative glass-button w-full px-6 py-4 sm:px-8 sm:py-5 lg:px-10 lg:py-6 text-center font-bold text-lg sm:text-xl lg:text-2xl rounded-xl backdrop-blur-xl bg-white/30 border border-white/50 hover:bg-white/40 transition-all duration-300 shadow-2xl block text-white hover:shadow-cyan-500/25 hover:shadow-3xl"
+            >
+              ورود
+            </Link>
+          </div>
+
         </div>
 
-        {/* Enhanced Neon glow behind login button */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-cyan-400/60 rounded-xl blur-lg animate-pulse"></div>
-          <div className="absolute inset-0 bg-cyan-500/30 rounded-xl blur-xl animate-pulse" style={{animationDelay: '0.5s'}}></div>
-          <Link
-            href="/login"
-            className="relative glass-button w-full px-6 py-4 sm:px-8 sm:py-5 lg:px-10 lg:py-6 text-center font-bold text-lg sm:text-xl lg:text-2xl rounded-xl backdrop-blur-xl bg-white/30 border border-white/50 hover:bg-white/40 transition-all duration-300 shadow-2xl block text-white hover:shadow-cyan-500/25 hover:shadow-3xl"
-          >
-            ورود
-          </Link>
+        {/* PWA Install Button - Below main buttons */}
+        <div className="mt-6 sm:mt-8 relative z-10">
+          <PWAInstall />
         </div>
-
       </div>
 
       {/* Welcome Message - Responsive */}

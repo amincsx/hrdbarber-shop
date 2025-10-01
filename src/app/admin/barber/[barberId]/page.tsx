@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import PWAInstall from '@/components/PWAInstall';
 
 interface Booking {
     id: string;
@@ -36,6 +37,7 @@ export default function SecureBarberDashboard() {
     const [statusFilter, setStatusFilter] = useState('all');
     const [adminSession, setAdminSession] = useState<any>(null);
     const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set());
+    const [lastBookingCount, setLastBookingCount] = useState<number>(0);
 
     useEffect(() => {
         // Check if user is authenticated barber
@@ -61,6 +63,18 @@ export default function SecureBarberDashboard() {
         setAdminSession(parsedSession);
         if (barberId) {
             fetchBarberBookings();
+            
+            // Request notification permission
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+            
+            // Poll for new bookings every 30 seconds
+            const pollInterval = setInterval(() => {
+                fetchBarberBookings();
+            }, 30000);
+            
+            return () => clearInterval(pollInterval);
         }
     }, [barberId, router]);
 
@@ -71,6 +85,32 @@ export default function SecureBarberDashboard() {
             const data = await response.json();
 
             if (response.ok) {
+                // Check if there are new bookings
+                const newBookingCount = data.total_bookings || 0;
+                if (lastBookingCount > 0 && newBookingCount > lastBookingCount) {
+                    // New booking detected!
+                    const newBookings = (data.bookings || []).slice(0, newBookingCount - lastBookingCount);
+                    
+                    // Show browser notification
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        const latestBooking = newBookings[0];
+                        new Notification('🎉 رزرو جدید!', {
+                            body: `${latestBooking.user_name}\n${latestBooking.services.join(', ')}\n${latestBooking.start_time}`,
+                            icon: '/logo.jpg',
+                            badge: '/logo.jpg',
+                            tag: 'new-booking',
+                            requireInteraction: true
+                        });
+                    }
+                    
+                    // Play notification sound (optional)
+                    try {
+                        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+Dy');
+                        audio.play().catch(() => {});
+                    } catch {}
+                }
+                
+                setLastBookingCount(newBookingCount);
                 setBarberData(data);
                 console.log('✅ Fetched barber data from file database:', data);
                 setError('');
@@ -272,104 +312,89 @@ export default function SecureBarberDashboard() {
                 <div className="absolute top-1/3 left-1/4 w-64 h-64 bg-purple-300/5 rounded-full blur-3xl animate-pulse delay-2000"></div>
             </div>
 
-            <div className="max-w-6xl mx-auto relative z-10">
+            <div className="max-w-6xl mx-auto relative z-10 px-4">
                 {/* Header */}
-                <div className="glass-card p-6 mb-6 floating">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <h1 className="text-3xl font-bold text-glass mb-2 flex items-center">
+                <div className="glass-card p-4 sm:p-6 mb-6 floating">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="flex-1">
+                            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-glass mb-2 flex items-center">
                                 ✂️ داشبورد آرایشگر: {decodeURIComponent(barberId)}
                             </h1>
-                            <p className="text-glass-secondary">
+                            <p className="text-glass-secondary text-sm sm:text-base">
                                 تعداد کل رزروها: {barberData?.total_bookings || 0}
                             </p>
                         </div>
-                        <button
-                            onClick={handleLogout}
-                            className="glass-button glass-danger px-6 py-3"
-                        >
-                            🚪 خروج
-                        </button>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            <PWAInstall />
+                            <button
+                                onClick={handleLogout}
+                                className="glass-button glass-danger px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial"
+                            >
+                                🚪 خروج
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 {/* Quick Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-                    <div className="stats-card p-4 text-center">
-                        <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <span className="text-xl">📊</span>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-6 mb-6">
+                    <div className="glass-card p-3 sm:p-4 text-center border-2 border-white/30">
+                        <div className="w-12 h-12 bg-blue-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <span className="text-2xl">📊</span>
                         </div>
-                        <h3 className="text-sm font-medium text-glass-secondary mb-1">کل رزروها</h3>
-                        <p className="text-2xl font-bold text-white">{barberData?.total_bookings || 0}</p>
+                        <h3 className="text-sm font-medium text-white/90 mb-1">کل رزروها</h3>
+                        <p className="text-3xl font-bold text-white">{barberData?.total_bookings || 0}</p>
                     </div>
-                    <div className="stats-card p-4 text-center">
-                        <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <span className="text-xl">📅</span>
+                    <div className="glass-card p-3 sm:p-4 text-center border-2 border-green-400/40">
+                        <div className="w-12 h-12 bg-green-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <span className="text-2xl">📅</span>
                         </div>
-                        <h3 className="text-sm font-medium text-glass-secondary mb-1">امروز</h3>
-                        <p className="text-2xl font-bold text-green-600">
+                        <h3 className="text-sm font-medium text-white/90 mb-1">امروز</h3>
+                        <p className="text-3xl font-bold text-green-400">
                             {filteredBookings.filter(b =>
                                 b.date_key === new Date().toISOString().split('T')[0] && b.status !== 'cancelled'
                             ).length}
                         </p>
                     </div>
-                    <div className="stats-card p-4 text-center">
-                        <div className="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <span className="text-xl">⏳</span>
-                        </div>
-                        <h3 className="text-sm font-medium text-glass-secondary mb-1">در انتظار تأیید</h3>
-                        <p className="text-2xl font-bold text-yellow-600">
-                            {filteredBookings.filter(b => !b.status || b.status === 'pending').length}
-                        </p>
-                    </div>
-                    <div className="stats-card p-4 text-center">
-                        <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <span className="text-xl">🎉</span>
-                        </div>
-                        <h3 className="text-sm font-medium text-glass-secondary mb-1">تکمیل شده</h3>
-                        <p className="text-2xl font-bold text-purple-600">
-                            {filteredBookings.filter(b => b.status === 'completed').length}
-                        </p>
-                    </div>
                 </div>
 
                 {/* Filters */}
-                <div className="glass-card p-6 mb-6">
-                    <h2 className="text-xl font-bold text-glass mb-4 flex items-center">
+                <div className="glass-card p-4 sm:p-6 mb-6">
+                    <h2 className="text-lg sm:text-xl font-bold text-glass mb-4 flex items-center">
                         🔍 فیلترها
                     </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-glass mb-2">
+                            <label className="block text-sm font-medium text-white mb-2">
                                 فیلتر بر اساس تاریخ
                             </label>
                             <select
                                 value={selectedDate}
                                 onChange={(e) => setSelectedDate(e.target.value)}
-                                className="w-full p-3 glass-input text-glass"
+                                className="w-full p-3 rounded-lg backdrop-blur-xl bg-white/10 border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+                                style={{ color: 'white' }}
                             >
-                                <option value="">همه تاریخ‌ها</option>
+                                <option value="" style={{ color: 'black' }}>همه تاریخ‌ها</option>
                                 {getUniquesDates().map(date => (
-                                    <option key={date} value={date}>
+                                    <option key={date} value={date} style={{ color: 'black' }}>
                                         {formatDate(date)}
                                     </option>
                                 ))}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-glass mb-2">
+                            <label className="block text-sm font-medium text-white mb-2">
                                 فیلتر بر اساس وضعیت
                             </label>
                             <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
-                                className="w-full p-3 glass-input text-glass"
+                                className="w-full p-3 rounded-lg backdrop-blur-xl bg-white/10 border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+                                style={{ color: 'white' }}
                             >
-                                <option value="all">همه وضعیت‌ها</option>
-                                <option value="pending">در انتظار</option>
-                                <option value="confirmed">تأیید شده</option>
-                                <option value="completed">تکمیل شده</option>
-                                <option value="cancelled">لغو شده</option>
+                                <option value="all" style={{ color: 'black' }}>همه وضعیت‌ها</option>
+                                <option value="confirmed" style={{ color: 'black' }}>تأیید شده</option>
+                                <option value="cancelled" style={{ color: 'black' }}>لغو شده</option>
                             </select>
                         </div>
                     </div>
@@ -377,29 +402,31 @@ export default function SecureBarberDashboard() {
 
                 {/* Bookings List */}
                 <div className="glass-card">
-                    <div className="p-6 border-b border-white/10">
-                        <h2 className="text-xl font-bold text-glass flex items-center">
+                    <div className="p-4 sm:p-6 border-b border-white/10">
+                        <h2 className="text-lg sm:text-xl font-bold text-glass flex items-center">
                             📋 رزروهای من ({filteredBookings.length})
                         </h2>
                     </div>
 
                     {filteredBookings.length === 0 ? (
-                        <div className="p-8 text-center">
-                            <div className="w-16 h-16 bg-gray-300/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span className="text-2xl">📝</span>
+                        <div className="p-6 sm:p-8 text-center">
+                            <div className="w-12 sm:w-16 h-12 sm:h-16 bg-gray-300/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-xl sm:text-2xl">📝</span>
                             </div>
-                            <p className="text-glass-secondary">هیچ رزروی یافت نشد</p>
+                            <p className="text-glass-secondary text-sm sm:text-base">هیچ رزروی یافت نشد</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-white/10">
-                            {filteredBookings.map((booking) => {
-                                const isExpanded = expandedBookings.has(booking.id);
+                            {filteredBookings.map((booking, index) => {
+                                // Create unique ID for each booking
+                                const bookingUniqueId = booking.id || `${booking.user_phone}-${booking.date_key}-${booking.start_time}-${index}`;
+                                const isExpanded = expandedBookings.has(bookingUniqueId);
                                 return (
-                                    <div key={booking.id} className="p-4 hover:bg-white/5 transition-colors">
+                                    <div key={bookingUniqueId} className="p-3 sm:p-4 hover:bg-white/5 transition-colors">
                                         {/* Summary View (Always Visible) */}
-                                        <div className="flex justify-between items-center">
+                                        <div className="flex flex-col sm:flex-row justify-between gap-3">
                                             <div className="flex-1">
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div className="grid grid-cols-1 gap-2 sm:gap-3">
                                                     <div>
                                                         <p className="text-glass font-medium">👤 {booking.user_name}</p>
                                                     </div>
@@ -417,7 +444,10 @@ export default function SecureBarberDashboard() {
                                                 {getStatusBadge(booking.status)}
                                                 
                                                 <button
-                                                    onClick={() => toggleBookingExpansion(booking.id)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        toggleBookingExpansion(bookingUniqueId);
+                                                    }}
                                                     className="px-3 py-1 glass-button text-sm"
                                                 >
                                                     {isExpanded ? '📄 خلاصه' : '📋 جزئیات'}
@@ -471,7 +501,10 @@ export default function SecureBarberDashboard() {
                                                 <div className="mt-4 flex space-x-2 space-x-reverse">
                                                     {(!booking.status || booking.status === 'pending') && (
                                                         <button
-                                                            onClick={() => updateBookingStatus(booking.id, 'confirmed')}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                updateBookingStatus(booking.id, 'confirmed');
+                                                            }}
                                                             className="px-4 py-2 glass-button glass-success text-sm"
                                                         >
                                                             ✅ تأیید
@@ -480,7 +513,10 @@ export default function SecureBarberDashboard() {
 
                                                     {booking.status === 'confirmed' && (
                                                         <button
-                                                            onClick={() => updateBookingStatus(booking.id, 'completed')}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                updateBookingStatus(booking.id, 'completed');
+                                                            }}
                                                             className="px-4 py-2 glass-button text-sm"
                                                         >
                                                             🎉 تکمیل
@@ -489,7 +525,8 @@ export default function SecureBarberDashboard() {
 
                                                     {booking.status !== 'cancelled' && booking.status !== 'completed' && (
                                                         <button
-                                                            onClick={() => {
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
                                                                 if (confirm('آیا مطمئن هستید که می‌خواهید این رزرو را لغو کنید؟')) {
                                                                     updateBookingStatus(booking.id, 'cancelled');
                                                                 }

@@ -120,18 +120,20 @@ async function GET(request) {
 // DELETE - Cancel booking
 async function DELETE(request) {
     try {
-        const { searchParams } = new URL(request.url);
-        const bookingId = searchParams.get('id');
+        const { booking_id, user_phone } = await request.json();
 
-        if (!bookingId) {
+        if (!booking_id) {
             return NextResponse.json(
                 { error: 'شناسه رزرو الزامی است' },
                 { status: 400 }
             );
         }
 
-        // Find booking
-        const booking = SimpleFileDB.getBookingById(bookingId);
+        console.log('🗑️ Cancelling booking:', booking_id, 'for user:', user_phone);
+
+        // Find booking in MongoDB
+        const allBookings = await MongoDatabase.getAllBookings();
+        const booking = allBookings.find(b => b.id === booking_id);
 
         if (!booking) {
             return NextResponse.json(
@@ -140,10 +142,31 @@ async function DELETE(request) {
             );
         }
 
-        // Delete booking
-        const success = SimpleFileDB.deleteBooking(bookingId);
+        // Verify user ownership if user_phone provided
+        if (user_phone && booking.user_phone !== user_phone && booking.user_id !== user_phone) {
+            return NextResponse.json(
+                { error: 'شما مجاز به لغو این رزرو نیستید' },
+                { status: 403 }
+            );
+        }
+
+        // Check if booking can still be cancelled (more than 1 hour before start)
+        const now = new Date();
+        const bookingDateTime = new Date(booking.date_key + 'T' + booking.start_time);
+        const hoursDifference = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+        
+        if (hoursDifference < 1) {
+            return NextResponse.json(
+                { error: 'زمان لغو به پایان رسیده است (کمتر از یک ساعت مانده)' },
+                { status: 400 }
+            );
+        }
+
+        // Delete booking from MongoDB
+        const success = await MongoDatabase.deleteBooking(booking_id);
 
         if (success) {
+            console.log('✅ Booking cancelled successfully');
             return NextResponse.json({
                 message: 'رزرو با موفقیت لغو شد'
             });

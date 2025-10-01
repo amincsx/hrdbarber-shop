@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --glass-bg: rgba(255, 255, 255, 0.1);
-  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-bg: rgba(0, 0, 0, 0.1);
+  --glass-border: rgba(0, 0, 0, 0.2);
   --glass-shadow: rgba(0, 0, 0, 0.1);
-  --glass-hover: rgba(255, 255, 255, 0.15);
+  --glass-hover: rgba(0, 0, 0, 0.15);
 
-  --text-primary: rgba(30, 30, 30, 0.9);
-  --text-secondary: rgba(60, 60, 60, 0.8);
-  --text-light: rgba(100, 100, 100, 0.7);
+  --text-primary: rgba(0, 0, 0, 0.9);
+  --text-secondary: rgba(0, 0, 0, 0.8);
+  --text-light: rgba(0, 0, 0, 0.7);
 }
 
 /* PWA-Ready Mobile-First Styling */

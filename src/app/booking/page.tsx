@@ -200,6 +200,8 @@ export default function BookingPage() {
     const [currentTime, setCurrentTime] = useState(new Date()); // Add current time state
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [editingBooking, setEditingBooking] = useState<any>(null); // For edit mode
+    const [isEditMode, setIsEditMode] = useState(false);
 
     // Helper function to get Persian date (cached)
     const formatPersianDate = async (date: Date): Promise<string> => {
@@ -352,13 +354,12 @@ export default function BookingPage() {
         const schedule = barberSchedules[selectedBarber as keyof typeof barberSchedules] || { start: 10, end: 21 };
         const slots = [];
 
-        // Check if face cut or wax is selected
-        const hasFaceCutOrWax = selectedServices.some(service => 
-            service === 'اصلاح صورت' || service === 'وکس'
-        );
+        // Check if ONLY face cut or wax is selected (alone, not combined with other services)
+        const hasFaceCutOrWaxAlone = selectedServices.length === 1 && 
+            (selectedServices[0] === 'اصلاح صورت' || selectedServices[0] === 'وکس');
 
-        if (hasFaceCutOrWax) {
-            // For face cut and wax, show ONLY :30 times (no o'clock times)
+        if (hasFaceCutOrWaxAlone) {
+            // For face cut and wax ALONE, show ONLY :30 times (no o'clock times)
             for (let hour = schedule.start; hour < schedule.end - 0.5; hour++) {
                 // Skip lunch break times
                 if ('lunchStart' in schedule && 'lunchEnd' in schedule && schedule.lunchStart && schedule.lunchEnd) {
@@ -610,6 +611,32 @@ export default function BookingPage() {
     };
 
     useEffect(() => {
+        // Check for editing booking first
+        const editingData = localStorage.getItem('editingBooking');
+        if (editingData) {
+            try {
+                const booking = JSON.parse(editingData);
+                setEditingBooking(booking);
+                setIsEditMode(true);
+                
+                // Pre-fill form with booking data
+                setSelectedBarber(booking.barber);
+                setSelectedServices(booking.services);
+                setSelectedTime(booking.start_time || booking.startTime);
+                
+                // Set date
+                const bookingDate = new Date(booking.date_key || booking.dateKey);
+                setSelectedDateObj(bookingDate);
+                
+                console.log('📝 Edit mode activated for booking:', booking.id);
+                
+                // Clear the editing data from localStorage
+                localStorage.removeItem('editingBooking');
+            } catch (error) {
+                console.error('Error loading editing booking:', error);
+            }
+        }
+        
         // Check authentication first
         const storedData = localStorage.getItem('user');
         if (!storedData) {
@@ -894,29 +921,84 @@ export default function BookingPage() {
         // Save to API/database first
         let bookingSavedToDatabase = false;
         try {
-            console.log('📤 Sending booking to API:', apiBooking);
-            const response = await fetch('/api/bookings', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(apiBooking)
-            });
+            if (isEditMode && editingBooking) {
+                // Update existing booking
+                console.log('📝 Updating booking:', editingBooking.id);
+                
+                // First delete the old booking
+                const deleteResponse = await fetch('/api/bookings', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        booking_id: editingBooking.id,
+                        user_phone: userData?.phone
+                    })
+                });
 
-            console.log('📡 API Response status:', response.status);
+                if (!deleteResponse.ok) {
+                    throw new Error('Failed to delete old booking');
+                }
 
-            if (response.ok) {
-                const result = await response.json();
-                console.log('✅ Booking saved to database successfully:', result);
-                bookingSavedToDatabase = true;
+                // Then create new booking
+                const response = await fetch('/api/bookings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(apiBooking)
+                });
+
+                if (response.ok) {
+                    console.log('✅ Booking updated successfully');
+                    bookingSavedToDatabase = true;
+                    alert('رزرو با موفقیت تغییر یافت');
+                } else {
+                    throw new Error('Failed to create updated booking');
+                }
             } else {
-                const errorData = await response.json();
-                console.error('❌ Failed to save booking to database. Status:', response.status, 'Error:', errorData);
-                alert('رزرو موفقیت آمیز نبود');
+                // Create new booking
+                console.log('📤 Sending booking to API:', apiBooking);
+                const response = await fetch('/api/bookings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(apiBooking)
+                });
+
+                console.log('📡 API Response status:', response.status);
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('✅ Booking saved to database successfully:', result);
+                    bookingSavedToDatabase = true;
+                    
+                    // Send notification to barber
+                    try {
+                        await fetch('/api/bookings/notify', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                barber: selectedBarber,
+                                booking: apiBooking
+                            })
+                        });
+                    } catch (notifyError) {
+                        console.error('Failed to send notification:', notifyError);
+                    }
+                } else {
+                    const errorData = await response.json();
+                    console.error('❌ Failed to save booking to database. Status:', response.status, 'Error:', errorData);
+                    alert('رزرو موفقیت آمیز نبود');
+                }
             }
         } catch (error) {
             console.error('❌ Network error saving booking to database:', error);
-            alert('رزرو موفقیت آمیز نبود');
+            alert(isEditMode ? 'خطا در تغییر رزرو' : 'رزرو موفقیت آمیز نبود');
         }
 
         // Save to individual user booking (backup)
@@ -1001,7 +1083,7 @@ export default function BookingPage() {
                     <>
                         <div className="text-center mb-4">
                             <h1 className="text-lg font-bold text-glass mb-1">
-                                رزرو نوبت آرایشگاه
+                                {isEditMode ? '🔄 تغییر رزرو' : 'رزرو نوبت آرایشگاه'}
                             </h1>
                             <p className="text-glass-secondary text-xs">
                                 لطفاً مراحل را به ترتیب تکمیل کنید
@@ -1311,7 +1393,8 @@ export default function BookingPage() {
                                             📞 تماس با آرایشگاه
                                         </label>
                                         <div className="text-white/90 text-lg font-semibold mb-2">
-                                            ۰۹۱۲۳۴۵۶۷۸۹
+                                            02144763886
+
                                         </div>
                                         <div className="text-white/70 text-sm">
                                             لطفاً تماس بگیرید

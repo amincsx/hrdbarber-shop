@@ -37,24 +37,7 @@ async function POST(request) {
         }
 
         // Check if user exists
-        let user;
-        try {
-            user = await Database.findUserByPhone(phone);
-        } catch (dbError) {
-            console.error('Database error in forgot password:', dbError);
-            // Fallback to localStorage for local development
-            if (process.env.NODE_ENV === 'development') {
-                console.log('🔄 Using localStorage fallback for forgot password');
-                // Check localStorage for user (this is a fallback for local development)
-                return NextResponse.json({
-                    success: true,
-                    message: 'کاربر یافت شد (حالت توسعه)',
-                    userExists: true
-                });
-            }
-            throw dbError;
-        }
-        
+        const user = await Database.findUserByPhone(phone);
         if (!user) {
             return NextResponse.json(
                 { error: 'کاربری با این شماره تلفن یافت نشد' },
@@ -72,11 +55,6 @@ async function POST(request) {
                 );
             }
 
-            // For local development, accept any 4+ digit OTP
-            if (process.env.NODE_ENV === 'development') {
-                console.log('🔄 Local development: Accepting any OTP for password reset');
-            }
-
             if (newPassword.length < 4) {
                 return NextResponse.json(
                     { error: 'رمز عبور باید حداقل ۴ کاراکتر باشد' },
@@ -85,30 +63,17 @@ async function POST(request) {
             }
 
             // Update user's password using MongoDB directly
-            try {
-                const dbConnect = (await import('../../../lib/mongodb.js')).default;
-                const { User } = await import('../../../lib/models.js');
-                
-                await dbConnect();
-                await User.updateOne(
-                    { username: phone },
-                    { 
-                        password: newPassword,
-                        updated_at: new Date().toISOString()
-                    }
-                );
-            } catch (dbError) {
-                console.error('Database update error in forgot password:', dbError);
-                // Fallback for local development - just return success
-                if (process.env.NODE_ENV === 'development') {
-                    console.log('🔄 Using localStorage fallback for password update');
-                    return NextResponse.json({
-                        success: true,
-                        message: 'رمز عبور با موفقیت تغییر کرد (حالت توسعه)'
-                    });
+            const dbConnect = (await import('../../../lib/mongodb.js')).default;
+            const { User } = await import('../../../lib/models.js');
+            
+            await dbConnect();
+            await User.updateOne(
+                { username: phone },
+                { 
+                    password: newPassword,
+                    updated_at: new Date().toISOString()
                 }
-                throw dbError;
-            }
+            );
 
             return NextResponse.json({
                 success: true,

@@ -125,24 +125,26 @@ export default function PWAInstall() {
   }
 
   return (
-    <div className="w-full text-center mt-4">
+    <div className="w-full text-center">
       {/* PWA Install Button */}
       <div className="relative inline-block">
-        {/* Neon glow behind install button */}
-        <div className="absolute inset-0 bg-green-400/30 rounded-full blur-sm animate-pulse"></div>
         <button
           onClick={handleInstallClick}
-          className="relative w-16 h-16 rounded-full backdrop-blur-xl bg-green-500/20 border border-green-400/30 hover:bg-green-500/30 transition-all duration-300 shadow-2xl flex items-center justify-center text-white hover:scale-110"
+          className="relative w-20 h-20 rounded-xl backdrop-blur-xl bg-white/10 border border-white/30 hover:bg-white/20 transition-all duration-300 shadow-2xl flex items-center justify-center hover:scale-105 p-3"
           aria-label="نصب اپلیکیشن"
           title="نصب اپلیکیشن"
         >
-          <span className="text-2xl">📱</span>
+          <img 
+            src="/logo.jpg" 
+            alt="HRD Logo" 
+            className="w-full h-full object-contain rounded-lg"
+          />
         </button>
       </div>
       
       {/* Install instruction text */}
       <p className="text-white/70 text-xs mt-2 font-light">
-        برای نصب کلیک کنید
+        نصب اپلیکیشن
       </p>
     </div>
   );
