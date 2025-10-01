@@ -82,15 +82,12 @@ export default function PWAInstall() {
     };
   }, [isIOS, isInstalled]);
 
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
+
   const handleInstallClick = async () => {
     if (isIOS) {
-      // Show iOS install instructions
-      alert(
-        'برای نصب اپلیکیشن روی آیفون:\n\n' +
-        '1. روی دکمه "اشتراک" (مربع با فلش) در پایین صفحه بزنید\n' +
-        '2. گزینه "افزودن به صفحه اصلی" را انتخاب کنید\n' +
-        '3. روی "افزودن" بزنید'
-      );
+      // Show iOS install instructions in a better modal
+      setShowIOSInstructions(true);
       return;
     }
 
@@ -125,27 +122,92 @@ export default function PWAInstall() {
   }
 
   return (
-    <div className="w-full text-center">
-      {/* PWA Install Button */}
-      <div className="relative inline-block">
-        <button
-          onClick={handleInstallClick}
-          className="relative w-20 h-20 rounded-xl backdrop-blur-xl bg-white/10 border border-white/30 hover:bg-white/20 transition-all duration-300 shadow-2xl flex items-center justify-center hover:scale-105 p-3"
-          aria-label="نصب اپلیکیشن"
-          title="نصب اپلیکیشن"
-        >
-          <img 
-            src="/logo.jpg" 
-            alt="HRD Logo" 
-            className="w-full h-full object-contain rounded-lg"
-          />
-        </button>
+    <>
+      <div className="w-full text-center">
+        {/* PWA Install Button */}
+        <div className="relative inline-block">
+          <button
+            onClick={handleInstallClick}
+            className="relative w-20 h-20 rounded-xl backdrop-blur-xl bg-white/10 border border-white/30 hover:bg-white/20 transition-all duration-300 shadow-2xl flex items-center justify-center hover:scale-105 p-3"
+            aria-label="نصب اپلیکیشن"
+            title="نصب اپلیکیشن"
+          >
+            <img 
+              src="/apple-touch-icon.png" 
+              alt="HRD Logo" 
+              className="w-full h-full object-contain rounded-lg"
+            />
+          </button>
+        </div>
+        
+        {/* Install instruction text */}
+        <p className="text-white/70 text-xs mt-2 font-light">
+          نصب اپلیکیشن
+        </p>
       </div>
-      
-      {/* Install instruction text */}
-      <p className="text-white/70 text-xs mt-2 font-light">
-        نصب اپلیکیشن
-      </p>
-    </div>
+
+      {/* iOS Install Instructions Modal */}
+      {showIOSInstructions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowIOSInstructions(false)}
+          />
+          
+          <div className="relative max-w-sm w-full bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl p-6">
+            <button
+              onClick={() => setShowIOSInstructions(false)}
+              className="absolute top-4 left-4 text-white/60 hover:text-white text-2xl"
+            >
+              ×
+            </button>
+
+            <div className="text-center mb-4">
+              <div className="inline-block bg-blue-500/20 p-3 rounded-full mb-3">
+                <span className="text-3xl">🍎</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">نصب روی آیفون</h3>
+            </div>
+
+            <div className="space-y-3 text-white/90">
+              <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl">
+                <div className="text-2xl flex-shrink-0">1️⃣</div>
+                <p className="text-sm">
+                  روی دکمه <span className="inline-block px-2 py-1 bg-blue-500/30 rounded">اشتراک</span> (مربع با فلش) در <strong>پایین صفحه Safari</strong> بزنید
+                </p>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl">
+                <div className="text-2xl flex-shrink-0">2️⃣</div>
+                <p className="text-sm">
+                  از لیست، گزینه <strong>"افزودن به صفحه اصلی"</strong> را انتخاب کنید
+                </p>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl">
+                <div className="text-2xl flex-shrink-0">3️⃣</div>
+                <p className="text-sm">
+                  در پنجره باز شده، روی دکمه <strong>"افزودن"</strong> بزنید
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/30 rounded-xl mt-4">
+                <span className="text-xl">✅</span>
+                <p className="text-xs text-green-200">
+                  اپلیکیشن روی صفحه اصلی شما نصب می‌شود!
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowIOSInstructions(false)}
+              className="w-full mt-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 rounded-xl text-white font-semibold transition-all duration-300"
+            >
+              متوجه شدم 👍
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

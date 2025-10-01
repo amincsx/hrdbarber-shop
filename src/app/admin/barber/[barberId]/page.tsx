@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import PWAInstall from '@/components/PWAInstall';
+import BarberPWAInstall from '@/components/BarberPWAInstall';
 
 interface Booking {
     id: string;
@@ -96,18 +96,34 @@ export default function SecureBarberDashboard() {
                         const latestBooking = newBookings[0];
                         new Notification('🎉 رزرو جدید!', {
                             body: `${latestBooking.user_name}\n${latestBooking.services.join(', ')}\n${latestBooking.start_time}`,
-                            icon: '/logo.jpg',
-                            badge: '/logo.jpg',
+                            icon: '/icon-192x192.png',
+                            badge: '/icon-192x192.png',
                             tag: 'new-booking',
                             requireInteraction: true
                         });
                     }
                     
-                    // Play notification sound (optional)
+                    // Play notification sound
                     try {
-                        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+DyvmwhBjWO1fPRfS0GK4TL8N+UQwoVX7Tp66hVFApGn+Dy');
-                        audio.play().catch(() => {});
-                    } catch {}
+                        // Create a simple beep sound using Web Audio API
+                        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.frequency.value = 800; // Frequency in Hz
+                        oscillator.type = 'sine';
+                        
+                        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                        
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.5);
+                    } catch (err) {
+                        console.log('Could not play notification sound:', err);
+                    }
                 }
                 
                 setLastBookingCount(newBookingCount);
@@ -324,8 +340,8 @@ export default function SecureBarberDashboard() {
                                 تعداد کل رزروها: {barberData?.total_bookings || 0}
                             </p>
                         </div>
-                        <div className="flex gap-2 w-full sm:w-auto">
-                            <PWAInstall />
+                        <div className="flex gap-2 w-full sm:w-auto items-center">
+                            <BarberPWAInstall barberName={decodeURIComponent(barberId)} barberId={barberId} />
                             <button
                                 onClick={handleLogout}
                                 className="glass-button glass-danger px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial"
