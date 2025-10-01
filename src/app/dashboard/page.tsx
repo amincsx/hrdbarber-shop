@@ -120,6 +120,11 @@ export default function DashboardPage() {
 
   // Check if booking can be modified (more than 1 hour before start time)
   const canModifyBooking = (booking: any): boolean => {
+    // Only allow modification for upcoming bookings
+    if (showPastBookings) {
+      return false;
+    }
+    
     const now = new Date();
     const bookingDateTime = new Date(booking.date_key + 'T' + booking.start_time);
     const hoursDifference = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
@@ -180,9 +185,13 @@ export default function DashboardPage() {
   // Filter bookings into upcoming and past
   const getUpcomingBookings = () => {
     const now = new Date();
+    // Add 5 minutes buffer to ensure new bookings stay in upcoming
+    const bufferTime = new Date(now.getTime() + 5 * 60 * 1000);
+    
     return userBookings.filter(booking => {
       const bookingDateTime = new Date(booking.date_key + 'T' + booking.start_time);
-      return bookingDateTime >= now && booking.status !== 'cancelled';
+      // Booking is upcoming if it's in the future (with buffer) and not cancelled
+      return bookingDateTime >= bufferTime && booking.status !== 'cancelled';
     }).sort((a, b) => {
       const dateA = new Date(a.date_key + 'T' + a.start_time);
       const dateB = new Date(b.date_key + 'T' + b.start_time);
@@ -192,9 +201,13 @@ export default function DashboardPage() {
 
   const getPastBookings = () => {
     const now = new Date();
+    // Add 5 minutes buffer to ensure past bookings go to past section
+    const bufferTime = new Date(now.getTime() + 5 * 60 * 1000);
+    
     return userBookings.filter(booking => {
       const bookingDateTime = new Date(booking.date_key + 'T' + booking.start_time);
-      return bookingDateTime < now || booking.status === 'cancelled';
+      // Booking is past if it's in the past (with buffer) or cancelled
+      return bookingDateTime < bufferTime || booking.status === 'cancelled';
     }).sort((a, b) => {
       const dateA = new Date(a.date_key + 'T' + a.start_time);
       const dateB = new Date(b.date_key + 'T' + b.start_time);
@@ -269,8 +282,8 @@ export default function DashboardPage() {
                       </p>
                     )}
                     
-                    {/* Action Buttons */}
-                    {booking.status !== 'cancelled' && (
+                    {/* Action Buttons - Only show for upcoming bookings */}
+                    {!showPastBookings && booking.status !== 'cancelled' && (
                       <div className="flex gap-2 pt-2 border-t border-white/10">
                         <button
                           onClick={() => handleChangeBooking(booking)}
