@@ -50,8 +50,49 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
       setIsIOS(isIOSDevice);
     };
 
-    // Use the separate barber manifest file
+    // Create dynamic manifest for this specific barber
     const setupBarberManifest = () => {
+      // Create manifest with barber-specific start URL
+      const manifest = {
+        name: `داشبورد ${barberName} - آرایشگاه HRD`,
+        short_name: `${barberName} - HRD`,
+        description: `پنل مدیریت رزروها برای ${barberName}`,
+        start_url: `/barber-dashboard/${encodeURIComponent(barberId)}?pwa=1`,
+        display: "standalone",
+        background_color: "#1e293b",
+        theme_color: "#f59e0b",
+        orientation: "portrait-primary",
+        lang: "fa",
+        dir: "rtl",
+        scope: "/",
+        icons: [
+          {
+            src: "/icon-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any maskable"
+          },
+          {
+            src: "/icon-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any maskable"
+          },
+          {
+            src: "/apple-touch-icon.png",
+            sizes: "180x180",
+            type: "image/png",
+            purpose: "any"
+          }
+        ],
+        categories: ["business", "productivity"],
+        display_override: ["standalone", "minimal-ui"]
+      };
+
+      const stringManifest = JSON.stringify(manifest);
+      const blob = new Blob([stringManifest], { type: 'application/json' });
+      const manifestURL = URL.createObjectURL(blob);
+      
       // Remove existing barber manifest link if any
       const existingBarberLink = document.querySelector('link[rel="manifest"][data-barber="true"]');
       if (existingBarberLink) {
@@ -64,14 +105,15 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
         mainManifestLink.style.display = 'none';
       }
 
-      // Add barber manifest link
+      // Add new manifest link with barber-specific start URL
       const manifestLink = document.createElement('link');
       manifestLink.rel = 'manifest';
-      manifestLink.href = '/barber-manifest.json';
+      manifestLink.href = manifestURL;
       manifestLink.setAttribute('data-barber', 'true');
       document.head.appendChild(manifestLink);
       
-      console.log('🔧 Loaded separate barber manifest for:', barberName);
+      console.log('🔧 Created dynamic barber manifest for:', barberName);
+      console.log('📍 Start URL:', `/barber-dashboard/${encodeURIComponent(barberId)}?pwa=1`);
       
       // Update meta theme-color for barber app
       let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;

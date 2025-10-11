@@ -119,6 +119,7 @@ export default function BarberDashboard() {
         
         if (isPWA) {
             console.log('🔧 PWA launch detected for barber:', barberId);
+            console.log('📱 This is a PWA app opening for specific barber dashboard');
         }
         
         if (isAuto) {
@@ -128,68 +129,64 @@ export default function BarberDashboard() {
         // Check if user is authenticated barber
         const session = localStorage.getItem('barberSession');
         if (!session) {
-            if (isAuto) {
-                // For auto PWA, create a temporary session for this barber
-                console.log('🔧 Creating auto-session for barber:', barberId);
+            if (isPWA || isAuto) {
+                // For PWA launch, create auto-session for this barber
+                console.log('🔧 Creating auto-session for PWA barber:', barberId);
                 const autoSession = {
                     user: {
                         name: decodeURIComponent(barberId),
                         type: 'barber'
                     },
                     loginTime: new Date().toISOString(),
-                    auto: true
+                    pwa: true,
+                    auto: isPWA || isAuto
                 };
                 localStorage.setItem('barberSession', JSON.stringify(autoSession));
                 setBarberSession(autoSession);
+                console.log('✅ Auto-session created, continuing to dashboard');
                 // Continue to dashboard without redirect
-            } else if (isPWA) {
-                // For regular PWA, redirect to barber login with barber pre-selected
-                window.location.href = `/barber-login?barber=${encodeURIComponent(barberId)}&pwa=1`;
-                return;
             } else {
+                // For regular web access, require login
                 router.push('/barber-login');
                 return;
             }
         } else {
             // Parse existing session
             const parsedSession = JSON.parse(session);
-            setBarberSession(parsedSession);
+            const decodedBarberId = decodeURIComponent(barberId);
             
-            if (!isAuto) {
-                if (parsedSession.user.type !== 'barber') {
-                    if (isPWA) {
-                        window.location.href = `/barber-login?barber=${encodeURIComponent(barberId)}&pwa=1`;
-                        return;
-                    }
-                    router.push('/barber-login');
-                    return;
-                }
-
-                // Check if barber is accessing their own dashboard
-                const decodedBarberId = decodeURIComponent(barberId);
+            // For PWA or auto-login mode, always allow access to this barber's dashboard
+            if (isPWA || isAuto || parsedSession.pwa || parsedSession.auto) {
+                // Update session to match current barber if needed
                 if (parsedSession.user.name !== decodedBarberId) {
-                    if (isPWA) {
-                        window.location.href = `/barber-dashboard/${encodeURIComponent(parsedSession.user.name)}?pwa=1`;
-                        return;
-                    }
-                    router.push(`/barber-dashboard/${parsedSession.user.name}`);
-                    return;
-                }
-            } else {
-                // For auto-login, check if the session matches the barber
-                const decodedBarberId = decodeURIComponent(barberId);
-                if (parsedSession.user.name !== decodedBarberId) {
-                    console.log('🔧 Auto-login: Session mismatch, updating session for:', decodedBarberId);
+                    console.log('🔧 PWA: Updating session to match dashboard barber:', decodedBarberId);
                     const updatedSession = {
                         user: {
                             name: decodedBarberId,
                             type: 'barber'
                         },
                         loginTime: new Date().toISOString(),
+                        pwa: true,
                         auto: true
                     };
                     localStorage.setItem('barberSession', JSON.stringify(updatedSession));
                     setBarberSession(updatedSession);
+                } else {
+                    setBarberSession(parsedSession);
+                }
+            } else {
+                // For regular web access, enforce strict authentication
+                setBarberSession(parsedSession);
+                
+                if (parsedSession.user.type !== 'barber') {
+                    router.push('/barber-login');
+                    return;
+                }
+
+                // Check if barber is accessing their own dashboard
+                if (parsedSession.user.name !== decodedBarberId) {
+                    router.push(`/barber-dashboard/${parsedSession.user.name}`);
+                    return;
                 }
             }
         }
