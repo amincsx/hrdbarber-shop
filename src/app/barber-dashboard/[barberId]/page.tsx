@@ -157,12 +157,16 @@ export default function BarberDashboard() {
             
             // For PWA or auto-login mode, always allow access to this barber's dashboard
             if (isPWA || isAuto || parsedSession.pwa || parsedSession.auto) {
-                // Update session to match current barber if needed
-                if (parsedSession.user.name !== decodedBarberId) {
+                // Check if barberId matches either username or name
+                const matchesUsername = parsedSession.user.username === decodedBarberId;
+                const matchesName = parsedSession.user.name === decodedBarberId;
+                
+                if (!matchesUsername && !matchesName) {
                     console.log('🔧 PWA: Updating session to match dashboard barber:', decodedBarberId);
                     const updatedSession = {
                         user: {
                             name: decodedBarberId,
+                            username: decodedBarberId,
                             type: 'barber'
                         },
                         loginTime: new Date().toISOString(),
@@ -183,9 +187,14 @@ export default function BarberDashboard() {
                     return;
                 }
 
-                // Check if barber is accessing their own dashboard
-                if (parsedSession.user.name !== decodedBarberId) {
-                    router.push(`/barber-dashboard/${parsedSession.user.name}`);
+                // Check if barber is accessing their own dashboard (match by username OR name)
+                const matchesUsername = parsedSession.user.username === decodedBarberId;
+                const matchesName = parsedSession.user.name === decodedBarberId;
+                
+                if (!matchesUsername && !matchesName) {
+                    // Redirect using username if available, otherwise name
+                    const redirectId = parsedSession.user.username || parsedSession.user.name;
+                    router.push(`/barber-dashboard/${redirectId}`);
                     return;
                 }
             }
@@ -502,14 +511,17 @@ export default function BarberDashboard() {
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="flex-1">
                             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-glass mb-2 flex items-center">
-                                ✂️ داشبورد آرایشگر: {decodeURIComponent(barberId)}
+                                ✂️ داشبورد آرایشگر: {barberSession?.user?.name || decodeURIComponent(barberId)}
                             </h1>
                             <p className="text-glass-secondary text-sm sm:text-base">
                                 تعداد کل رزروها: {barberData?.total_bookings || 0}
                             </p>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto items-center">
-                            <BarberPWAInstall barberName={decodeURIComponent(barberId)} barberId={barberId} />
+                            <BarberPWAInstall 
+                                barberName={barberSession?.user?.name || decodeURIComponent(barberId)} 
+                                barberId={barberSession?.user?.username || decodeURIComponent(barberId)} 
+                            />
                             <button
                                 onClick={handleLogout}
                                 className="glass-button glass-danger px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial"

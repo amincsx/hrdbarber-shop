@@ -29,16 +29,36 @@ async function GET(request, { params }) {
         const decodedBarberId = decodeURIComponent(barberId);
         console.log('🔍 Looking up bookings for:', decodedBarberId);
 
+        // Try to find barber by username first (English), then by name (Farsi)
+        const barberUser = await MongoDatabase.getUserByUsername(decodedBarberId);
+        const barberName = barberUser ? barberUser.name : decodedBarberId;
+        
+        console.log('  - Lookup ID:', decodedBarberId);
+        console.log('  - Barber name:', barberName);
+
         let bookings;
 
         if (date) {
             // Get bookings for specific date
             const allBookings = await MongoDatabase.getBookingsByDate(date);
-            bookings = allBookings.filter(booking => booking.barber === decodedBarberId);
+            // Match by either username or name
+            bookings = allBookings.filter(booking => 
+                booking.barber === decodedBarberId || booking.barber === barberName
+            );
             console.log(`📅 Found ${bookings.length} bookings for ${decodedBarberId} on ${date}`);
         } else {
-            // Get all bookings for this barber
-            bookings = await MongoDatabase.getBookingsByBarber(decodedBarberId);
+            // Get all bookings for this barber (try both username and name)
+            const bookingsByName = await MongoDatabase.getBookingsByBarber(barberName);
+            const bookingsByUsername = decodedBarberId !== barberName ? 
+                await MongoDatabase.getBookingsByBarber(decodedBarberId) : [];
+            
+            // Merge and deduplicate
+            const allBookings = [...bookingsByName, ...bookingsByUsername];
+            const uniqueBookings = Array.from(
+                new Map(allBookings.map(b => [b._id?.toString() || b.id, b])).values()
+            );
+            bookings = uniqueBookings;
+            
             console.log(`📊 Found ${bookings.length} total bookings for ${decodedBarberId}`);
         }
 

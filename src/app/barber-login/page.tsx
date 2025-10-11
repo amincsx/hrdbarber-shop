@@ -51,16 +51,19 @@ function BarberLoginContent() {
                     loginTime: new Date().toISOString()
                 }));
 
-                // Redirect to barber dashboard
+                // Redirect to barber dashboard using username (English) not name (Farsi)
                 const urlParams = new URLSearchParams(window.location.search);
                 const isPWA = urlParams.get('pwa') === '1';
                 const barberParam = urlParams.get('barber');
                 
+                // Use username for clean URLs
+                const barberUrlId = result.user.username || result.user.name;
+                
                 if (isPWA || barberParam) {
                     // For PWA, use window.location to ensure proper navigation
-                    window.location.href = `/barber-dashboard/${encodeURIComponent(result.user.name)}?pwa=1`;
+                    window.location.href = `/barber-dashboard/${encodeURIComponent(barberUrlId)}?pwa=1`;
                 } else {
-                    router.push(`/barber-dashboard/${result.user.name}`);
+                    router.push(`/barber-dashboard/${barberUrlId}`);
                 }
             } else {
                 setError(result.error || 'خطا در ورود');

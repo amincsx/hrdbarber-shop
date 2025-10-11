@@ -18,8 +18,8 @@ declare global {
 }
 
 interface BarberPWAInstallProps {
-  barberName: string;
-  barberId: string;
+  barberName: string;  // Farsi display name
+  barberId: string;     // English username for URL
 }
 
 export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInstallProps) {
