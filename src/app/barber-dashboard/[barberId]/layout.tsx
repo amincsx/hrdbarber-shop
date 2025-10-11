@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 
-export async function generateMetadata({ params }: { params: { barberId: string } }): Promise<Metadata> {
+export async function generateMetadata({ 
+  params 
+}: { 
+  params: Promise<{ barberId: string }> 
+}): Promise<Metadata> {
   const resolvedParams = await params;
   const barberId = decodeURIComponent(resolvedParams.barberId);
   
