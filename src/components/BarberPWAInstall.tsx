@@ -50,68 +50,37 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
       setIsIOS(isIOSDevice);
     };
 
-    // Create dynamic manifest for this barber
-    const createBarberManifest = () => {
-      const manifest = {
-        name: `داشبورد ${barberName} - آرایشگاه HRD`,
-        short_name: `${barberName} - HRD`,
-        description: `پنل مدیریت رزروها برای ${barberName}`,
-        start_url: `/barber/${encodeURIComponent(barberId)}?pwa=1&auto=1`,
-        display: "standalone",
-        background_color: "#1e293b",
-        theme_color: "#1e293b",
-        orientation: "portrait-primary",
-        lang: "fa",
-        dir: "rtl",
-        scope: "/",
-        icons: [
-          {
-            src: "/icon-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-            purpose: "any maskable"
-          },
-          {
-            src: "/icon-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "any maskable"
-          },
-          {
-            src: "/apple-touch-icon.png",
-            sizes: "180x180",
-            type: "image/png",
-            purpose: "any"
-          }
-        ],
-        categories: ["business", "productivity"],
-        display_override: ["window-controls-overlay", "standalone", "minimal-ui"]
-      };
-
-      const stringManifest = JSON.stringify(manifest);
-      const blob = new Blob([stringManifest], { type: 'application/json' });
-      const manifestURL = URL.createObjectURL(blob);
-      
+    // Use the separate barber manifest file
+    const setupBarberManifest = () => {
       // Remove existing barber manifest link if any
       const existingBarberLink = document.querySelector('link[rel="manifest"][data-barber="true"]');
       if (existingBarberLink) {
         existingBarberLink.remove();
       }
       
-      // Also temporarily remove the main manifest to avoid conflicts
+      // Also temporarily hide the main manifest to avoid conflicts
       const mainManifestLink = document.querySelector('link[rel="manifest"]:not([data-barber])') as HTMLLinkElement;
       if (mainManifestLink) {
         mainManifestLink.style.display = 'none';
       }
 
-      // Add new manifest link
+      // Add barber manifest link
       const manifestLink = document.createElement('link');
       manifestLink.rel = 'manifest';
-      manifestLink.href = manifestURL;
+      manifestLink.href = '/barber-manifest.json';
       manifestLink.setAttribute('data-barber', 'true');
       document.head.appendChild(manifestLink);
       
-      console.log('🔧 Created barber manifest:', manifest);
+      console.log('🔧 Loaded separate barber manifest for:', barberName);
+      
+      // Update meta theme-color for barber app
+      let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
+      if (!themeColorMeta) {
+        themeColorMeta = document.createElement('meta');
+        themeColorMeta.name = 'theme-color';
+        document.head.appendChild(themeColorMeta);
+      }
+      themeColorMeta.content = '#f59e0b'; // Yellow theme for barbers
     };
 
     // Listen for beforeinstallprompt event
@@ -130,7 +99,7 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
 
     checkIfInstalled();
     detectIOS();
-    createBarberManifest();
+    setupBarberManifest();
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);

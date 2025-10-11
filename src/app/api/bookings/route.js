@@ -54,6 +54,37 @@ async function POST(request) {
 
         if (newBooking) {
             console.log('✅ Booking saved successfully to MongoDB');
+            
+            // Send push notification to the barber
+            try {
+                const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/barber/notify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        barberId: barber,
+                        title: '🎉 رزرو جدید!',
+                        body: `مشتری: ${user_name || 'کاربر'}\nخدمات: ${services.join(', ')}\nزمان: ${start_time}`,
+                        data: {
+                            bookingId: newBooking.id || newBooking._id,
+                            barberId: barber,
+                            date: date_key,
+                            time: start_time
+                        }
+                    })
+                });
+                
+                if (notificationResponse.ok) {
+                    console.log('✅ Notification sent to barber:', barber);
+                } else {
+                    console.log('⚠️ Failed to send notification to barber');
+                }
+            } catch (notifError) {
+                console.error('⚠️ Notification error (non-critical):', notifError);
+                // Don't fail the booking if notification fails
+            }
+            
             return NextResponse.json({
                 message: 'رزرو با موفقیت ثبت شد',
                 booking: newBooking,

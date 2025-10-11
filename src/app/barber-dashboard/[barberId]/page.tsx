@@ -40,6 +40,77 @@ export default function BarberDashboard() {
     const [lastBookingCount, setLastBookingCount] = useState<number>(0);
     const [showNewBookingAlert, setShowNewBookingAlert] = useState(false);
 
+    // Register service worker and set up push notifications
+    useEffect(() => {
+        const registerServiceWorker = async () => {
+            if ('serviceWorker' in navigator && 'PushManager' in window) {
+                try {
+                    console.log('🔧 Registering barber service worker...');
+                    const registration = await navigator.serviceWorker.register('/barber-sw.js');
+                    console.log('✅ Barber Service Worker registered:', registration);
+                    
+                    // Request notification permission
+                    if (Notification.permission === 'default') {
+                        const permission = await Notification.requestPermission();
+                        console.log('🔔 Notification permission:', permission);
+                    }
+                    
+                    // Subscribe to push notifications if granted
+                    if (Notification.permission === 'granted') {
+                        try {
+                            // For now, we'll use a simple subscription without VAPID keys
+                            // In production, you should generate and use VAPID keys
+                            const subscription = await registration.pushManager.subscribe({
+                                userVisibleOnly: true,
+                                applicationServerKey: null // Would use VAPID key in production
+                            }).catch(() => {
+                                console.log('⚠️ Push subscription not available (needs VAPID keys)');
+                                return null;
+                            });
+                            
+                            if (subscription) {
+                                // Send subscription to server
+                                const response = await fetch('/api/barber/subscribe', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        barberId: decodeURIComponent(barberId),
+                                        subscription
+                                    })
+                                });
+                                
+                                if (response.ok) {
+                                    console.log('✅ Push notification subscription registered');
+                                } else {
+                                    console.log('⚠️ Failed to register push subscription on server');
+                                }
+                            }
+                        } catch (subError) {
+                            console.log('⚠️ Push subscription error:', subError);
+                        }
+                    }
+                    
+                    // Listen for messages from service worker
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        console.log('💬 Message from service worker:', event.data);
+                        if (event.data.type === 'REFRESH_BOOKINGS_REQUEST') {
+                            fetchBarberBookings();
+                        }
+                    });
+                    
+                } catch (error) {
+                    console.error('❌ Service Worker registration failed:', error);
+                }
+            } else {
+                console.log('⚠️ Service Worker or Push Manager not supported');
+            }
+        };
+        
+        registerServiceWorker();
+    }, [barberId]);
+
     useEffect(() => {
         // Check if this is a PWA launch (has pwa=1 parameter)
         const urlParams = new URLSearchParams(window.location.search);
