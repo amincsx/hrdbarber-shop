@@ -152,9 +152,6 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
           <span className="text-lg">📱</span>
           <span className="text-white text-sm font-medium">نصب اپ</span>
         </button>
-        <div className="text-xs text-white/60 mt-1">
-          Debug: {isIOS ? 'iOS' : 'Android'} | {deferredPrompt ? 'Prompt Ready' : 'No Prompt'}
-        </div>
       </div>
 
       {/* iOS Install Instructions Modal */}

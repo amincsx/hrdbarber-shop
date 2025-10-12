@@ -23,43 +23,48 @@ async function POST(request) {
         // Initialize barber authentication accounts if needed
         await MongoDatabase.initializeBarberAuth();
 
-        // Owner login
+        // Owner login - Database only (no hardcoded credentials)
         if (type === 'owner') {
-            // Check for admin/CEO user in the database
-            const adminUser = await MongoDatabase.getUserByUsername('ceo');
-
-            if (adminUser && adminUser.password === password) {
-                return NextResponse.json({
-                    success: true,
-                    message: 'ورود مدیر موفقیت‌آمیز',
-                    user: {
-                        id: adminUser._id,
-                        name: adminUser.name || 'مدیر سیستم',
-                        type: 'owner',
-                        username: adminUser.username
-                    }
-                });
+            console.log('🔍 Processing owner login from MongoDB...');
+            
+            // Try to find admin user by username (try both 'ceo' and username provided)
+            let adminUser = await MongoDatabase.getUserByUsername(username);
+            
+            // If not found and username is 'owner', try 'ceo' as well
+            if (!adminUser && username === 'owner') {
+                adminUser = await MongoDatabase.getUserByUsername('ceo');
             }
 
-            // Also support hardcoded credentials as fallback
-            else if ((username === 'owner' && password === 'owner123') ||
-                (username === 'ceo' && password === 'instad')) {
-                return NextResponse.json({
-                    success: true,
-                    message: 'ورود مدیر موفقیت‌آمیز',
-                    user: {
-                        id: 'owner-1',
-                        name: 'مدیر سیستم',
-                        type: 'owner',
-                        username: username
-                    }
-                });
-            } else {
+            console.log('  - Admin user found:', !!adminUser);
+
+            if (!adminUser || adminUser.role !== 'admin') {
+                console.log('❌ Admin user not found or wrong role');
                 return NextResponse.json(
-                    { success: false, error: 'نام کاربری یا رمز عبور اشتباه است' },
+                    { success: false, error: 'کاربر مدیر یافت نشد. لطفاً ابتدا حساب کاربری ایجاد کنید.' },
+                    { status: 404 }
+                );
+            }
+
+            console.log('  - Password check:', password === adminUser.password);
+            if (adminUser.password !== password) {
+                console.log('❌ Wrong password for admin');
+                return NextResponse.json(
+                    { success: false, error: 'رمز عبور اشتباه است' },
                     { status: 401 }
                 );
             }
+
+            console.log('✅ Owner login successful');
+            return NextResponse.json({
+                success: true,
+                message: 'ورود مدیر موفقیت‌آمیز',
+                user: {
+                    id: adminUser._id,
+                    name: adminUser.name || 'مدیر سیستم',
+                    type: 'owner',
+                    username: adminUser.username
+                }
+            });
         }
 
         // Barber login - Use MongoDB

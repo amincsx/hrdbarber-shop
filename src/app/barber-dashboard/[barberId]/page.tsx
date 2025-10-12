@@ -591,7 +591,7 @@ export default function BarberDashboard() {
                                 تعداد کل رزروها: {barberData?.total_bookings || 0}
                             </p>
                         </div>
-                        <div className="flex gap-2 w-full sm:w-auto items-center">
+                        <div className="flex gap-2 w-full sm:w-auto items-center flex-wrap">
                             <button
                                 onClick={() => {
                                     fetchBarberBookings();
@@ -600,6 +600,12 @@ export default function BarberDashboard() {
                                 className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial"
                             >
                                 🔄 تازه‌سازی
+                            </button>
+                            <button
+                                onClick={() => router.push('/barber-change-password')}
+                                className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial"
+                            >
+                                🔒 تغییر رمز
                             </button>
                             <BarberPWAInstall 
                                 barberName={barberSession?.user?.name || decodeURIComponent(barberId)} 

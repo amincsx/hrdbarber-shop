@@ -6,8 +6,8 @@ export async function GET(request) {
     try {
         console.log('🔧 Initializing barber authentication...');
 
-        // Initialize barber auth accounts
-        await MongoDatabase.initializeBarberAuth();
+        // Initialize barber auth accounts (returns newly created accounts with passwords)
+        const newAccounts = await MongoDatabase.initializeBarberAuth();
 
         // Get all barbers to verify
         const barbers = await MongoDatabase.getAllBarbers();
@@ -22,7 +22,8 @@ export async function GET(request) {
             username: user.username,
             name: user.name,
             role: user.role,
-            barber_id: user.barber_id
+            barber_id: user.barber_id,
+            has_password: !!user.password
         }));
 
         return NextResponse.json({
@@ -30,7 +31,10 @@ export async function GET(request) {
             message: 'Barber authentication initialized successfully',
             barbers_count: barbers.length,
             user_accounts_count: barberUsers.length,
-            mappings: mappings
+            newly_created: newAccounts.length,
+            new_accounts: newAccounts, // Shows username and generated password
+            existing_mappings: mappings,
+            important_note: 'Save the passwords shown in new_accounts array! These are secure random passwords.'
         });
 
     } catch (error) {

@@ -270,6 +270,35 @@ class MongoDatabase {
         }
     }
 
+    static async updateUser(userId, updateData) {
+        try {
+            await dbConnect();
+            const result = await User.findByIdAndUpdate(
+                userId,
+                updateData,
+                { new: true }
+            );
+            if (result) {
+                console.log('✅ User updated in MongoDB:', userId);
+                return result;
+            }
+            return null;
+        } catch (error) {
+            console.error('Error updating user:', error);
+            return null;
+        }
+    }
+
+    // Generate a secure random password
+    static generateSecurePassword(username) {
+        // Generate a stronger password with random characters
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+        const randomPart = Array.from({ length: 8 }, () => 
+            chars.charAt(Math.floor(Math.random() * chars.length))
+        ).join('');
+        return `${username}_${randomPart}`;
+    }
+
     // Initialize barber authentication accounts
     static async initializeBarberAuth() {
         try {
@@ -278,6 +307,7 @@ class MongoDatabase {
 
             // Get all active barbers from your existing data
             const barbers = await Barber.find({ isActive: true });
+            const createdAccounts = [];
 
             for (const barber of barbers) {
                 // Check if user account already exists
@@ -299,23 +329,36 @@ class MongoDatabase {
                             .replace(/[^\w]/g, '');
                     }
 
+                    // Generate a secure password
+                    const securePassword = this.generateSecurePassword(username);
+
                     // Create user account for barber
                     const userData = {
                         username: username,
                         name: barber.name,
-                        password: `${username}123`, // Simple password pattern
+                        password: securePassword,
                         role: 'barber',
                         barber_id: barber._id
                     };
 
                     await this.addUser(userData);
                     console.log(`✅ Created auth account for barber: ${barber.name} (${username})`);
+                    console.log(`   Password: ${securePassword}`);
+                    
+                    createdAccounts.push({
+                        username: username,
+                        name: barber.name,
+                        password: securePassword
+                    });
                 } else {
                     console.log(`ℹ️ Auth account already exists for: ${barber.name}`);
                 }
             }
 
             console.log('✅ Barber authentication initialization completed');
+            
+            // Return created accounts for reference
+            return createdAccounts;
 
         } catch (error) {
             console.error('Error initializing barber authentication:', error);

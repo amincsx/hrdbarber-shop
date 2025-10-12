@@ -111,7 +111,11 @@ function BarberLoginContent() {
                     <p className="text-white/70">داشبورد مدیریت رزروها</p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
+                    {/* Hidden fake inputs to prevent autofill */}
+                    <input type="text" style={{ display: 'none' }} />
+                    <input type="password" style={{ display: 'none' }} />
+                    
                     {/* Username */}
                     <div>
                         <label className="block text-sm font-medium text-white mb-2">
@@ -119,10 +123,17 @@ function BarberLoginContent() {
                         </label>
                         <input
                             type="text"
+                            name="prevent-autofill-username"
                             value={loginData.username}
                             onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
                             className="w-full p-4 rounded-xl bg-white/90 text-gray-800 border border-white/40 placeholder-gray-500 focus:bg-white focus:border-white/60 focus:outline-none transition-all duration-300"
                             placeholder="نام کاربری"
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck="false"
+                            data-lpignore="true"
+                            data-form-type="other"
                             required
                         />
                     </div>
@@ -134,10 +145,17 @@ function BarberLoginContent() {
                         </label>
                         <input
                             type="password"
+                            name="prevent-autofill-password"
                             value={loginData.password}
                             onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                             className="w-full p-4 rounded-xl bg-white/90 text-gray-800 border border-white/40 placeholder-gray-500 focus:bg-white focus:border-white/60 focus:outline-none transition-all duration-300"
                             placeholder="رمز عبور"
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck="false"
+                            data-lpignore="true"
+                            data-form-type="other"
                             required
                         />
                     </div>
@@ -158,6 +176,29 @@ function BarberLoginContent() {
                         {loading ? 'در حال ورود...' : 'ورود به داشبورد'}
                     </button>
                 </form>
+
+                {/* Action Links */}
+                <div className="mt-6 space-y-3">
+                    <button
+                        onClick={() => router.push('/barber-forgot-password')}
+                        className="w-full text-white/80 hover:text-white text-sm transition-colors py-2 hover:bg-white/10 rounded-lg"
+                    >
+                        🔑 فراموشی رمز عبور
+                    </button>
+                    
+                    <div className="flex items-center gap-2">
+                        <div className="flex-1 h-px bg-white/20"></div>
+                        <span className="text-white/50 text-xs">یا</span>
+                        <div className="flex-1 h-px bg-white/20"></div>
+                    </div>
+                    
+                    <button
+                        onClick={() => router.push('/barber-register')}
+                        className="w-full py-3 bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl text-white font-medium transition-all"
+                    >
+                        ✨ ثبت نام آرایشگر جدید
+                    </button>
+                </div>
 
                 <div className="mt-6 text-center">
                     <button
