@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { persianToEnglish } from '../../lib/numberUtils';
 
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
@@ -32,9 +33,14 @@ export default function SignupPage() {
         return;
       }
 
+      // Convert Persian numerals to English numerals in phone number
+      const normalizedPhone = persianToEnglish(phone);
+      console.log('📞 Original phone input:', phone);
+      console.log('📞 Normalized phone:', normalizedPhone);
+      
       // Validate Iranian phone number
       const phoneRegex = /^09\d{9}$/;
-      if (!phoneRegex.test(phone)) {
+      if (!phoneRegex.test(normalizedPhone)) {
         setError('شماره تلفن معتبر نیست');
         setIsLoading(false);
         return;
@@ -47,7 +53,7 @@ export default function SignupPage() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ phone }),
+          body: JSON.stringify({ phone: normalizedPhone }),
         });
 
         const otpResult = await otpResponse.json();
@@ -71,6 +77,9 @@ export default function SignupPage() {
       }
 
       try {
+        // Convert Persian numerals to English numerals
+        const normalizedPhone = persianToEnglish(phone);
+        
         // Save to server via API
         const response = await fetch('/api/auth', {
           method: 'POST',
@@ -80,7 +89,7 @@ export default function SignupPage() {
           body: JSON.stringify({
             first_name: firstName,
             last_name: lastName,
-            phone,
+            phone: normalizedPhone,
             password,
             otp
           }),

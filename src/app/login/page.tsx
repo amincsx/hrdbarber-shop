@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { persianToEnglish } from '../../lib/numberUtils';
 
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
@@ -28,10 +29,13 @@ export default function LoginPage() {
     setError('');
 
     try {
-      console.log('🔐 Attempting login for phone:', phone);
+      // Convert Persian numerals to English numerals in phone number
+      const normalizedPhone = persianToEnglish(phone);
+      console.log('🔐 Attempting login for phone:', normalizedPhone);
+      console.log('📞 Original phone input:', phone);
       
       // Try API first with better error handling
-      const response = await fetch(`/api/auth?phone=${encodeURIComponent(phone)}&password=${encodeURIComponent(password)}`, {
+      const response = await fetch(`/api/auth?phone=${encodeURIComponent(normalizedPhone)}&password=${encodeURIComponent(password)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -63,7 +67,7 @@ export default function LoginPage() {
         console.log('🔄 Server error, trying localStorage fallback...');
         // Only use localStorage fallback for server errors
         const storedUsers = localStorage.getItem('users') ? JSON.parse(localStorage.getItem('users')!) : [];
-        const existingUser = storedUsers.find((u: any) => u.phone === phone && u.password === password);
+        const existingUser = storedUsers.find((u: any) => u.phone === normalizedPhone && u.password === password);
 
         if (existingUser) {
           console.log('✅ Login successful via localStorage fallback');
@@ -120,14 +124,19 @@ export default function LoginPage() {
           return;
         }
 
+        // Convert Persian numerals to English numerals
+        const normalizedForgotPhone = persianToEnglish(forgotPhone);
+        console.log('📞 Original forgot phone input:', forgotPhone);
+        console.log('📞 Normalized forgot phone:', normalizedForgotPhone);
+
         // Validate Iranian phone number
         const phoneRegex = /^09\d{9}$/;
-        if (!phoneRegex.test(forgotPhone)) {
+        if (!phoneRegex.test(normalizedForgotPhone)) {
           setForgotError('شماره تلفن معتبر نیست');
           return;
         }
 
-        console.log('📱 Checking if user exists for phone:', forgotPhone);
+        console.log('📱 Checking if user exists for phone:', normalizedForgotPhone);
         
         // Step 1: Check if user exists first
         const checkResponse = await fetch('/api/forgot-password', {
@@ -135,7 +144,7 @@ export default function LoginPage() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ phone: forgotPhone }),
+          body: JSON.stringify({ phone: normalizedForgotPhone }),
         });
 
         console.log('📡 User check response status:', checkResponse.status);
@@ -155,7 +164,7 @@ export default function LoginPage() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ phone: forgotPhone }),
+          body: JSON.stringify({ phone: normalizedForgotPhone }),
         });
 
         console.log('📡 OTP send response status:', otpResponse.status);
@@ -183,13 +192,16 @@ export default function LoginPage() {
           return;
         }
 
+        // Convert Persian numerals to English numerals
+        const normalizedForgotPhone = persianToEnglish(forgotPhone);
+        
         const response = await fetch('/api/forgot-password', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            phone: forgotPhone,
+            phone: normalizedForgotPhone,
             otp: otpCode,
             newPassword: newPassword
           }),
