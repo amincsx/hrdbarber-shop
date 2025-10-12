@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { persianToEnglish } from '../../lib/numberUtils';
 
 function AdminLoginContent() {
     const router = useRouter();
@@ -32,12 +33,24 @@ function AdminLoginContent() {
         setError('');
 
         try {
+            // Convert Persian numerals to English in username and password
+            const normalizedLoginData = {
+                username: persianToEnglish(loginData.username),
+                password: persianToEnglish(loginData.password),
+                type: loginData.type
+            };
+            
+            console.log('🔐 Admin login - Type:', loginData.type);
+            console.log('🔐 Admin login - Original username:', loginData.username);
+            console.log('🔐 Admin login - Normalized username:', normalizedLoginData.username);
+            console.log('🔑 Admin login - Normalized password:', normalizedLoginData.password);
+            
             const response = await fetch('/api/admin', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(loginData)
+                body: JSON.stringify(normalizedLoginData)
             });
 
             const result = await response.json();

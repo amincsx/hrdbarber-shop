@@ -208,10 +208,10 @@ export default function BarberDashboard() {
                 Notification.requestPermission();
             }
             
-            // Poll for new bookings every 30 seconds
+            // Poll for new bookings every 5 seconds (more frequent for testing)
             const pollInterval = setInterval(() => {
                 fetchBarberBookings();
-            }, 30000);
+            }, 5000);
             
             return () => clearInterval(pollInterval);
         }
@@ -220,12 +220,24 @@ export default function BarberDashboard() {
     const fetchBarberBookings = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`/api/barber/${encodeURIComponent(barberId)}`);
+            console.log('🔄 Fetching bookings for barberId:', barberId);
+            const url = `/api/barber/${encodeURIComponent(barberId)}`;
+            console.log('🔄 Request URL:', url);
+            
+            const response = await fetch(url);
+            console.log('📡 Response status:', response.status);
+            console.log('📡 Response ok:', response.ok);
+            
             const data = await response.json();
+            console.log('📦 Response data:', data);
+            console.log('📦 Total bookings:', data.total_bookings);
+            console.log('📦 Bookings array length:', data.bookings?.length);
 
             if (response.ok) {
                 // Check if there are new bookings
                 const newBookingCount = data.total_bookings || 0;
+                console.log('📊 Previous count:', lastBookingCount, '→ New count:', newBookingCount);
+                
                 if (lastBookingCount > 0 && newBookingCount > lastBookingCount) {
                     // New booking detected!
                     const newBookings = (data.bookings || []).slice(0, newBookingCount - lastBookingCount);
@@ -305,21 +317,37 @@ export default function BarberDashboard() {
                 
                 setLastBookingCount(newBookingCount);
                 setBarberData(data);
-                console.log('✅ Fetched barber data from file database:', data);
+                console.log('✅ Barber data set successfully');
+                console.log('✅ Bookings in state:', data.bookings?.length);
+                
+                // Log booking statuses
+                if (data.bookings && data.bookings.length > 0) {
+                    console.log('📊 Booking statuses:', data.bookings.map(b => ({
+                        id: b.id,
+                        user: b.user_name,
+                        status: b.status
+                    })));
+                }
+                
                 setError('');
             } else {
+                console.error('❌ API returned error:', data.error);
                 setError(data.error || 'خطا در دریافت اطلاعات');
             }
         } catch (err) {
             console.error('❌ API error:', err);
+            console.error('❌ Error details:', err.message);
             setError('خطا در اتصال به سرور');
         } finally {
             setLoading(false);
+            console.log('✅ Loading complete');
         }
     };
 
     const updateBookingStatus = async (bookingId: string, status: string, notes?: string) => {
         try {
+            console.log('🔄 Updating booking:', { bookingId, status, notes });
+            
             const response = await fetch(`/api/barber/${encodeURIComponent(barberId)}`, {
                 method: 'PUT',
                 headers: {
@@ -332,15 +360,26 @@ export default function BarberDashboard() {
                 })
             });
 
+            console.log('📡 Update response status:', response.status);
             const result = await response.json();
+            console.log('📡 Update response data:', result);
 
             if (response.ok) {
+                console.log('✅ Status updated successfully, refreshing bookings...');
+                
+                // Force a delay to ensure database is updated
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
                 await fetchBarberBookings();
+                
+                console.log('✅ Bookings refreshed after status update');
                 alert('وضعیت رزرو با موفقیت به‌روزرسانی شد');
             } else {
+                console.error('❌ Update failed:', result.error);
                 alert(result.error || 'خطا در به‌روزرسانی');
             }
         } catch (err) {
+            console.error('❌ Update error:', err);
             alert('خطا در اتصال به سرور');
         }
     };
@@ -390,23 +429,45 @@ export default function BarberDashboard() {
         return time.replace(':', ':');
     };
 
-    const filteredBookings = barberData?.bookings.filter(booking => {
-        const matchesDate = !selectedDate || booking.date_key === selectedDate;
-        const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
-        return matchesDate && matchesStatus;
-    }).sort((a, b) => {
-        // Sort by creation time (newest first), then by booking date (newest first), then by start time (latest first)
-        const aCreated = new Date(a.created_at).getTime();
-        const bCreated = new Date(b.created_at).getTime();
-        if (bCreated !== aCreated) return bCreated - aCreated;
-        
-        if (b.date_key !== a.date_key) return b.date_key.localeCompare(a.date_key);
-        
-        return b.start_time.localeCompare(a.start_time);
-    }) || [];
+    const filteredBookings = (() => {
+        const rawBookings = barberData?.bookings || [];
+        console.log('🔍 Filtering bookings:', {
+            total: rawBookings.length,
+            selectedDate: selectedDate,
+            statusFilter: statusFilter
+        });
+
+        const filtered = rawBookings.filter(booking => {
+            const matchesDate = !selectedDate || booking.date_key === selectedDate;
+            const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
+            return matchesDate && matchesStatus;
+        }).sort((a, b) => {
+            // Sort by creation time (newest first), then by booking date (newest first), then by start time (latest first)
+            const aCreated = new Date(a.created_at).getTime();
+            const bCreated = new Date(b.created_at).getTime();
+            if (bCreated !== aCreated) return bCreated - aCreated;
+            
+            if (b.date_key !== a.date_key) return b.date_key.localeCompare(a.date_key);
+            
+            return b.start_time.localeCompare(a.start_time);
+        });
+
+        console.log('🔍 After filtering:', filtered.length, 'bookings');
+        if (filtered.length > 0) {
+            console.log('🔍 Sample filtered booking:', {
+                user: filtered[0].user_name,
+                date: filtered[0].date_key,
+                time: filtered[0].start_time,
+                status: filtered[0].status
+            });
+            console.log('🔍 Full booking object:', filtered[0]);
+        }
+
+        return filtered;
+    })();
 
     const getUniquesDates = () => {
-        if (!barberData) return [];
+        if (!barberData || !barberData.bookings) return [];
         const dates = [...new Set(barberData.bookings.map(b => b.date_key))];
         return dates.sort();
     };
@@ -520,6 +581,15 @@ export default function BarberDashboard() {
                             </p>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto items-center">
+                            <button
+                                onClick={() => {
+                                    fetchBarberBookings();
+                                    alert('داده‌ها تازه‌سازی شد');
+                                }}
+                                className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial"
+                            >
+                                🔄 تازه‌سازی
+                            </button>
                             <BarberPWAInstall 
                                 barberName={barberSession?.user?.name || decodeURIComponent(barberId)} 
                                 barberId={barberSession?.user?.username || decodeURIComponent(barberId)} 
@@ -603,6 +673,11 @@ export default function BarberDashboard() {
                     <div className="p-4 sm:p-6 border-b border-white/10">
                         <h2 className="text-lg sm:text-xl font-bold text-glass flex items-center">
                             📋 رزروهای من ({filteredBookings.length})
+                            {filteredBookings.length > 0 && (
+                                <span className="mr-2 px-3 py-1 bg-green-500/30 text-green-300 text-xs rounded-full">
+                                    ✓ {filteredBookings.length} رزرو فعال
+                                </span>
+                            )}
                         </h2>
                     </div>
 

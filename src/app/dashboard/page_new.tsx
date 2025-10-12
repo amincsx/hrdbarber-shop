@@ -22,8 +22,13 @@ export default function DashboardPage() {
         const now = new Date();
         const currentTime = now.getTime();
 
-        // Find the most recent booking that hasn't ended yet
+        // Find the most recent booking that hasn't ended yet AND is not cancelled
         const activeOrUpcomingBookings = bookings.filter((booking: any) => {
+            // Exclude cancelled bookings
+            if (booking.status === 'cancelled') {
+                return false;
+            }
+            
             const bookingDate = new Date(booking.date_key);
             const endTime = new Date(booking.date_key + 'T' + booking.end_time);
 

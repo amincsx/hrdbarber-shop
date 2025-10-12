@@ -77,8 +77,15 @@ export default function SignupPage() {
       }
 
       try {
-        // Convert Persian numerals to English numerals
+        // Convert Persian numerals to English numerals in phone, password, and OTP
         const normalizedPhone = persianToEnglish(phone);
+        const normalizedPassword = persianToEnglish(password);
+        const normalizedOtp = persianToEnglish(otp);
+        
+        console.log('📞 Normalized phone:', normalizedPhone);
+        console.log('🔑 Original password:', password);
+        console.log('🔑 Normalized password:', normalizedPassword);
+        console.log('🔢 Normalized OTP:', normalizedOtp);
         
         // Save to server via API
         const response = await fetch('/api/auth', {
@@ -90,8 +97,8 @@ export default function SignupPage() {
             first_name: firstName,
             last_name: lastName,
             phone: normalizedPhone,
-            password,
-            otp
+            password: normalizedPassword,
+            otp: normalizedOtp
           }),
         });
 

@@ -46,17 +46,25 @@ class MongoDatabase {
     static async getAllBookings() {
         try {
             await dbConnect();
-            // Sort by creation time (newest first), then by booking date (newest first), then by start time (latest first)
-            const bookings = await Booking.find().sort({ 
-                created_at: -1,
-                date_key: -1, 
-                start_time: -1 
-            });
-            // Add id field for compatibility with frontend
+            // Get all bookings (no sorting in query to avoid field name issues)
+            const bookings = await Booking.find();
+            
+            // Add id field for compatibility and sort in JavaScript (handles both created_at and createdAt)
             return bookings.map(booking => ({
                 ...booking.toObject(),
                 id: booking._id.toString()
-            }));
+            })).sort((a, b) => {
+                // Sort by creation time (try both field names)
+                const aTime = new Date(a.created_at || a.createdAt || 0).getTime();
+                const bTime = new Date(b.created_at || b.createdAt || 0).getTime();
+                if (bTime !== aTime) return bTime - aTime;
+                
+                // Then by date
+                if (b.date_key !== a.date_key) return b.date_key.localeCompare(a.date_key);
+                
+                // Then by start time
+                return b.start_time.localeCompare(a.start_time);
+            });
         } catch (error) {
             console.error('Error getting bookings:', error);
             return [];
@@ -87,17 +95,41 @@ class MongoDatabase {
     static async getBookingsByBarber(barberName) {
         try {
             await dbConnect();
-            // Sort by creation time (newest first), then by booking date (newest first), then by start time (latest first)
-            const bookings = await Booking.find({ barber: barberName }).sort({ 
-                created_at: -1,
-                date_key: -1, 
-                start_time: -1 
-            });
-            // Add id field for compatibility with frontend
-            return bookings.map(booking => ({
+            console.log('🔍 [MongoDB] Searching for barber:', barberName);
+            
+            // Get all bookings for this barber (no sorting in query to avoid field name issues)
+            const bookings = await Booking.find({ barber: barberName });
+            
+            console.log('🔍 [MongoDB] Found', bookings.length, 'bookings for', barberName);
+            if (bookings.length > 0) {
+                console.log('🔍 [MongoDB] Sample booking:', {
+                    barber: bookings[0].barber,
+                    user: bookings[0].user_name,
+                    date: bookings[0].date_key,
+                    has_created_at: !!bookings[0].created_at,
+                    has_createdAt: !!bookings[0].createdAt
+                });
+            }
+            
+            // Add id field for compatibility and sort in JavaScript (handles both created_at and createdAt)
+            const result = bookings.map(booking => ({
                 ...booking.toObject(),
                 id: booking._id.toString()
-            }));
+            })).sort((a, b) => {
+                // Sort by creation time (try both field names)
+                const aTime = new Date(a.created_at || a.createdAt || 0).getTime();
+                const bTime = new Date(b.created_at || b.createdAt || 0).getTime();
+                if (bTime !== aTime) return bTime - aTime;
+                
+                // Then by date
+                if (b.date_key !== a.date_key) return b.date_key.localeCompare(a.date_key);
+                
+                // Then by start time
+                return b.start_time.localeCompare(a.start_time);
+            });
+            
+            console.log('🔍 [MongoDB] Returning', result.length, 'bookings after sort');
+            return result;
         } catch (error) {
             console.error('Error getting bookings by barber:', error);
             return [];
@@ -137,22 +169,36 @@ class MongoDatabase {
     static async updateBookingStatus(bookingId, status, notes) {
         try {
             await dbConnect();
-            const updateData = { status, updated_at: new Date() };
+            console.log('🔧 [MongoDB] Updating booking:', { bookingId, status, notes });
+            
+            const updateData = { 
+                status, 
+                updated_at: new Date(),
+                updatedAt: new Date() // Update both field formats
+            };
             if (notes !== undefined) {
                 updateData.notes = notes;
             }
+            
+            console.log('🔧 [MongoDB] Update data:', updateData);
+            
             const result = await Booking.findByIdAndUpdate(
                 bookingId,
                 updateData,
                 { new: true }
             );
+            
             if (result) {
-                console.log('✅ Booking status updated in MongoDB:', bookingId);
+                console.log('✅ [MongoDB] Booking status updated successfully');
+                console.log('✅ [MongoDB] New status:', result.status);
                 return result;
+            } else {
+                console.error('❌ [MongoDB] Booking not found with ID:', bookingId);
             }
             return null;
         } catch (error) {
-            console.error('Error updating booking status:', error);
+            console.error('❌ [MongoDB] Error updating booking status:', error);
+            console.error('❌ [MongoDB] Error details:', error.message);
             return null;
         }
     }

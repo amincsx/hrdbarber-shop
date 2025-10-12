@@ -29,13 +29,16 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // Convert Persian numerals to English numerals in phone number
+      // Convert Persian numerals to English numerals in phone number AND password
       const normalizedPhone = persianToEnglish(phone);
+      const normalizedPassword = persianToEnglish(password);
       console.log('🔐 Attempting login for phone:', normalizedPhone);
       console.log('📞 Original phone input:', phone);
+      console.log('🔑 Original password input:', password);
+      console.log('🔑 Normalized password:', normalizedPassword);
       
       // Try API first with better error handling
-      const response = await fetch(`/api/auth?phone=${encodeURIComponent(normalizedPhone)}&password=${encodeURIComponent(password)}`, {
+      const response = await fetch(`/api/auth?phone=${encodeURIComponent(normalizedPhone)}&password=${encodeURIComponent(normalizedPassword)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -67,7 +70,7 @@ export default function LoginPage() {
         console.log('🔄 Server error, trying localStorage fallback...');
         // Only use localStorage fallback for server errors
         const storedUsers = localStorage.getItem('users') ? JSON.parse(localStorage.getItem('users')!) : [];
-        const existingUser = storedUsers.find((u: any) => u.phone === normalizedPhone && u.password === password);
+        const existingUser = storedUsers.find((u: any) => u.phone === normalizedPhone && u.password === normalizedPassword);
 
         if (existingUser) {
           console.log('✅ Login successful via localStorage fallback');
@@ -192,8 +195,14 @@ export default function LoginPage() {
           return;
         }
 
-        // Convert Persian numerals to English numerals
+        // Convert Persian numerals to English numerals in phone, OTP, and password
         const normalizedForgotPhone = persianToEnglish(forgotPhone);
+        const normalizedOtp = persianToEnglish(otpCode);
+        const normalizedNewPassword = persianToEnglish(newPassword);
+        
+        console.log('📞 Normalized forgot phone:', normalizedForgotPhone);
+        console.log('🔢 Normalized OTP:', normalizedOtp);
+        console.log('🔑 Normalized new password:', normalizedNewPassword);
         
         const response = await fetch('/api/forgot-password', {
           method: 'POST',
@@ -202,8 +211,8 @@ export default function LoginPage() {
           },
           body: JSON.stringify({
             phone: normalizedForgotPhone,
-            otp: otpCode,
-            newPassword: newPassword
+            otp: normalizedOtp,
+            newPassword: normalizedNewPassword
           }),
         });
 
