@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import BarberPWAInstall from '@/components/BarberPWAInstall';
 import { persianToEnglish } from '../../../lib/numberUtils';
+import { VersionCheck } from '../../version-check';
 
 interface Booking {
     id: string;
@@ -536,17 +537,19 @@ export default function BarberDashboard() {
     }
 
     return (
-        <div className="min-h-screen p-4 relative overflow-hidden"
-            dir="rtl"
-            style={{
-                backgroundImage: 'url(/picbg2.jpg)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-                backgroundAttachment: 'fixed'
-            }}>
-            {/* Background overlay */}
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        <>
+            <VersionCheck />
+            <div className="min-h-screen p-4 relative overflow-hidden"
+                dir="rtl"
+                style={{
+                    backgroundImage: 'url(/picbg2.jpg)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundAttachment: 'fixed'
+                }}>
+                {/* Background overlay */}
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
 
             {/* Animated Background Elements */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -819,6 +822,7 @@ export default function BarberDashboard() {
                     )}
                 </div>
             </div>
-        </div>
+            </div>
+        </>
     );
 }
