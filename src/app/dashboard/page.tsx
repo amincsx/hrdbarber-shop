@@ -91,7 +91,15 @@ export default function DashboardPage() {
       const fetchUserBookings = async () => {
         try {
           console.log('🔍 Fetching bookings for user:', user.phone);
-          const response = await fetch(`/api/bookings?user_id=${encodeURIComponent(user.phone)}`);
+          const timestamp = Date.now();
+          const response = await fetch(`/api/bookings?user_id=${encodeURIComponent(user.phone)}&t=${timestamp}`, {
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
+            },
+            cache: 'no-store'
+          });
           if (response.ok) {
             const data = await response.json();
             const bookings = data.bookings || [];

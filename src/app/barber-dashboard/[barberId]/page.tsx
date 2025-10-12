@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import BarberPWAInstall from '@/components/BarberPWAInstall';
 import { persianToEnglish } from '../../../lib/numberUtils';
-import { VersionCheck } from '../../version-check';
 
 interface Booking {
     id: string;
@@ -209,10 +208,10 @@ export default function BarberDashboard() {
                 Notification.requestPermission();
             }
             
-            // Poll for new bookings every 5 seconds (more frequent for testing)
+            // Poll for new bookings every 30 seconds
             const pollInterval = setInterval(() => {
                 fetchBarberBookings();
-            }, 5000);
+            }, 30000);
             
             return () => clearInterval(pollInterval);
         }
@@ -222,10 +221,21 @@ export default function BarberDashboard() {
         try {
             setLoading(true);
             console.log('🔄 Fetching bookings for barberId:', barberId);
-            const url = `/api/barber/${encodeURIComponent(barberId)}`;
+            
+            // Add timestamp to bypass cache
+            const timestamp = Date.now();
+            const url = `/api/barber/${encodeURIComponent(barberId)}?t=${timestamp}`;
             console.log('🔄 Request URL:', url);
             
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                },
+                cache: 'no-store'
+            });
             console.log('📡 Response status:', response.status);
             console.log('📡 Response ok:', response.ok);
             
@@ -537,19 +547,17 @@ export default function BarberDashboard() {
     }
 
     return (
-        <>
-            <VersionCheck />
-            <div className="min-h-screen p-4 relative overflow-hidden"
-                dir="rtl"
-                style={{
-                    backgroundImage: 'url(/picbg2.jpg)',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundAttachment: 'fixed'
-                }}>
-                {/* Background overlay */}
-                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        <div className="min-h-screen p-4 relative overflow-hidden"
+            dir="rtl"
+            style={{
+                backgroundImage: 'url(/picbg2.jpg)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                backgroundAttachment: 'fixed'
+            }}>
+            {/* Background overlay */}
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
 
             {/* Animated Background Elements */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -676,11 +684,6 @@ export default function BarberDashboard() {
                     <div className="p-4 sm:p-6 border-b border-white/10">
                         <h2 className="text-lg sm:text-xl font-bold text-glass flex items-center">
                             📋 رزروهای من ({filteredBookings.length})
-                            {filteredBookings.length > 0 && (
-                                <span className="mr-2 px-3 py-1 bg-green-500/30 text-green-300 text-xs rounded-full">
-                                    ✓ {filteredBookings.length} رزرو فعال
-                                </span>
-                            )}
                         </h2>
                     </div>
 
@@ -822,7 +825,6 @@ export default function BarberDashboard() {
                     )}
                 </div>
             </div>
-            </div>
-        </>
+        </div>
     );
 }

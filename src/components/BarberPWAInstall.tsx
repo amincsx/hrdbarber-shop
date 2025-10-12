@@ -31,80 +31,62 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
 
   useEffect(() => {
     // Check if app is already installed
-    const checkIfInstalled = () => {
-      if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
-        setIsInstalled(true);
-        return;
-      }
-      
-      if ((window.navigator as any).standalone === true) {
-        setIsInstalled(true);
-        return;
-      }
-    };
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+      return;
+    }
+    
+    if ((window.navigator as any).standalone === true) {
+      setIsInstalled(true);
+      return;
+    }
 
     // Detect iOS
-    const detectIOS = () => {
-      const userAgent = window.navigator.userAgent.toLowerCase();
-      const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
-      setIsIOS(isIOSDevice);
-    };
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
+    setIsIOS(isIOSDevice);
 
     // Ensure manifest link points to server-side dynamic manifest
-    const setupBarberManifest = () => {
-      // The manifest is now set in the layout.tsx, but we can verify it here
-      console.log('🔧 Barber manifest setup for:', barberName);
-      console.log('📍 Manifest URL:', `/api/manifest/${encodeURIComponent(barberId)}`);
-      console.log('📍 Start URL:', `/barber-dashboard/${encodeURIComponent(barberId)}?pwa=1`);
-      
-      // Update meta theme-color for barber app
-      let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
-      if (!themeColorMeta) {
-        themeColorMeta = document.createElement('meta');
-        themeColorMeta.name = 'theme-color';
-        document.head.appendChild(themeColorMeta);
-      }
-      themeColorMeta.content = '#f59e0b'; // Yellow theme for barbers
-    };
+    console.log('🔧 Barber manifest setup for:', barberName);
+    console.log('📍 Manifest URL:', `/api/manifest/${encodeURIComponent(barberId)}`);
+    console.log('📍 Start URL:', `/barber-dashboard/${encodeURIComponent(barberId)}?pwa=1`);
+    
+    // Update meta theme-color for barber app
+    let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
+    if (!themeColorMeta) {
+      themeColorMeta = document.createElement('meta');
+      themeColorMeta.name = 'theme-color';
+      document.head.appendChild(themeColorMeta);
+    }
+    themeColorMeta.content = '#f59e0b'; // Yellow theme for barbers
 
     // Listen for beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
       e.preventDefault();
+      console.log('📱 beforeinstallprompt event fired');
       setDeferredPrompt(e);
       setShowInstallButton(true);
     };
 
     // Listen for app installed event
     const handleAppInstalled = () => {
+      console.log('✅ App installed');
       setIsInstalled(true);
       setShowInstallButton(false);
       setDeferredPrompt(null);
     };
 
-    checkIfInstalled();
-    detectIOS();
-    setupBarberManifest();
-
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Show install button for iOS devices (they don't fire beforeinstallprompt)
-    if (isIOS && !isInstalled) {
-      setShowInstallButton(true);
-    }
-
-    // Show install button for Android/Chrome after a short delay
-    setTimeout(() => {
-      if (!isInstalled) {
-        setShowInstallButton(true);
-      }
-    }, 1000);
+    // Always show install button unless already installed
+    setShowInstallButton(true);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, [barberName, barberId, isIOS, isInstalled]);
+  }, [barberName, barberId]);
 
   const handleInstallClick = async () => {
     console.log('🔧 Install button clicked');
@@ -150,15 +132,11 @@ export default function BarberPWAInstall({ barberName, barberId }: BarberPWAInst
     }
   };
 
-  console.log('🔧 Render check:', { isInstalled, showInstallButton, isIOS, deferredPrompt: !!deferredPrompt });
-  
   if (isInstalled) {
-    console.log('🔧 App already installed, not showing button');
     return null;
   }
   
   if (!showInstallButton) {
-    console.log('🔧 Install button not ready yet');
     return null;
   }
 
