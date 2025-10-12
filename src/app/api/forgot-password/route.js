@@ -57,7 +57,7 @@ async function POST(request) {
 
             if (newPassword.length < 4) {
                 return NextResponse.json(
-                    { error: 'رمز عبور باید حداقل ۴ کاراکتر باشد' },
+                    { error: 'رمز عبور باید حداقل 4 کاراکتر باشد' },
                     { status: 400 }
                 );
             }

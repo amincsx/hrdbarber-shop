@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { persianToEnglish } from '../../../lib/numberUtils';
 
 interface Booking {
     id: string;
@@ -133,12 +134,13 @@ export default function BarberDashboard() {
 
     const formatDate = (dateKey: string) => {
         const date = new Date(dateKey);
-        return date.toLocaleDateString('fa-IR', {
+        // Convert Persian numerals to English numerals
+        return persianToEnglish(date.toLocaleDateString('fa-IR', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
             weekday: 'long'
-        });
+        }));
     };
 
     const formatTime = (time: string) => {

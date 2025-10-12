@@ -5,10 +5,12 @@ import MongoDatabase from '../../../lib/mongoDatabase.js';
 // POST - Create new booking
 async function POST(request) {
     try {
+        console.log('🔍 POST /api/bookings called at', new Date().toISOString());
+        
         const bookingData = await request.json();
         const { user_id, date_key, start_time, end_time, barber, services, total_duration, user_name, user_phone } = bookingData;
 
-        console.log('📝 Received booking data:', bookingData);
+        console.log('📝 Received booking data:', JSON.stringify(bookingData, null, 2));
 
         if (!user_id || !date_key || !start_time || !end_time || !barber || !services) {
             return NextResponse.json(
@@ -38,7 +40,8 @@ async function POST(request) {
         }
 
         // Create new booking
-        const newBooking = await MongoDatabase.addBooking({
+        console.log('💾 Attempting to save booking to MongoDB...');
+        const bookingToSave = {
             user_id,
             date_key,
             start_time,
@@ -50,10 +53,14 @@ async function POST(request) {
             user_name: user_name || 'کاربر',
             user_phone: user_phone || user_id,
             persian_date: bookingData.persian_date
-        });
+        };
+        console.log('📦 Booking object to save:', JSON.stringify(bookingToSave, null, 2));
+        
+        const newBooking = await MongoDatabase.addBooking(bookingToSave);
 
         if (newBooking) {
             console.log('✅ Booking saved successfully to MongoDB');
+            console.log('🆔 Booking ID:', newBooking._id?.toString());
             
             // Send push notification to the barber
             try {
@@ -96,8 +103,11 @@ async function POST(request) {
 
     } catch (error) {
         console.error('❌ Booking creation error:', error);
+        console.error('❌ Error stack:', error.stack);
+        console.error('❌ Error name:', error.name);
+        console.error('❌ Error message:', error.message);
         return NextResponse.json(
-            { error: 'خطا در ثبت رزرو' },
+            { error: 'خطا در ثبت رزرو', details: error.message },
             { status: 500 }
         );
     }

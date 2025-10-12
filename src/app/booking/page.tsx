@@ -965,6 +965,8 @@ export default function BookingPage() {
             } else {
                 // Create new booking
                 console.log('📤 Sending booking to API:', apiBooking);
+                console.log('📤 Stringified:', JSON.stringify(apiBooking));
+                
                 const response = await fetch('/api/bookings', {
                     method: 'POST',
                     headers: {
@@ -974,6 +976,7 @@ export default function BookingPage() {
                 });
 
                 console.log('📡 API Response status:', response.status);
+                console.log('📡 API Response ok:', response.ok);
 
                 if (response.ok) {
                     const result = await response.json();
@@ -997,38 +1000,50 @@ export default function BookingPage() {
                     }
                 } else {
                     const errorData = await response.json();
-                    console.error('❌ Failed to save booking to database. Status:', response.status, 'Error:', errorData);
-                    alert('رزرو موفقیت آمیز نبود');
+                    console.error('❌ Failed to save booking to database.');
+                    console.error('❌ Status:', response.status);
+                    console.error('❌ Error data:', errorData);
+                    console.error('❌ Error message:', errorData.error);
+                    console.error('❌ Error details:', errorData.details);
+                    alert(`رزرو موفقیت آمیز نبود\n${errorData.error || ''}\n${errorData.details || ''}`);
                 }
             }
         } catch (error) {
             console.error('❌ Network error saving booking to database:', error);
-            alert(isEditMode ? 'خطا در تغییر رزرو' : 'رزرو موفقیت آمیز نبود');
+            console.error('❌ Error type:', error?.name);
+            console.error('❌ Error message:', error?.message);
+            console.error('❌ Error stack:', error?.stack);
+            alert(isEditMode ? `خطا در تغییر رزرو\n${error?.message || ''}` : `رزرو موفقیت آمیز نبود\n${error?.message || ''}`);
         }
 
-        // Save to individual user booking (backup)
-        localStorage.setItem('bookingData', JSON.stringify(localBooking));
+        // Only show confirmation if booking was successfully saved to database
+        if (bookingSavedToDatabase) {
+            // Save to individual user booking (backup)
+            localStorage.setItem('bookingData', JSON.stringify(localBooking));
 
-        // Save to shared bookings list (backup)
-        const existingBookingsData = localStorage.getItem('allBookings');
-        const allBookings = existingBookingsData ? JSON.parse(existingBookingsData) : [];
-        allBookings.push(localBooking);
-        localStorage.setItem('allBookings', JSON.stringify(allBookings));
+            // Save to shared bookings list (backup)
+            const existingBookingsData = localStorage.getItem('allBookings');
+            const allBookings = existingBookingsData ? JSON.parse(existingBookingsData) : [];
+            allBookings.push(localBooking);
+            localStorage.setItem('allBookings', JSON.stringify(allBookings));
 
-        // Reload bookings from database to get latest state
-        await loadBookingsFromDatabase();
+            // Reload bookings from database to get latest state
+            await loadBookingsFromDatabase();
 
-        // Store confirmation details without showing alert
-        setBookingConfirmation({
-            barber: selectedBarber,
-            date: formatPersianDateSync(selectedDateObj),
-            time: selectedTime,
-            endTime: minutesToTime(timeToMinutes(selectedTime) + getTotalDuration()),
-            services: selectedServices,
-            totalDuration: getTotalDuration()
-        });
+            // Store confirmation details without showing alert
+            setBookingConfirmation({
+                barber: selectedBarber,
+                date: formatPersianDateSync(selectedDateObj),
+                time: selectedTime,
+                endTime: minutesToTime(timeToMinutes(selectedTime) + getTotalDuration()),
+                services: selectedServices,
+                totalDuration: getTotalDuration()
+            });
 
-        setIsBooked(true);
+            setIsBooked(true);
+        } else {
+            console.error('❌ Booking was not saved to database, not showing confirmation');
+        }
     };
 
     // Show loading screen while checking authentication

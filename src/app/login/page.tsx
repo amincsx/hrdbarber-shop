@@ -179,7 +179,7 @@ export default function LoginPage() {
         }
 
         if (newPassword.length < 4) {
-          setForgotError('رمز عبور باید حداقل ۴ کاراکتر باشد');
+          setForgotError('رمز عبور باید حداقل 4 کاراکتر باشد');
           return;
         }
 

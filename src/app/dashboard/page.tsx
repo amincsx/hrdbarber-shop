@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { persianToEnglish } from '../../lib/numberUtils';
 
 // Disable static generation for this page
 export const dynamic = 'force-dynamic';
@@ -69,7 +70,7 @@ export default function DashboardPage() {
           hour: '2-digit',
           minute: '2-digit'
         };
-        setNextAvailableTime(latestEndTime.toLocaleDateString('fa-IR', options));
+        setNextAvailableTime(persianToEnglish(latestEndTime.toLocaleDateString('fa-IR', options)));
       }
     }
   };
@@ -132,7 +133,8 @@ export default function DashboardPage() {
       month: 'long',
       day: 'numeric'
     };
-    return date.toLocaleDateString('fa-IR', options);
+    // Convert Persian numerals to English numerals
+    return persianToEnglish(date.toLocaleDateString('fa-IR', options));
   };
 
   // Check if booking can be modified (more than 1 hour before start time)
