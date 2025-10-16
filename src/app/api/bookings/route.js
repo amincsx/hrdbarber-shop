@@ -22,7 +22,10 @@ async function POST(request) {
         // Check for booking conflicts by getting existing bookings for the same date and barber
         const existingBookings = await MongoDatabase.getBookingsByDate(date_key);
         const hasConflict = existingBookings.some(booking => {
+            // Ignore different barbers
             if (booking.barber !== barber) return false;
+            // Ignore cancelled bookings so their time is freed
+            if (booking.status === 'cancelled') return false;
 
             const requestStart = start_time;
             const requestEnd = end_time;
@@ -260,6 +263,7 @@ async function PUT(request) {
             const hasConflict = existingBookings.some(booking => {
                 if (booking.id === id) return false; // Skip current booking
                 if (booking.barber !== checkBarber) return false;
+                if (booking.status === 'cancelled') return false; // Ignore cancelled
                 
                 const requestStart = checkStart;
                 const requestEnd = checkEnd;

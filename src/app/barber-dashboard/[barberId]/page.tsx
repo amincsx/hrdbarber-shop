@@ -5,6 +5,18 @@ import { useParams, useRouter } from 'next/navigation';
 import BarberPWAInstall from '@/components/BarberPWAInstall';
 import { persianToEnglish } from '../../../lib/numberUtils';
 
+// Convert a Base64 URL-safe VAPID public key to a Uint8Array for PushManager
+function urlBase64ToUint8Array(base64String: string) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = typeof window !== 'undefined' ? window.atob(base64) : Buffer.from(base64, 'base64').toString('binary');
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
 interface Booking {
     id: string;
     user_id: string;
@@ -59,11 +71,19 @@ export default function BarberDashboard() {
                     // Subscribe to push notifications if granted
                     if (Notification.permission === 'granted') {
                         try {
-                            // For now, we'll use a simple subscription without VAPID keys
-                            // In production, you should generate and use VAPID keys
+                            // Use VAPID public key if provided
+                            // Fetch VAPID public key from server (works in PWA too)
+                            let vapidPublicKey: string | null = null;
+                            try {
+                                const keyRes = await fetch('/api/push/public-key', { cache: 'no-store' });
+                                const keyJson = await keyRes.json();
+                                vapidPublicKey = keyJson.publicKey || null;
+                            } catch {}
+                            const applicationServerKey = vapidPublicKey ? urlBase64ToUint8Array(vapidPublicKey) : null;
+
                             const subscription = await registration.pushManager.subscribe({
                                 userVisibleOnly: true,
-                                applicationServerKey: null // Would use VAPID key in production
+                                applicationServerKey
                             }).catch(() => {
                                 console.log('⚠️ Push subscription not available (needs VAPID keys)');
                                 return null;
@@ -85,7 +105,8 @@ export default function BarberDashboard() {
                                 if (response.ok) {
                                     console.log('✅ Push notification subscription registered');
                                 } else {
-                                    console.log('⚠️ Failed to register push subscription on server');
+                                    const txt = await response.text().catch(() => '');
+                                    console.log('⚠️ Failed to register push subscription on server', response.status, txt);
                                 }
                             }
                         } catch (subError) {

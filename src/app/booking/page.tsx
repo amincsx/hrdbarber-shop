@@ -530,6 +530,10 @@ export default function BookingPage() {
             console.log('Checking conflicts for:', { dateKey, selectedBarber, totalBookings: existingBookings.length });
 
             existingBookings.forEach(booking => {
+                // Ignore cancelled bookings so their time reappears
+                if (booking.status === 'cancelled') {
+                    return;
+                }
                 console.log('Checking booking:', {
                     bookingDate: booking.date_key,
                     bookingBarber: booking.barber,
@@ -779,6 +783,8 @@ export default function BookingPage() {
         const endMinutes = startMinutes + duration;
 
         return existingBookings.some(booking => {
+            // Ignore cancelled bookings
+            if (booking.status === 'cancelled') return false;
             // Only check conflicts for the same date AND same barber
             if (booking.date_key !== dateKey || booking.barber !== selectedBarber) return false;
 
@@ -807,6 +813,8 @@ export default function BookingPage() {
         // Add existing bookings to blocked ranges (only for the selected barber)
         const dateKey = selectedDateObj.toISOString().split('T')[0];
         existingBookings.forEach(booking => {
+            // Ignore cancelled bookings when building blocked ranges
+            if (booking.status === 'cancelled') return;
             // Only block times for the same date AND same barber
             if (booking.date_key === dateKey && booking.barber === selectedBarber) {
                 blockedRanges.push({

@@ -1,7 +1,17 @@
 // API endpoint to send push notifications to barbers
 import { NextResponse } from 'next/server';
+import MongoDatabase from '../../../../lib/mongoDatabase.js';
 import fs from 'fs';
 import path from 'path';
+
+// Optional web-push support (fallback to console if not configured)
+let webPush = null;
+try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    webPush = require('web-push');
+} catch (e) {
+    // web-push not installed; will use fallback
+}
 
 const SUBSCRIPTIONS_FILE = path.join(process.cwd(), 'data', 'barber-subscriptions.json');
 
@@ -19,20 +29,30 @@ function readSubscriptions() {
     }
 }
 
-// Send notification using Fetch API (fallback method without web-push library)
-async function sendNotificationFallback(subscription, payload) {
+// Send notification using web-push if available, else fallback to logging
+async function sendNotification(subscription, payload) {
+    const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+    const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+    const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:admin@example.com';
+
+    if (webPush && vapidPublicKey && vapidPrivateKey) {
+        try {
+            webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+            await webPush.sendNotification(subscription, JSON.stringify(payload));
+            return { success: true, method: 'web-push' };
+        } catch (error) {
+            console.error('❌ web-push send error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // Fallback: log only
     try {
-        // For now, we'll use a simple in-app notification mechanism
-        // In production, you would use web-push library with VAPID keys
-        console.log('📢 Would send push notification:', payload);
-        console.log('📱 To subscription:', subscription.endpoint);
-        
-        // Return success for now - actual push requires web-push library
-        // which needs to be installed via npm: npm install web-push
+        console.log('📢 (fallback) Would send push notification:', payload);
+        console.log('📱 To subscription:', subscription?.endpoint);
         return { success: true, method: 'fallback' };
-        
     } catch (error) {
-        console.error('Error sending notification:', error);
+        console.error('Error sending notification (fallback):', error);
         return { success: false, error: error.message };
     }
 }
@@ -58,10 +78,35 @@ export async function POST(request) {
         // Read subscriptions
         const subscriptions = readSubscriptions();
         
-        // Determine which barbers to notify
+        // Determine which barbers to notify, mapping between English username and Farsi name
         let targetBarbers = [];
         if (barberId) {
-            targetBarbers = [barberId];
+            const decoded = decodeURIComponent(barberId);
+            const candidates = new Set([barberId, decoded]);
+
+            // Try to find a user by username (English) and also match by Farsi name
+            try {
+                const byUsername = await MongoDatabase.getUserByUsername(decoded);
+                if (byUsername) {
+                    if (byUsername.username) candidates.add(byUsername.username);
+                    if (byUsername.name) candidates.add(byUsername.name);
+                }
+                // As a fallback, scan all barbers and match by name
+                const allBarberUsers = await MongoDatabase.getUsersByRole('barber');
+                const byName = allBarberUsers.find(u => u.name === decoded);
+                if (byName) {
+                    candidates.add(byName.username);
+                    candidates.add(byName.name);
+                }
+            } catch {}
+
+            // Keep only candidates that have a subscription entry
+            targetBarbers = Array.from(candidates).filter(id => subscriptions[id]);
+
+            // If nothing matched, still try original id
+            if (targetBarbers.length === 0) {
+                targetBarbers = [barberId];
+            }
         } else if (barberIds && Array.isArray(barberIds)) {
             targetBarbers = barberIds;
         } else {
@@ -75,8 +120,10 @@ export async function POST(request) {
             body,
             icon: '/icon-192x192.png',
             badge: '/icon-192x192.png',
-            tag: 'booking-notification',
+            // Use unique tag so notifications don't get merged/replaced
+            tag: (data && data.tag) ? data.tag : `booking-${Date.now()}`,
             requireInteraction: true,
+            renotify: true,
             data: data || {}
         };
 
@@ -85,7 +132,7 @@ export async function POST(request) {
             const barberSubscription = subscriptions[targetBarberId];
             
             if (barberSubscription && barberSubscription.subscription) {
-                const result = await sendNotificationFallback(
+                const result = await sendNotification(
                     barberSubscription.subscription,
                     notificationPayload
                 );
@@ -96,6 +143,14 @@ export async function POST(request) {
                 });
                 
                 console.log(`📱 Notification ${result.success ? 'sent' : 'failed'} to:`, targetBarberId);
+                // If the subscription is gone or invalid, clean it up (410/404 commonly)
+                if (!result.success && (result.error?.includes('410') || result.error?.includes('404'))) {
+                    delete subscriptions[targetBarberId];
+                    try {
+                        fs.writeFileSync(SUBSCRIPTIONS_FILE, JSON.stringify(subscriptions, null, 2));
+                        console.log('🧹 Removed stale subscription for:', targetBarberId);
+                    } catch {}
+                }
             } else {
                 console.log(`⚠️ No subscription found for:`, targetBarberId);
                 results.push({

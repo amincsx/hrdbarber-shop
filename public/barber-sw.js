@@ -122,7 +122,9 @@ self.addEventListener('push', (event) => {
       body: data.body,
       icon: data.icon,
       badge: data.badge,
-      tag: data.tag,
+      // Ensure unique tag to avoid replacement unless an explicit tag is provided
+      tag: data.tag || `notif-${Date.now()}`,
+      renotify: true,
       requireInteraction: data.requireInteraction,
       vibrate: [200, 100, 200, 100, 200], // Vibration pattern
       data: data.data,
