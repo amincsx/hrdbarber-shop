@@ -108,7 +108,10 @@ export default function BarberDashboard() {
     const [barberData, setBarberData] = useState<BarberData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [selectedDate, setSelectedDate] = useState('');
+    const [selectedDate, setSelectedDate] = useState(() => {
+        // Default to today's date in YYYY-MM-DD format
+        return new Date().toISOString().split('T')[0];
+    });
     const [statusFilter, setStatusFilter] = useState('all');
     const [barberSession, setBarberSession] = useState<any>(null);
     const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set());
@@ -513,6 +516,86 @@ export default function BarberDashboard() {
         return dates.sort();
     };
 
+    // Helper function to get today's date in YYYY-MM-DD format
+    const getTodayDate = () => {
+        return new Date().toISOString().split('T')[0];
+    };
+
+    // Helper function to get tomorrow's date in YYYY-MM-DD format
+    const getTomorrowDate = () => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return tomorrow.toISOString().split('T')[0];
+    };
+
+    // Helper function to get yesterday's date in YYYY-MM-DD format
+    const getYesterdayDate = () => {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return yesterday.toISOString().split('T')[0];
+    };
+
+    // Helper function to get current month's start and end dates
+    const getCurrentMonthRange = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        
+        const startOfMonth = new Date(year, month, 1).toISOString().split('T')[0];
+        const endOfMonth = new Date(year, month + 1, 0).toISOString().split('T')[0];
+        
+        return { start: startOfMonth, end: endOfMonth };
+    };
+
+    // Get today's bookings
+    const todaysBookings = (() => {
+        const rawBookings = barberData?.bookings || [];
+        const today = getTodayDate();
+        
+        return rawBookings
+            .filter(booking => booking.date_key === today && booking.status !== 'cancelled')
+            .sort((a, b) => a.start_time.localeCompare(b.start_time));
+    })();
+
+    // Get this month's bookings (excluding today)
+    const thisMonthBookings = (() => {
+        const rawBookings = barberData?.bookings || [];
+        const today = getTodayDate();
+        const { start, end } = getCurrentMonthRange();
+        
+        return rawBookings
+            .filter(booking => 
+                booking.date_key >= start && 
+                booking.date_key <= end && 
+                booking.date_key !== today &&
+                booking.status !== 'cancelled'
+            )
+            .sort((a, b) => {
+                if (a.date_key !== b.date_key) return b.date_key.localeCompare(a.date_key);
+                return a.start_time.localeCompare(b.start_time);
+            });
+    })();
+
+    // Get all bookings for the comprehensive view (with filters)
+    const allBookings = (() => {
+        const rawBookings = barberData?.bookings || [];
+        
+        const filtered = rawBookings.filter(booking => {
+            const matchesDate = !selectedDate || booking.date_key === selectedDate;
+            const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
+            return matchesDate && matchesStatus;
+        }).sort((a, b) => {
+            const aCreated = new Date(a.created_at).getTime();
+            const bCreated = new Date(b.created_at).getTime();
+            if (bCreated !== aCreated) return bCreated - aCreated;
+
+            if (b.date_key !== a.date_key) return b.date_key.localeCompare(a.date_key);
+            return b.start_time.localeCompare(a.start_time);
+        });
+
+        return filtered;
+    })();
+
     if (!barberSession) {
         return (
             <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
@@ -652,24 +735,27 @@ export default function BarberDashboard() {
                 </div>
 
                 {/* Quick Stats */}
-                <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-6 mb-6">
-                    <div className="glass-card p-3 sm:p-4 text-center border-2 border-white/30">
+                <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6">
+                    <div className="glass-card p-3 sm:p-4 text-center border-2 border-blue-400/40">
                         <div className="w-12 h-12 bg-blue-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <span className="text-2xl">�</span>
+                        </div>
+                        <h3 className="text-sm font-medium text-white/90 mb-1">امروز</h3>
+                        <p className="text-3xl font-bold text-blue-400">{todaysBookings.length}</p>
+                    </div>
+                    <div className="glass-card p-3 sm:p-4 text-center border-2 border-green-400/40">
+                        <div className="w-12 h-12 bg-green-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <span className="text-2xl">�</span>
+                        </div>
+                        <h3 className="text-sm font-medium text-white/90 mb-1">این ماه</h3>
+                        <p className="text-3xl font-bold text-green-400">{thisMonthBookings.length + todaysBookings.length}</p>
+                    </div>
+                    <div className="glass-card p-3 sm:p-4 text-center border-2 border-white/30">
+                        <div className="w-12 h-12 bg-purple-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
                             <span className="text-2xl">📊</span>
                         </div>
                         <h3 className="text-sm font-medium text-white/90 mb-1">کل رزروها</h3>
                         <p className="text-3xl font-bold text-white">{barberData?.total_bookings || 0}</p>
-                    </div>
-                    <div className="glass-card p-3 sm:p-4 text-center border-2 border-green-400/40">
-                        <div className="w-12 h-12 bg-green-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <span className="text-2xl">📅</span>
-                        </div>
-                        <h3 className="text-sm font-medium text-white/90 mb-1">امروز</h3>
-                        <p className="text-3xl font-bold text-green-400">
-                            {filteredBookings.filter(b =>
-                                b.date_key === new Date().toISOString().split('T')[0] && b.status !== 'cancelled'
-                            ).length}
-                        </p>
                     </div>
                 </div>
 
@@ -690,7 +776,12 @@ export default function BarberDashboard() {
                                 style={{ color: 'white' }}
                             >
                                 <option value="" style={{ color: 'black' }}>همه تاریخ‌ها</option>
-                                {getUniquesDates().map(date => (
+                                <option value={getTodayDate()} style={{ color: 'black' }}>
+                                    📅 امروز - {formatDate(getTodayDate())}
+                                </option>
+                                {getUniquesDates()
+                                    .filter(date => date !== getTodayDate())
+                                    .map(date => (
                                     <option key={date} value={date} style={{ color: 'black' }}>
                                         {formatDate(date)}
                                     </option>
@@ -713,32 +804,315 @@ export default function BarberDashboard() {
                             </select>
                         </div>
                     </div>
+                    
+                    {/* Quick Filter Buttons */}
+                    <div className="mt-4 border-t border-white/10 pt-4">
+                        <h3 className="text-sm font-medium text-white mb-3">🔗 فیلترهای سریع</h3>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => setSelectedDate(getTodayDate())}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                    selectedDate === getTodayDate()
+                                        ? 'bg-blue-500/30 text-white border-2 border-blue-400'
+                                        : 'bg-white/10 text-white/80 border border-white/30 hover:bg-white/20'
+                                }`}
+                            >
+                                📅 امروز
+                            </button>
+                            <button
+                                onClick={() => setSelectedDate(getTomorrowDate())}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                    selectedDate === getTomorrowDate()
+                                        ? 'bg-green-500/30 text-white border-2 border-green-400'
+                                        : 'bg-white/10 text-white/80 border border-white/30 hover:bg-white/20'
+                                }`}
+                            >
+                                ➡️ فردا
+                            </button>
+                            <button
+                                onClick={() => setSelectedDate('')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                    selectedDate === ''
+                                        ? 'bg-purple-500/30 text-white border-2 border-purple-400'
+                                        : 'bg-white/10 text-white/80 border border-white/30 hover:bg-white/20'
+                                }`}
+                            >
+                                📊 همه روزها
+                            </button>
+                            <button
+                                onClick={() => setSelectedDate(getYesterdayDate())}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                    selectedDate === getYesterdayDate()
+                                        ? 'bg-orange-500/30 text-white border-2 border-orange-400'
+                                        : 'bg-white/10 text-white/80 border border-white/30 hover:bg-white/20'
+                                }`}
+                            >
+                                ⬅️ دیروز
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Bookings List */}
-                <div className="glass-card">
+                {/* Today's Bookings - Main Priority */}
+                <div className="glass-card mb-6">
                     <div className="p-4 sm:p-6 border-b border-white/10">
-                        <h2 className="text-lg sm:text-xl font-bold text-glass flex items-center">
-                            📋 رزروهای من ({filteredBookings.length})
+                        <h2 className="text-lg sm:text-xl font-bold text-blue-400 flex items-center">
+                            📅 رزروهای امروز ({todaysBookings.length})
                         </h2>
+                        <p className="text-sm text-white/70 mt-1">
+                            {formatDate(getTodayDate())}
+                        </p>
                     </div>
 
-                    {filteredBookings.length === 0 ? (
+                    {todaysBookings.length === 0 ? (
+                        <div className="p-6 sm:p-8 text-center">
+                            <div className="w-12 sm:w-16 h-12 sm:h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-xl sm:text-2xl">📅</span>
+                            </div>
+                            <p className="text-blue-300 text-sm sm:text-base">امروز هیچ رزروی ندارید</p>
+                            <p className="text-white/60 text-xs mt-1">می‌توانید استراحت کنید! 😊</p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-white/10">
+                            {todaysBookings.map((booking, index) => {
+                                const bookingUniqueId = booking.id || `today-${booking.user_phone}-${booking.start_time}-${index}`;
+                                const isExpanded = expandedBookings.has(bookingUniqueId);
+                                return (
+                                    <div key={bookingUniqueId} className="p-3 sm:p-4 hover:bg-blue-500/5 transition-colors border-l-4 border-blue-400/50">
+                                        {/* Summary View */}
+                                        <div className="flex flex-col sm:flex-row justify-between gap-3">
+                                            <div className="flex-1">
+                                                <div className="grid grid-cols-1 gap-2 sm:gap-3">
+                                                    <div>
+                                                        <p className="text-white font-medium">👤 {booking.user_name}</p>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-3 text-sm">
+                                                        <div>
+                                                            <span className="text-white/70">📞 تلفن:</span>
+                                                            <p className="text-white font-mono">{booking.user_phone}</p>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-white/70">⏰ ساعت:</span>
+                                                            <p className="text-blue-300 font-bold">{formatTime(booking.start_time)} - {formatTime(booking.end_time)}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-white/70">✂️ خدمات:</span>
+                                                        <p className="text-white">{booking.services.join('، ')}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                                                {getStatusBadge(booking.status)}
+                                                <button
+                                                    onClick={() => {
+                                                        const newSet = new Set(expandedBookings);
+                                                        if (isExpanded) {
+                                                            newSet.delete(bookingUniqueId);
+                                                        } else {
+                                                            newSet.add(bookingUniqueId);
+                                                        }
+                                                        setExpandedBookings(newSet);
+                                                    }}
+                                                    className="glass-button px-3 py-2 text-xs"
+                                                >
+                                                    {isExpanded ? '🔼 کمتر' : '🔽 بیشتر'}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Expanded Details */}
+                                        {isExpanded && (
+                                            <div className="mt-4 pt-4 border-t border-white/10 bg-white/5 rounded-lg p-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                                    <div>
+                                                        <span className="text-white/70 text-sm">🕒 مدت زمان:</span>
+                                                        <p className="text-white">{booking.total_duration} دقیقه</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-white/70 text-sm">📅 تاریخ رزرو:</span>
+                                                        <p className="text-white">{formatDate(booking.date_key)}</p>
+                                                    </div>
+                                                </div>
+                                                {booking.notes && (
+                                                    <div className="mb-4">
+                                                        <span className="text-white/70 text-sm">📝 یادداشت:</span>
+                                                        <p className="text-white bg-white/10 p-2 rounded mt-1">{booking.notes}</p>
+                                                    </div>
+                                                )}
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button
+                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'confirmed')}
+                                                        className="glass-button bg-green-500/20 border-green-400/30 text-green-300 px-4 py-2 text-sm"
+                                                    >
+                                                        ✅ تأیید
+                                                    </button>
+                                                    <button
+                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'cancelled')}
+                                                        className="glass-button bg-red-500/20 border-red-400/30 text-red-300 px-4 py-2 text-sm"
+                                                    >
+                                                        ❌ لغو
+                                                    </button>
+                                                    <button
+                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'completed')}
+                                                        className="glass-button bg-blue-500/20 border-blue-400/30 text-blue-300 px-4 py-2 text-sm"
+                                                    >
+                                                        🎉 تکمیل
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {/* This Month's Bookings */}
+                <div className="glass-card mb-6">
+                    <div className="p-4 sm:p-6 border-b border-white/10">
+                        <h2 className="text-lg sm:text-xl font-bold text-green-400 flex items-center">
+                            📆 رزروهای این ماه ({thisMonthBookings.length})
+                        </h2>
+                        <p className="text-sm text-white/70 mt-1">
+                            به غیر از امروز
+                        </p>
+                    </div>
+
+                    {thisMonthBookings.length === 0 ? (
+                        <div className="p-6 sm:p-8 text-center">
+                            <div className="w-12 sm:w-16 h-12 sm:h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-xl sm:text-2xl">�</span>
+                            </div>
+                            <p className="text-green-300 text-sm sm:text-base">این ماه رزرو دیگری ندارید</p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-white/10">
+                            {thisMonthBookings.map((booking, index) => {
+                                const bookingUniqueId = booking.id || `month-${booking.user_phone}-${booking.date_key}-${booking.start_time}-${index}`;
+                                const isExpanded = expandedBookings.has(bookingUniqueId);
+                                return (
+                                    <div key={bookingUniqueId} className="p-3 sm:p-4 hover:bg-green-500/5 transition-colors">
+                                        <div className="flex flex-col sm:flex-row justify-between gap-3">
+                                            <div className="flex-1">
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    <div className="flex items-center gap-3">
+                                                        <p className="text-white font-medium">👤 {booking.user_name}</p>
+                                                        <span className="text-green-300 text-sm">📅 {formatDate(booking.date_key)}</span>
+                                                    </div>
+                                                    <div className="text-sm text-white/80">
+                                                        ⏰ {formatTime(booking.start_time)} | ✂️ {booking.services.join('، ')}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                                                {getStatusBadge(booking.status)}
+                                                <button
+                                                    onClick={() => {
+                                                        const newSet = new Set(expandedBookings);
+                                                        if (isExpanded) {
+                                                            newSet.delete(bookingUniqueId);
+                                                        } else {
+                                                            newSet.add(bookingUniqueId);
+                                                        }
+                                                        setExpandedBookings(newSet);
+                                                    }}
+                                                    className="glass-button px-3 py-2 text-xs"
+                                                >
+                                                    {isExpanded ? '🔼' : '🔽'}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {isExpanded && (
+                                            <div className="mt-4 pt-4 border-t border-white/10 bg-white/5 rounded-lg p-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                                    <div>
+                                                        <span className="text-white/70 text-sm">📞 تلفن:</span>
+                                                        <p className="text-white font-mono">{booking.user_phone}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-white/70 text-sm">🕒 مدت:</span>
+                                                        <p className="text-white">{booking.total_duration} دقیقه</p>
+                                                    </div>
+                                                </div>
+                                                {booking.notes && (
+                                                    <div className="mb-4">
+                                                        <span className="text-white/70 text-sm">📝 یادداشت:</span>
+                                                        <p className="text-white bg-white/10 p-2 rounded mt-1">{booking.notes}</p>
+                                                    </div>
+                                                )}
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button
+                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'confirmed')}
+                                                        className="glass-button bg-green-500/20 border-green-400/30 text-green-300 px-4 py-2 text-sm"
+                                                    >
+                                                        ✅ تأیید
+                                                    </button>
+                                                    <button
+                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'cancelled')}
+                                                        className="glass-button bg-red-500/20 border-red-400/30 text-red-300 px-4 py-2 text-sm"
+                                                    >
+                                                        ❌ لغو
+                                                    </button>
+                                                    <button
+                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'completed')}
+                                                        className="glass-button bg-blue-500/20 border-blue-400/30 text-blue-300 px-4 py-2 text-sm"
+                                                    >
+                                                        🎉 تکمیل
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {/* All Bookings - Comprehensive View with Filters */}
+                <div className="glass-card">
+                    <div className="p-4 sm:p-6 border-b border-white/10">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                            <h2 className="text-lg sm:text-xl font-bold text-purple-400 flex items-center">
+                                📋 همه رزروها ({allBookings.length})
+                            </h2>
+                            <div className="text-sm text-white/70">
+                                {selectedDate ? (
+                                    selectedDate === getTodayDate() ? (
+                                        <span className="bg-blue-500/20 px-3 py-1 rounded-full border border-blue-400/30">
+                                            📅 امروز - {formatDate(selectedDate)}
+                                        </span>
+                                    ) : (
+                                        <span className="bg-white/10 px-3 py-1 rounded-full border border-white/30">
+                                            📆 {formatDate(selectedDate)}
+                                        </span>
+                                    )
+                                ) : (
+                                    <span className="bg-purple-500/20 px-3 py-1 rounded-full border border-purple-400/30">
+                                        📊 همه روزها
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {allBookings.length === 0 ? (
                         <div className="p-6 sm:p-8 text-center">
                             <div className="w-12 sm:w-16 h-12 sm:h-16 bg-gray-300/20 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <span className="text-xl sm:text-2xl">📝</span>
                             </div>
-                            <p className="text-glass-secondary text-sm sm:text-base">هیچ رزروی یافت نشد</p>
+                            <p className="text-white/70 text-sm sm:text-base">هیچ رزروی یافت نشد</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-white/10">
-                            {filteredBookings.map((booking, index) => {
-                                // Create unique ID for each booking
-                                const bookingUniqueId = booking.id || `${booking.user_phone}-${booking.date_key}-${booking.start_time}-${index}`;
+                            {allBookings.map((booking, index) => {
+                                const bookingUniqueId = booking.id || `all-${booking.user_phone}-${booking.date_key}-${booking.start_time}-${index}`;
                                 const isExpanded = expandedBookings.has(bookingUniqueId);
                                 return (
-                                    <div key={bookingUniqueId} className="p-3 sm:p-4 hover:bg-white/5 transition-colors">
-                                        {/* Summary View (Always Visible) */}
+                                    <div key={bookingUniqueId} className="p-3 sm:p-4 hover:bg-white/5 transition-colors">{/* Summary View (Always Visible) */}
                                         <div className="flex flex-col sm:flex-row justify-between gap-3">
                                             <div className="flex-1">
                                                 <div className="grid grid-cols-1 gap-2 sm:gap-3">
