@@ -537,69 +537,65 @@ export default function BarberDashboard() {
 
     // Helper function to get current Persian month's start and end dates
     const getCurrentMonthRange = () => {
-        // Persian calendar months mapping based on Gregorian dates
-        // This is a simplified mapping for the current year (1404/2025)
-        const now = new Date();
-        const month = now.getMonth(); // 0-11
-        const year = now.getFullYear();
-        
-        // Current Persian calendar year 1404 month mappings:
-        const persianMonths = {
-            // فروردین (Farvardin) - March 21 to April 20
-            2: { start: '2025-03-21', end: '2025-04-20' }, // March (partial) + April (partial)
-            3: { start: '2025-03-21', end: '2025-04-20' }, // April (partial)
-            
-            // اردیبهشت (Ordibehesht) - April 21 to May 21
-            3: { start: '2025-04-21', end: '2025-05-21' }, // April (partial) + May (partial)
-            4: { start: '2025-04-21', end: '2025-05-21' }, // May (partial)
-            
-            // خرداد (Khordad) - May 22 to June 21
-            4: { start: '2025-05-22', end: '2025-06-21' }, // May (partial) + June (partial)
-            5: { start: '2025-05-22', end: '2025-06-21' }, // June (partial)
-            
-            // تیر (Tir) - June 22 to July 22
-            5: { start: '2025-06-22', end: '2025-07-22' }, // June (partial) + July (partial)
-            6: { start: '2025-06-22', end: '2025-07-22' }, // July (partial)
-            
-            // مرداد (Mordad) - July 23 to August 22
-            6: { start: '2025-07-23', end: '2025-08-22' }, // July (partial) + August (partial)
-            7: { start: '2025-07-23', end: '2025-08-22' }, // August (partial)
-            
-            // شهریور (Shahrivar) - August 23 to September 22
-            7: { start: '2025-08-23', end: '2025-09-22' }, // August (partial) + September (partial)
-            8: { start: '2025-08-23', end: '2025-09-22' }, // September (partial)
-            
-            // مهر (Mehr) - September 23 to October 22
-            8: { start: '2025-09-23', end: '2025-10-22' }, // September (partial) + October (partial)
-            9: { start: '2025-09-23', end: '2025-10-22' }, // October (partial)
-            
-            // آبان (Aban) - October 23 to November 21
-            9: { start: '2025-10-23', end: '2025-11-21' }, // October (partial) + November (partial)
-            10: { start: '2025-10-23', end: '2025-11-21' }, // November (partial)
-            
-            // آذر (Azar) - November 22 to December 21
-            10: { start: '2025-11-22', end: '2025-12-21' }, // November (partial) + December (partial)
-            11: { start: '2025-11-22', end: '2025-12-21' }, // December (partial)
-        };
-        
         // Get today's date to determine which Persian month we're in
         const today = new Date();
         const todayStr = today.toISOString().split('T')[0];
         
-        // October 19, 2025 is in مهر (Mehr) month
+        // Persian calendar year 1404 month mappings (simplified for current period):
+        
+        // مهر (Mehr) - September 23 to October 22, 2025
         if (todayStr >= '2025-09-23' && todayStr <= '2025-10-22') {
-            return { start: '2025-09-23', end: '2025-10-22' }; // مهر (Mehr)
+            return { start: '2025-09-23', end: '2025-10-22' };
         }
-        // آبان (Aban) month
+        // آبان (Aban) - October 23 to November 21, 2025
         else if (todayStr >= '2025-10-23' && todayStr <= '2025-11-21') {
-            return { start: '2025-10-23', end: '2025-11-21' }; // آبان (Aban)
+            return { start: '2025-10-23', end: '2025-11-21' };
         }
-        // آذر (Azar) month
+        // آذر (Azar) - November 22 to December 21, 2025
         else if (todayStr >= '2025-11-22' && todayStr <= '2025-12-21') {
-            return { start: '2025-11-22', end: '2025-12-21' }; // آذر (Azar)
+            return { start: '2025-11-22', end: '2025-12-21' };
+        }
+        // دی (Dey) - December 22, 2025 to January 20, 2026
+        else if (todayStr >= '2025-12-22' || todayStr <= '2026-01-20') {
+            return { start: '2025-12-22', end: '2026-01-20' };
+        }
+        // بهمن (Bahman) - January 21 to February 19, 2026
+        else if (todayStr >= '2026-01-21' && todayStr <= '2026-02-19') {
+            return { start: '2026-01-21', end: '2026-02-19' };
+        }
+        // اسفند (Esfand) - February 20 to March 20, 2026
+        else if (todayStr >= '2026-02-20' && todayStr <= '2026-03-20') {
+            return { start: '2026-02-20', end: '2026-03-20' };
+        }
+        // فروردین (Farvardin) - March 21 to April 20, 2026
+        else if (todayStr >= '2026-03-21' && todayStr <= '2026-04-20') {
+            return { start: '2026-03-21', end: '2026-04-20' };
+        }
+        // اردیبهشت (Ordibehesht) - April 21 to May 21, 2026
+        else if (todayStr >= '2026-04-21' && todayStr <= '2026-05-21') {
+            return { start: '2026-04-21', end: '2026-05-21' };
+        }
+        // خرداد (Khordad) - May 22 to June 21, 2026
+        else if (todayStr >= '2026-05-22' && todayStr <= '2026-06-21') {
+            return { start: '2026-05-22', end: '2026-06-21' };
+        }
+        // تیر (Tir) - June 22 to July 22, 2026
+        else if (todayStr >= '2026-06-22' && todayStr <= '2026-07-22') {
+            return { start: '2026-06-22', end: '2026-07-22' };
+        }
+        // مرداد (Mordad) - July 23 to August 22, 2026
+        else if (todayStr >= '2026-07-23' && todayStr <= '2026-08-22') {
+            return { start: '2026-07-23', end: '2026-08-22' };
+        }
+        // شهریور (Shahrivar) - August 23 to September 22, 2026
+        else if (todayStr >= '2026-08-23' && todayStr <= '2026-09-22') {
+            return { start: '2026-08-23', end: '2026-09-22' };
         }
         
-        // Fallback to Gregorian month for other periods
+        // Fallback to Gregorian month for dates outside our mapping
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
         const startOfMonth = new Date(year, month, 1).toISOString().split('T')[0];
         const endOfMonth = new Date(year, month + 1, 0).toISOString().split('T')[0];
         return { start: startOfMonth, end: endOfMonth };
@@ -616,6 +612,24 @@ export default function BarberDashboard() {
             return 'آبان'; // Aban
         } else if (todayStr >= '2025-11-22' && todayStr <= '2025-12-21') {
             return 'آذر'; // Azar
+        } else if (todayStr >= '2025-12-22' || todayStr <= '2026-01-20') {
+            return 'دی'; // Dey
+        } else if (todayStr >= '2026-01-21' && todayStr <= '2026-02-19') {
+            return 'بهمن'; // Bahman
+        } else if (todayStr >= '2026-02-20' && todayStr <= '2026-03-20') {
+            return 'اسفند'; // Esfand
+        } else if (todayStr >= '2026-03-21' && todayStr <= '2026-04-20') {
+            return 'فروردین'; // Farvardin
+        } else if (todayStr >= '2026-04-21' && todayStr <= '2026-05-21') {
+            return 'اردیبهشت'; // Ordibehesht
+        } else if (todayStr >= '2026-05-22' && todayStr <= '2026-06-21') {
+            return 'خرداد'; // Khordad
+        } else if (todayStr >= '2026-06-22' && todayStr <= '2026-07-22') {
+            return 'تیر'; // Tir
+        } else if (todayStr >= '2026-07-23' && todayStr <= '2026-08-22') {
+            return 'مرداد'; // Mordad
+        } else if (todayStr >= '2026-08-23' && todayStr <= '2026-09-22') {
+            return 'شهریور'; // Shahrivar
         }
         
         return 'این ماه'; // Fallback
