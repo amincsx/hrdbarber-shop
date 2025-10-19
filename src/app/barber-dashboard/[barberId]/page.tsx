@@ -19,7 +19,8 @@ function urlBase64ToUint8Array(base64String: string) {
 
 // Android-safe notification helper function
 async function showNotificationSafe(booking: any) {
-    console.log('🔔 Showing Android-safe notification for booking:', booking);
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    console.log('🔔 Showing Android-safe notification for booking:', booking, 'Android:', isAndroid);
     
     if (!booking) return false;
 
@@ -27,6 +28,11 @@ async function showNotificationSafe(booking: any) {
         // Check if notifications are supported and permission is granted
         if ('Notification' in window) {
             console.log('🔔 Notification permission status:', Notification.permission);
+            
+            // Android-specific permission handling
+            if (isAndroid && Notification.permission === 'default') {
+                console.log('🔔 Android detected, requesting permission with user context');
+            }
             
             // Request permission if not granted
             if (Notification.permission === 'default') {
@@ -36,19 +42,34 @@ async function showNotificationSafe(booking: any) {
             
             // Show notification if permission is granted
             if (Notification.permission === 'granted') {
-                const notification = new Notification('🎉 رزرو جدید!', {
+                const notificationOptions = {
                     body: `مشتری: ${booking.user_name}\nخدمات: ${booking.services?.join(', ') || 'نامشخص'}\nساعت: ${booking.start_time}`,
                     icon: '/icon-192x192.png',
                     badge: '/icon-192x192.png',
-                    tag: 'new-booking',
+                    tag: isAndroid ? `booking-${Date.now()}` : 'new-booking', // Unique tag for Android
                     requireInteraction: true,
-                    silent: false
-                });
+                    silent: false,
+                    renotify: isAndroid, // Enable renotify for Android
+                    timestamp: Date.now()
+                };
 
-                // Auto-close notification after 10 seconds
+                const notification = new Notification('🎉 رزرو جدید!', notificationOptions);
+
+                // Android-specific event handlers
+                notification.onclick = () => {
+                    console.log('🔔 Android notification clicked');
+                    window.focus();
+                    notification.close();
+                };
+
+                notification.onerror = (error) => {
+                    console.error('❌ Android notification error:', error);
+                };
+
+                // Auto-close notification with longer timeout for Android
                 setTimeout(() => {
                     notification.close();
-                }, 10000);
+                }, isAndroid ? 15000 : 10000);
 
                 console.log('✅ Browser notification created successfully');
                 
@@ -160,16 +181,29 @@ export default function BarberDashboard() {
                     const isAndroid = /Android/i.test(navigator.userAgent);
                     const swPath = isAndroid ? '/barber-sw-android.js' : '/barber-sw.js';
                     
-                    console.log(`� Registering service worker: ${swPath} (Android: ${isAndroid})`);
+                    console.log(`🔧 Registering service worker: ${swPath} (Android: ${isAndroid})`);
+                    console.log('🔧 User agent:', navigator.userAgent);
+                    console.log('🔧 Notification support:', 'Notification' in window);
+                    console.log('🔧 PushManager support:', 'PushManager' in window);
                     
                     // Register service worker
                     const registration = await navigator.serviceWorker.register(swPath);
                     console.log('✅ Service Worker registered:', registration);
+                    console.log('✅ SW scope:', registration.scope);
+                    console.log('✅ SW active:', !!registration.active);
+
+                    // Android-specific notification permission handling
+                    if (isAndroid) {
+                        console.log('🔧 Android detected - using enhanced permission flow');
+                    }
 
                     // Request notification permission
                     if (Notification.permission === 'default') {
                         const permission = await Notification.requestPermission();
                         console.log('🔔 Notification permission:', permission);
+                        if (isAndroid) {
+                            console.log('🔔 Android permission result:', permission);
+                        }
                     }
 
                     // Subscribe to push notifications if granted
@@ -923,6 +957,23 @@ export default function BarberDashboard() {
                                 className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial"
                             >
                                 🔄 تازه‌سازی
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    const testBooking = {
+                                        user_name: 'تست اندروید',
+                                        services: ['اصلاح موی سر'],
+                                        start_time: '14:30'
+                                    };
+                                    console.log('🧪 Testing Android notification...');
+                                    const result = await showNotificationSafe(testBooking);
+                                    const message = result ? 'اعلان اندروید موفق بود ✅' : 'اعلان اندروید ناموفق بود ❌';
+                                    alert(message);
+                                    console.log('🧪 Android notification test result:', result);
+                                }}
+                                className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial bg-green-500/20 border-green-400/30"
+                            >
+                                🧪 تست اندروید
                             </button>
                             <button
                                 onClick={() => alert('تغییر رمز عبور در نسخه بعدی فعال خواهد شد')}
