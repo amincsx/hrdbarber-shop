@@ -1,23 +1,52 @@
-import { NextRequest, NextResponse } from 'next/server';
-import webpush from 'web-push';
+// Android-optimized push notification API
+import { NextResponse } from 'next/server';
 
-// Enhanced VAPID configuration for Android
-const vapidKeys = {
-  publicKey: process.env.VAPID_PUBLIC_KEY || 'BGhECE76AktsUUL4OjcT4lifhurEmWkMfFh_AaAhw_MSahdTwi6Fzh2PrGPQ8969n5lj6GINXYK5hlg0rAYWuuM',
-  privateKey: process.env.VAPID_PRIVATE_KEY || 'YOUR_PRIVATE_KEY_HERE'
-};
-
-webpush.setVapidDetails(
-  'mailto:support@hrdbarber.shop',
-  vapidKeys.publicKey,
-  vapidKeys.privateKey
-);
+// Optional web-push support (fallback to console if not configured)
+let webPush = null;
+try {
+    webPush = require('web-push');
+} catch (e) {
+    console.log('⚠️ web-push not installed; using fallback');
+}
 
 // In-memory subscription storage (replace with database in production)
 let subscriptions = new Map();
 
-export async function POST(request: NextRequest) {
+// Initialize VAPID configuration safely
+function initializeVapid() {
+    if (!webPush) {
+        return { success: false, error: 'web-push not available' };
+    }
+
+    try {
+        const vapidPublicKey = process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BGhECE76AktsUUL4OjcT4lifhurEmWkMfFh_AaAhw_MSahdTwi6Fzh2PrGPQ8969n5lj6GINXYK5hlg0rAYWuuM';
+        const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || 'G2zsYBRqaMqelgRHFh9ef4SstvqdDLPxkPqGhj6WpR0';
+        const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:support@hrdbarber.shop';
+
+        // Validate keys before setting
+        if (!vapidPrivateKey || vapidPrivateKey === 'YOUR_PRIVATE_KEY_HERE' || vapidPrivateKey.length < 32) {
+            throw new Error('Invalid VAPID private key');
+        }
+
+        webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+        return { success: true, publicKey: vapidPublicKey };
+    } catch (error) {
+        console.error('❌ VAPID initialization error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function POST(request) {
   console.log('🚀 Android Push Notify API called');
+  
+  // Initialize VAPID configuration
+  const vapidInit = initializeVapid();
+  if (!vapidInit.success) {
+    return NextResponse.json(
+      { error: 'VAPID configuration failed', details: vapidInit.error },
+      { status: 500 }
+    );
+  }
   
   try {
     const body = await request.json();
@@ -111,7 +140,7 @@ export async function POST(request: NextRequest) {
       }
     };
     
-    const result = await webpush.sendNotification(
+    const result = await webPush.sendNotification(
       barberSubscription,
       JSON.stringify(notificationPayload),
       pushOptions
@@ -176,7 +205,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   console.log('📊 Android Push Notify status check');
   
   try {
@@ -199,7 +228,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       totalSubscriptions: subscriptions.size,
       barberIds: Array.from(subscriptions.keys()),
-      vapidPublicKey: vapidKeys.publicKey,
+      vapidPublicKey: process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BGhECE76AktsUUL4OjcT4lifhurEmWkMfFh_AaAhw_MSahdTwi6Fzh2PrGPQ8969n5lj6GINXYK5hlg0rAYWuuM',
       status: 'Android Push Notify API is running',
       timestamp: new Date().toISOString()
     });
