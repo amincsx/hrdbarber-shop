@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Initialize Default Barbers</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial;
+            margin: 20px;
+        }
+
+        button {
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 16px;
+        }
+
+        .log {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #007cba;
+        }
+
+        .success {
+            border-left-color: #28a745;
+        }
+
+        .error {
+            border-left-color: #dc3545;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Initialize Default Barbers</h1>
+    <p>This will create three default barber accounts:</p>
+    <ul>
+        <li><strong>حمید</strong> (hamid) - Password: hamid1234</li>
+        <li><strong>بنیامین</strong> (benyamin) - Password: benyamin1234</li>
+        <li><strong>محمد</strong> (mohammad) - Password: mohammad1234</li>
+    </ul>
+
+    <button onclick="checkBarbers()">Check Existing Barbers</button>
+    <button onclick="initializeBarbers()">Initialize Default Barbers</button>
+
+    <div id="logs"></div>
+
+    <script>
+        function log(message, type = 'log') {
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            document.getElementById('logs').prepend(div);
+            console.log(message);
+        }
+
+        async function checkBarbers() {
+            try {
+                log('Checking existing barbers...', 'log');
+
+                const response = await fetch('/api/admin/init-default-barbers', {
+                    method: 'GET'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    log('✅ Successfully checked barbers', 'success');
+                    result.barbers.forEach(barber => {
+                        const status = barber.exists ?
+                            `✅ EXISTS (verified: ${barber.verified})` :
+                            '❌ NOT FOUND';
+                        log(`${barber.name} (${barber.username}): ${status}`,
+                            barber.exists ? 'success' : 'error');
+                    });
+                } else {
+                    log(`❌ Error: ${result.error}`, 'error');
+                }
+
+            } catch (error) {
+                log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function initializeBarbers() {
+            try {
+                log('Initializing default barbers...', 'log');
+
+                const response = await fetch('/api/admin/init-default-barbers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    log('✅ Initialization completed!', 'success');
+                    result.results.forEach(barber => {
+                        const emoji = barber.status === 'created' ? '✅' :
+                            barber.status === 'exists' ? '⚠️' : '❌';
+                        log(`${emoji} ${barber.username}: ${barber.message}`,
+                            barber.status === 'created' ? 'success' :
+                                barber.status === 'exists' ? 'log' : 'error');
+                    });
+
+                    // Test login after creation
+                    setTimeout(() => {
+                        log('🔗 You can now test login at: /barber-login', 'success');
+                        log('📱 Try: hamid/hamid1234, benyamin/benyamin1234, mohammad/mohammad1234', 'log');
+                    }, 1000);
+                } else {
+                    log(`❌ Error: ${result.error}`, 'error');
+                }
+
+            } catch (error) {
+                log(`❌ Network error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>

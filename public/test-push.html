@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Push Notification Test</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial;
+            margin: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+        }
+
+        .log {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #007cba;
+        }
+
+        .success {
+            border-left-color: #28a745;
+        }
+
+        .error {
+            border-left-color: #dc3545;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Push Notification Test for Barber PWA</h1>
+
+    <button onclick="requestPermission()">1. Request Notification Permission</button>
+    <button onclick="getVapidKey()">2. Get VAPID Public Key</button>
+    <button onclick="registerServiceWorker()">3. Register Service Worker</button>
+    <button onclick="subscribeToPush()">4. Subscribe to Push</button>
+    <button onclick="testNotification()">5. Send Test Notification</button>
+
+    <div id="logs"></div>
+
+    <script>
+        let subscription = null;
+        let vapidPublicKey = null;
+
+        function log(message, type = 'log') {
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            document.getElementById('logs').prepend(div);
+            console.log(message);
+        }
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        async function requestPermission() {
+            try {
+                const permission = await Notification.requestPermission();
+                log(`Notification permission: ${permission}`, permission === 'granted' ? 'success' : 'error');
+            } catch (error) {
+                log(`Error requesting permission: ${error.message}`, 'error');
+            }
+        }
+
+        async function getVapidKey() {
+            try {
+                const response = await fetch('/api/push/public-key');
+                const data = await response.json();
+                vapidPublicKey = data.publicKey;
+                log(`VAPID public key: ${vapidPublicKey}`, 'success');
+            } catch (error) {
+                log(`Error getting VAPID key: ${error.message}`, 'error');
+            }
+        }
+
+        async function registerServiceWorker() {
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registration = await navigator.serviceWorker.register('/barber-sw.js');
+                    log('Service Worker registered successfully', 'success');
+                    return registration;
+                } else {
+                    throw new Error('Service Worker not supported');
+                }
+            } catch (error) {
+                log(`Error registering Service Worker: ${error.message}`, 'error');
+            }
+        }
+
+        async function subscribeToPush() {
+            try {
+                if (!vapidPublicKey) {
+                    throw new Error('Get VAPID key first');
+                }
+
+                const registration = await navigator.serviceWorker.ready;
+                const sub = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+                });
+
+                subscription = sub;
+                log('Successfully subscribed to push notifications!', 'success');
+                log(`Subscription endpoint: ${sub.endpoint}`, 'log');
+
+                // Save subscription to server for test barber
+                const response = await fetch('/api/barber/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        barberId: 'test-barber',
+                        subscription: sub.toJSON()
+                    })
+                });
+
+                if (response.ok) {
+                    log('Subscription saved to server', 'success');
+                } else {
+                    log('Failed to save subscription to server', 'error');
+                }
+            } catch (error) {
+                log(`Error subscribing to push: ${error.message}`, 'error');
+            }
+        }
+
+        async function testNotification() {
+            try {
+                if (!subscription) {
+                    throw new Error('Subscribe to push first');
+                }
+
+                const response = await fetch('/api/barber/notify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        barberId: 'test-barber',
+                        title: '🎉 رزرو جدید!',
+                        body: 'تست اعلان برای آرایشگر - این یک پیام آزمایشی است',
+                        data: { url: '/barber-dashboard/test-barber' }
+                    })
+                });
+
+                const result = await response.json();
+                log(`Test notification sent: ${JSON.stringify(result)}`, response.ok ? 'success' : 'error');
+            } catch (error) {
+                log(`Error sending test notification: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>

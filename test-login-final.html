@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Barber Login - Final</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            direction: rtl;
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        input {
+            padding: 8px;
+            margin: 5px;
+            width: 200px;
+        }
+
+        #results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔐 Test Barber Login System</h1>
+
+    <div class="test-section">
+        <h3>Test Login Credentials</h3>
+        <div>
+            <label>Username:</label>
+            <input type="text" id="username" value="hamid" placeholder="Enter username">
+        </div>
+        <div>
+            <label>Password:</label>
+            <input type="password" id="password" value="hamid1234" placeholder="Enter password">
+        </div>
+        <button onclick="testLogin()">🚀 Test Login</button>
+        <button onclick="testAllBarbers()">🔍 Test All 3 Barbers</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        async function testLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password,
+                        type: 'barber'
+                    })
+                });
+
+                const data = await response.json();
+
+                const resultsDiv = document.getElementById('results');
+                if (response.ok && data.user) {
+                    resultsDiv.innerHTML = `
+                        <div class="test-section success">
+                            <h3>✅ Login Successful!</h3>
+                            <p><strong>Name:</strong> ${data.user.name}</p>
+                            <p><strong>Username:</strong> ${data.user.username}</p>
+                            <p><strong>Role:</strong> ${data.user.role}</p>
+                            <p><strong>ID:</strong> ${data.user._id}</p>
+                            <p><strong>Phone:</strong> ${data.user.phone || 'Not set'}</p>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="test-section error">
+                            <h3>❌ Login Failed</h3>
+                            <p><strong>Error:</strong> ${data.message || 'Unknown error'}</p>
+                            <p><strong>Response:</strong> ${JSON.stringify(data, null, 2)}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('results').innerHTML = `
+                    <div class="test-section error">
+                        <h3>❌ Network Error</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testAllBarbers() {
+            const barbers = [
+                { username: 'hamid', password: 'hamid1234' },
+                { username: 'benyamin', password: 'benyamin1234' },
+                { username: 'mohammad', password: 'mohammad1234' }
+            ];
+
+            let results = '<div class="test-section"><h3>🔍 Testing All Barbers</h3>';
+
+            for (const barber of barbers) {
+                try {
+                    const response = await fetch('/api/admin', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            username: barber.username,
+                            password: barber.password,
+                            type: 'barber'
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.user) {
+                        results += `
+                            <p>✅ <strong>${barber.username}</strong>: Login successful - ${data.user.name}</p>
+                        `;
+                    } else {
+                        results += `
+                            <p>❌ <strong>${barber.username}</strong>: Login failed - ${data.message}</p>
+                        `;
+                    }
+                } catch (error) {
+                    results += `
+                        <p>💥 <strong>${barber.username}</strong>: Network error - ${error.message}</p>
+                    `;
+                }
+            }
+
+            results += '</div>';
+            document.getElementById('results').innerHTML = results;
+        }
+    </script>
+</body>
+
+</html>

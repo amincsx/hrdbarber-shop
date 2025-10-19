@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Debug Login Issue</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial;
+            margin: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+        }
+
+        .log {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #007cba;
+        }
+
+        .success {
+            border-left-color: #28a745;
+        }
+
+        .error {
+            border-left-color: #dc3545;
+        }
+
+        pre {
+            background: #f8f8f8;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Debug Barber Login Issue</h1>
+
+    <button onclick="checkBarbers()">1. Check if barbers exist</button>
+    <button onclick="initBarbers()">2. Initialize default barbers</button>
+    <button onclick="testLogin()">3. Test login with hamid</button>
+    <button onclick="testApi()">4. Test admin API directly</button>
+
+    <div id="logs"></div>
+
+    <script>
+        function log(message, type = 'log') {
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            document.getElementById('logs').prepend(div);
+            console.log(message);
+        }
+
+        async function checkBarbers() {
+            try {
+                log('Checking if barbers exist...', 'log');
+
+                const response = await fetch('/api/admin/init-default-barbers', {
+                    method: 'GET'
+                });
+
+                const result = await response.json();
+                log(`Response status: ${response.status}`, response.ok ? 'success' : 'error');
+                log(`Response: <pre>${JSON.stringify(result, null, 2)}</pre>`, 'log');
+
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function initBarbers() {
+            try {
+                log('Initializing default barbers...', 'log');
+
+                const response = await fetch('/api/admin/init-default-barbers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+                log(`Response status: ${response.status}`, response.ok ? 'success' : 'error');
+                log(`Response: <pre>${JSON.stringify(result, null, 2)}</pre>`, 'log');
+
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLogin() {
+            try {
+                log('Testing login with hamid/hamid1234...', 'log');
+
+                const response = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'hamid',
+                        password: 'hamid1234',
+                        type: 'barber'
+                    })
+                });
+
+                const result = await response.json();
+                log(`Response status: ${response.status}`, response.ok ? 'success' : 'error');
+                log(`Response: <pre>${JSON.stringify(result, null, 2)}</pre>`, response.ok ? 'success' : 'error');
+
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testApi() {
+            try {
+                log('Testing admin API...', 'log');
+
+                const response = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'test',
+                        password: 'test',
+                        type: 'barber'
+                    })
+                });
+
+                const result = await response.json();
+                log(`Response status: ${response.status}`, response.ok ? 'success' : 'error');
+                log(`Response: <pre>${JSON.stringify(result, null, 2)}</pre>`, 'log');
+
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>
