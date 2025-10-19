@@ -16,6 +16,12 @@ MELIPAYAMAK_FROM=your-sender-number
 # Environment
 NODE_ENV=production
 
+# Web Push VAPID Configuration (Required for Notifications)
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=BGhECE76AktsUUL4OjcT4lifhurEmWkMfFh_AaAhw_MSahdTwi6Fzh2PrGPQ8969n5lj6GINXYK5hlg0rAYWuuM
+VAPID_PUBLIC_KEY=BGhECE76AktsUUL4OjcT4lifhurEmWkMfFh_AaAhw_MSahdTwi6Fzh2PrGPQ8969n5lj6GINXYK5hlg0rAYWuuM
+VAPID_PRIVATE_KEY=G2zsYBRqaMqelgRHFh9ef4SstvqdDLPxkPqGhj6WpR0
+VAPID_SUBJECT=mailto:admin@hrdbarber.shop
+
 # Optional: Redis (if you plan to use it)
 REDIS_URL=redis://localhost:6379
 

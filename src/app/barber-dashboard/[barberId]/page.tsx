@@ -24,59 +24,92 @@ async function showNotificationSafe(booking: any) {
     if (!booking) return false;
 
     try {
-        // Show browser notification if permission granted
-        if ('Notification' in window && Notification.permission === 'granted') {
-            const notification = new Notification('🎉 رزرو جدید!', {
-                body: `مشتری: ${booking.user_name}\nخدمات: ${booking.services.join(', ')}\nساعت: ${booking.start_time}`,
-                icon: '/icon-192x192.png',
-                badge: '/icon-192x192.png',
-                tag: 'new-booking',
-                requireInteraction: true,
-                silent: false
-            });
-
-            // Android-safe audio notification
-            try {
-                if ('AudioContext' in window || 'webkitAudioContext' in window) {
-                    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-                    const audioContext = new AudioContext();
-                    
-                    // Resume context if suspended (required on mobile)
-                    if (audioContext.state === 'suspended') {
-                        await audioContext.resume();
-                    }
-
-                    // Simple reliable beep for Android
-                    const oscillator = audioContext.createOscillator();
-                    const gainNode = audioContext.createGain();
-
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioContext.destination);
-
-                    oscillator.frequency.value = 800;
-                    oscillator.type = 'sine';
-
-                    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-                    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 0.5);
-                    
-                    console.log('🔊 Audio notification played (Android safe)');
-                }
-            } catch (audioError) {
-                console.warn('⚠️ Audio notification failed (Android safe):', audioError);
+        // Check if notifications are supported and permission is granted
+        if ('Notification' in window) {
+            console.log('🔔 Notification permission status:', Notification.permission);
+            
+            // Request permission if not granted
+            if (Notification.permission === 'default') {
+                const permission = await Notification.requestPermission();
+                console.log('🔔 Permission requested, result:', permission);
             }
+            
+            // Show notification if permission is granted
+            if (Notification.permission === 'granted') {
+                const notification = new Notification('🎉 رزرو جدید!', {
+                    body: `مشتری: ${booking.user_name}\nخدمات: ${booking.services?.join(', ') || 'نامشخص'}\nساعت: ${booking.start_time}`,
+                    icon: '/icon-192x192.png',
+                    badge: '/icon-192x192.png',
+                    tag: 'new-booking',
+                    requireInteraction: true,
+                    silent: false
+                });
 
-            return true;
+                // Auto-close notification after 10 seconds
+                setTimeout(() => {
+                    notification.close();
+                }, 10000);
+
+                console.log('✅ Browser notification created successfully');
+                
+                // Play sound notification
+                try {
+                    // Try to play system sound first
+                    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjWJ0fPNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjWJ0fPNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjWJ0fPNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjWJ0fPNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjWJ0fPNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjWJ0fPNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjWJ0fPNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjWJ0fPNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjWJ0fPNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjWJ0fPNeSsFJHfH8N2QQAoUXrTp66hVFA==');
+                    audio.volume = 0.3;
+                    await audio.play();
+                    console.log('✅ Audio notification played');
+                } catch (audioError) {
+                    console.warn('⚠️ Audio notification failed, trying Web Audio API:', audioError);
+                    
+                    // Fallback to Web Audio API
+                    try {
+                        if ('AudioContext' in window || 'webkitAudioContext' in window) {
+                            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+                            const audioContext = new AudioContext();
+                            
+                            // Resume context if suspended (required on mobile)
+                            if (audioContext.state === 'suspended') {
+                                await audioContext.resume();
+                            }
+
+                            // Create a beep sound
+                            const oscillator = audioContext.createOscillator();
+                            const gainNode = audioContext.createGain();
+
+                            oscillator.connect(gainNode);
+                            gainNode.connect(audioContext.destination);
+
+                            oscillator.frequency.value = 800;
+                            oscillator.type = 'sine';
+
+                            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+                            oscillator.start(audioContext.currentTime);
+                            oscillator.stop(audioContext.currentTime + 0.5);
+                            
+                            console.log('✅ Web Audio API notification played');
+                        }
+                    } catch (webAudioError) {
+                        console.warn('⚠️ Web Audio API also failed:', webAudioError);
+                    }
+                }
+
+                return true;
+            } else {
+                console.warn('⚠️ Notification permission denied or not available');
+                return false;
+            }
+        } else {
+            console.warn('⚠️ Notifications not supported in this browser');
+            return false;
         }
     } catch (notificationError) {
         console.error('❌ Notification failed:', notificationError);
-        throw notificationError;
+        return false;
     }
-    
-    return false;
 }
 
 interface Booking {
@@ -345,18 +378,25 @@ export default function BarberDashboard() {
                     console.log('🔔 New booking detected! Count:', lastBookingCount, '→', newBookingCount);
                     // New booking detected!
                     const newBookings = (data.bookings || []).slice(0, newBookingCount - lastBookingCount);
+                    console.log('🔔 New bookings to notify:', newBookings);
 
                     // Use Android-safe notification function
-                    try {
-                        await showNotificationSafe(newBookings[0]);
-                        console.log('✅ Notification sent successfully');
-                    } catch (notifError) {
-                        console.warn('⚠️ Notification failed (Android safe):', notifError);
+                    if (newBookings && newBookings.length > 0) {
+                        try {
+                            const notificationResult = await showNotificationSafe(newBookings[0]);
+                            if (notificationResult) {
+                                console.log('✅ Notification sent successfully');
+                            } else {
+                                console.warn('⚠️ Notification failed to send');
+                            }
+                        } catch (notifError) {
+                            console.warn('⚠️ Notification failed (Android safe):', notifError);
+                        }
                     }
 
                     // Always show visual alert regardless of notification success
                     setShowNewBookingAlert(true);
-                    setTimeout(() => setShowNewBookingAlert(false), 5000);
+                    setTimeout(() => setShowNewBookingAlert(false), 10000); // Show for 10 seconds
                 }
 
                 setLastBookingCount(newBookingCount);
@@ -665,16 +705,15 @@ export default function BarberDashboard() {
             .sort((a, b) => a.start_time.localeCompare(b.start_time));
     })();
 
-    // Get future bookings (next month and beyond, excluding this month)
+    // Get future bookings (all bookings after today, including this month)
     const futureBookings = (() => {
         const rawBookings = barberData?.bookings || [];
         const today = getTodayDate();
-        const { end: thisMonthEnd } = getCurrentMonthRange();
         
         return rawBookings
             .filter(booking => {
-                // Must be after this month ends
-                const isFuture = booking.date_key > thisMonthEnd;
+                // Must be after today (any future date)
+                const isFuture = booking.date_key > today;
                 
                 if (!isFuture) return false;
                 
@@ -687,7 +726,7 @@ export default function BarberDashboard() {
             });
     })();
 
-    // Get this month's bookings (excluding today, including future dates in this month)
+    // Get this month's bookings (excluding today and future dates - only past dates in this month)
     const thisMonthBookings = (() => {
         const rawBookings = barberData?.bookings || [];
         const today = getTodayDate();
@@ -695,21 +734,22 @@ export default function BarberDashboard() {
         
         return rawBookings
             .filter(booking => {
-                // Must be in this month and not today
+                // Must be in this month, not today, and BEFORE today (past dates only)
                 const isThisMonth = booking.date_key >= start && 
                                    booking.date_key <= end && 
-                                   booking.date_key !== today;
+                                   booking.date_key !== today &&
+                                   booking.date_key < today; // Only past dates in this month
                 
                 if (!isThisMonth) return false;
                 
                 // Apply additional date filter if selected
                 if (selectedDate) {
                     if (selectedDate === 'future') {
-                        // For future filter, only show bookings after today (within this month)
-                        return booking.date_key > today;
+                        // For future filter, don't show any (all futures are in Future section now)
+                        return false;
                     } else if (selectedDate === 'past') {
-                        // For past filter, only show bookings before today (within this month)
-                        return booking.date_key < today;
+                        // For past filter, show all past dates in this month
+                        return true;
                     } else if (selectedDate === getTodayDate()) {
                         // For today filter, don't show any this month bookings (they should be in today section)
                         return false;
@@ -1148,7 +1188,7 @@ export default function BarberDashboard() {
                                     🔮 رزروهای آینده ({futureBookings.length})
                                 </h2>
                                 <p className="text-sm text-white/70 mt-1">
-                                    آبان ماه و بعد از آن
+                                    همه رزروهای آینده (از فردا به بعد)
                                 </p>
                             </div>
                             <div className="flex items-center">
@@ -1266,14 +1306,13 @@ export default function BarberDashboard() {
                         <div className="flex justify-between items-center">
                             <div>
                                 <h2 className="text-lg sm:text-xl font-bold text-green-400 flex items-center">
-                                    📆 رزروهای {getCurrentPersianMonthName()} ({thisMonthBookings.length})
+                                    📆 رزروهای گذشته {getCurrentPersianMonthName()} ({thisMonthBookings.length})
                                 </h2>
                                 <p className="text-sm text-white/70 mt-1">
-                                    {selectedDate === 'future' ? `آینده در ${getCurrentPersianMonthName()}` : 
-                                     selectedDate === 'past' ? `گذشته در ${getCurrentPersianMonthName()}` : 
+                                    {selectedDate === 'past' ? `گذشته در ${getCurrentPersianMonthName()}` : 
                                      selectedDate === getTodayDate() ? 'امروز (در بخش بالا)' :
                                      selectedDate ? `${formatDate(selectedDate)} در ${getCurrentPersianMonthName()}` :
-                                     'به غیر از امروز'}
+                                     'روزهای گذشته این ماه'}
                                 </p>
                             </div>
                             <div className="flex items-center">
@@ -1292,11 +1331,10 @@ export default function BarberDashboard() {
                                 <span className="text-xl sm:text-2xl">�</span>
                             </div>
                                     <p className="text-green-300 text-sm sm:text-base">
-                                        {selectedDate === 'future' ? `${getCurrentPersianMonthName()} رزرو آینده‌ای ندارید` :
-                                         selectedDate === 'past' ? `${getCurrentPersianMonthName()} رزرو گذشته‌ای ندارید` :
+                                        {selectedDate === 'past' ? `${getCurrentPersianMonthName()} رزرو گذشته‌ای ندارید` :
                                          selectedDate === getTodayDate() ? 'رزروهای امروز در بخش بالا نمایش داده می‌شود' :
                                          selectedDate ? `در ${getCurrentPersianMonthName()} رزروی ندارید` :
-                                         `${getCurrentPersianMonthName()} رزرو دیگری ندارید`}
+                                         `${getCurrentPersianMonthName()} رزرو گذشته‌ای ندارید`}
                                     </p>
                                 </div>
                             )}
