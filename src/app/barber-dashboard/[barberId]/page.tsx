@@ -715,8 +715,8 @@ export default function BarberDashboard() {
                                 🔄 تازه‌سازی
                             </button>
                             <button
-                                onClick={() => router.push('/barber-change-password')}
-                                className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial"
+                                onClick={() => alert('تغییر رمز عبور در نسخه بعدی فعال خواهد شد')}
+                                className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial opacity-50 cursor-not-allowed"
                             >
                                 🔒 تغییر رمز
                             </button>
