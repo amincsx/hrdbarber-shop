@@ -17,6 +17,68 @@ function urlBase64ToUint8Array(base64String: string) {
     return outputArray;
 }
 
+// Android-safe notification helper function
+async function showNotificationSafe(booking: any) {
+    console.log('🔔 Showing Android-safe notification for booking:', booking);
+    
+    if (!booking) return false;
+
+    try {
+        // Show browser notification if permission granted
+        if ('Notification' in window && Notification.permission === 'granted') {
+            const notification = new Notification('🎉 رزرو جدید!', {
+                body: `مشتری: ${booking.user_name}\nخدمات: ${booking.services.join(', ')}\nساعت: ${booking.start_time}`,
+                icon: '/icon-192x192.png',
+                badge: '/icon-192x192.png',
+                tag: 'new-booking',
+                requireInteraction: true,
+                silent: false
+            });
+
+            // Android-safe audio notification
+            try {
+                if ('AudioContext' in window || 'webkitAudioContext' in window) {
+                    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+                    const audioContext = new AudioContext();
+                    
+                    // Resume context if suspended (required on mobile)
+                    if (audioContext.state === 'suspended') {
+                        await audioContext.resume();
+                    }
+
+                    // Simple reliable beep for Android
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.frequency.value = 800;
+                    oscillator.type = 'sine';
+
+                    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                    
+                    console.log('🔊 Audio notification played (Android safe)');
+                }
+            } catch (audioError) {
+                console.warn('⚠️ Audio notification failed (Android safe):', audioError);
+            }
+
+            return true;
+        }
+    } catch (notificationError) {
+        console.error('❌ Notification failed:', notificationError);
+        throw notificationError;
+    }
+    
+    return false;
+}
+
 interface Booking {
     id: string;
     user_id: string;
@@ -277,80 +339,21 @@ export default function BarberDashboard() {
                 console.log('📊 Previous count:', lastBookingCount, '→ New count:', newBookingCount);
 
                 if (lastBookingCount > 0 && newBookingCount > lastBookingCount) {
+                    console.log('🔔 New booking detected! Count:', lastBookingCount, '→', newBookingCount);
                     // New booking detected!
                     const newBookings = (data.bookings || []).slice(0, newBookingCount - lastBookingCount);
 
-                    // Show browser notification with sound
-                    if ('Notification' in window && Notification.permission === 'granted') {
-                        const latestBooking = newBookings[0];
-                        const notification = new Notification('🎉 رزرو جدید!', {
-                            body: `مشتری: ${latestBooking.user_name}\nخدمات: ${latestBooking.services.join(', ')}\nساعت: ${latestBooking.start_time}`,
-                            icon: '/icon-192x192.png',
-                            badge: '/icon-192x192.png',
-                            tag: 'new-booking',
-                            requireInteraction: true,
-                            silent: false // Ensure sound plays
-                        });
-
-                        // Play notification sound
-                        try {
-                            // Create a more noticeable notification sound
-                            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-
-                            // Play a sequence of beeps for better attention
-                            const playBeep = (frequency: number, duration: number, delay: number) => {
-                                setTimeout(() => {
-                                    const oscillator = audioContext.createOscillator();
-                                    const gainNode = audioContext.createGain();
-
-                                    oscillator.connect(gainNode);
-                                    gainNode.connect(audioContext.destination);
-
-                                    oscillator.frequency.value = frequency;
-                                    oscillator.type = 'sine';
-
-                                    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
-                                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
-
-                                    oscillator.start(audioContext.currentTime);
-                                    oscillator.stop(audioContext.currentTime + duration);
-                                }, delay);
-                            };
-
-                            // Play 3 beeps: high, low, high
-                            playBeep(1000, 0.2, 0);    // High beep
-                            playBeep(600, 0.2, 300);   // Low beep  
-                            playBeep(1000, 0.2, 600);  // High beep
-
-                            // Show visual alert on page
-                            setShowNewBookingAlert(true);
-                            setTimeout(() => setShowNewBookingAlert(false), 5000);
-
-                        } catch (err) {
-                            console.log('Could not play notification sound:', err);
-                        }
-                    } else {
-                        // If notifications not allowed, still try to play sound
-                        try {
-                            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-                            const oscillator = audioContext.createOscillator();
-                            const gainNode = audioContext.createGain();
-
-                            oscillator.connect(gainNode);
-                            gainNode.connect(audioContext.destination);
-
-                            oscillator.frequency.value = 1000;
-                            oscillator.type = 'sine';
-
-                            gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
-                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-
-                            oscillator.start(audioContext.currentTime);
-                            oscillator.stop(audioContext.currentTime + 0.3);
-                        } catch (err) {
-                            console.log('Could not play notification sound:', err);
-                        }
+                    // Use Android-safe notification function
+                    try {
+                        await showNotificationSafe(newBookings[0]);
+                        console.log('✅ Notification sent successfully');
+                    } catch (notifError) {
+                        console.warn('⚠️ Notification failed (Android safe):', notifError);
                     }
+
+                    // Always show visual alert regardless of notification success
+                    setShowNewBookingAlert(true);
+                    setTimeout(() => setShowNewBookingAlert(false), 5000);
                 }
 
                 setLastBookingCount(newBookingCount);

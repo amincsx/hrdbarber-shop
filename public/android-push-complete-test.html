@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,20 +14,23 @@
             min-height: 100vh;
             color: #333;
         }
+
         .container {
             max-width: 600px;
             margin: 0 auto;
             background: white;
             border-radius: 20px;
             padding: 30px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         }
+
         .header {
             text-align: center;
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 2px solid #f0f0f0;
         }
+
         .step {
             margin: 20px 0;
             padding: 20px;
@@ -34,18 +38,22 @@
             border-radius: 15px;
             border-left: 4px solid #007bff;
         }
+
         .step.success {
             border-left-color: #28a745;
             background: #d4edda;
         }
+
         .step.error {
             border-left-color: #dc3545;
             background: #f8d7da;
         }
+
         .step.warning {
             border-left-color: #ffc107;
             background: #fff3cd;
         }
+
         button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -57,17 +65,20 @@
             font-weight: 600;
             margin: 10px 5px;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
+
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
         }
+
         button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
+
         .result {
             background: #f8f9fa;
             border-radius: 10px;
@@ -78,6 +89,7 @@
             white-space: pre-wrap;
             word-break: break-word;
         }
+
         .info {
             background: #e3f2fd;
             padding: 15px;
@@ -85,6 +97,7 @@
             margin: 10px 0;
             border-left: 4px solid #2196f3;
         }
+
         .alert {
             background: #fff3e0;
             padding: 15px;
@@ -92,6 +105,7 @@
             margin: 10px 0;
             border-left: 4px solid #ff9800;
         }
+
         .progress {
             width: 100%;
             height: 8px;
@@ -100,12 +114,14 @@
             overflow: hidden;
             margin: 10px 0;
         }
+
         .progress-bar {
             height: 100%;
             background: linear-gradient(90deg, #667eea, #764ba2);
             width: 0%;
             transition: width 0.3s ease;
         }
+
         .device-info {
             background: #f5f5f5;
             padding: 15px;
@@ -115,6 +131,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -200,7 +217,7 @@
         let vapidKey = '';
         let registration = null;
         let subscription = null;
-        
+
         // Update device info
         function updateDeviceInfo() {
             const info = {
@@ -219,7 +236,7 @@
                 viewport: `${window.innerWidth}x${window.innerHeight}`,
                 timestamp: new Date().toLocaleString('fa-IR')
             };
-            
+
             document.getElementById('deviceDetails').innerHTML = Object.entries(info)
                 .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
                 .join('<br>');
@@ -240,17 +257,17 @@
             const element = document.getElementById(elementId);
             const timestamp = new Date().toLocaleTimeString('fa-IR');
             const message = `[${timestamp}] ${result}`;
-            
+
             element.textContent = element.textContent + '\n' + message;
             element.scrollTop = element.scrollHeight;
-            
+
             console.log(isError ? 'ERROR:' : 'LOG:', message);
         }
 
         async function checkBrowserSupport() {
             updateProgress(1);
             logResult('supportResult', '🔍 شروع بررسی پشتیبانی مرورگر...');
-            
+
             try {
                 const support = {
                     serviceWorker: 'serviceWorker' in navigator,
@@ -260,16 +277,16 @@
                     isAndroid: /Android/i.test(navigator.userAgent),
                     chrome: /Chrome/i.test(navigator.userAgent)
                 };
-                
+
                 logResult('supportResult', `Service Worker: ${support.serviceWorker ? '✅' : '❌'}`);
                 logResult('supportResult', `Push Manager: ${support.pushManager ? '✅' : '❌'}`);
                 logResult('supportResult', `Notifications: ${support.notification ? '✅' : '❌'}`);
                 logResult('supportResult', `HTTPS/Localhost: ${support.isSecure ? '✅' : '❌'}`);
                 logResult('supportResult', `Android Device: ${support.isAndroid ? '✅' : '❌'}`);
                 logResult('supportResult', `Chrome Browser: ${support.chrome ? '✅' : '❌'}`);
-                
+
                 const allSupported = Object.values(support).every(Boolean);
-                
+
                 if (allSupported) {
                     setStepStatus(1, 'success');
                     logResult('supportResult', '🎉 همه قابلیت‌های مورد نیاز پشتیبانی می‌شوند!');
@@ -277,7 +294,7 @@
                     setStepStatus(1, 'error');
                     logResult('supportResult', '❌ برخی قابلیت‌ها پشتیبانی نمی‌شوند', true);
                 }
-                
+
             } catch (error) {
                 setStepStatus(1, 'error');
                 logResult('supportResult', `❌ خطا در بررسی پشتیبانی: ${error.message}`, true);
@@ -287,15 +304,15 @@
         async function requestNotificationPermission() {
             updateProgress(2);
             logResult('permissionResult', '🔔 درخواست دسترسی نوتیفیکیشن...');
-            
+
             try {
                 if (!('Notification' in window)) {
                     throw new Error('این مرورگر از نوتیفیکیشن پشتیبانی نمی‌کند');
                 }
-                
+
                 const currentPermission = Notification.permission;
                 logResult('permissionResult', `وضعیت فعلی: ${currentPermission}`);
-                
+
                 if (currentPermission === 'default') {
                     logResult('permissionResult', '📱 نمایش پنجره درخواست دسترسی...');
                     const permission = await Notification.requestPermission();
@@ -303,9 +320,9 @@
                 } else {
                     logResult('permissionResult', `دسترسی قبلاً تنظیم شده: ${currentPermission}`);
                 }
-                
+
                 const finalPermission = Notification.permission;
-                
+
                 if (finalPermission === 'granted') {
                     setStepStatus(2, 'success');
                     logResult('permissionResult', '✅ دسترسی نوتیفیکیشن تأیید شد!');
@@ -316,7 +333,7 @@
                     setStepStatus(2, 'warning');
                     logResult('permissionResult', '⚠️ وضعیت دسترسی نامشخص');
                 }
-                
+
             } catch (error) {
                 setStepStatus(2, 'error');
                 logResult('permissionResult', `❌ خطا در درخواست دسترسی: ${error.message}`, true);
@@ -326,49 +343,49 @@
         async function registerServiceWorker() {
             updateProgress(3);
             logResult('swResult', '⚙️ شروع ثبت Service Worker...');
-            
+
             try {
                 if (!('serviceWorker' in navigator)) {
                     throw new Error('Service Worker پشتیبانی نمی‌شود');
                 }
-                
+
                 // Detect Android for enhanced service worker
                 const isAndroid = /Android/i.test(navigator.userAgent);
                 const swPath = isAndroid ? '/barber-sw-android.js' : '/barber-sw.js';
-                
+
                 logResult('swResult', `📱 Android detected: ${isAndroid}`);
                 logResult('swResult', `📄 Service Worker path: ${swPath}`);
-                
+
                 // Unregister existing workers first
                 const existingRegistrations = await navigator.serviceWorker.getRegistrations();
                 for (const reg of existingRegistrations) {
                     await reg.unregister();
                     logResult('swResult', `🗑️ Unregistered existing SW: ${reg.scope}`);
                 }
-                
+
                 // Register new service worker
                 registration = await navigator.serviceWorker.register(swPath, {
                     scope: '/'
                 });
-                
+
                 logResult('swResult', `✅ Service Worker registered successfully`);
                 logResult('swResult', `📍 Scope: ${registration.scope}`);
                 logResult('swResult', `🆔 Registration ID: ${registration.active?.scriptURL || 'pending'}`);
-                
+
                 // Wait for service worker to be ready
                 await navigator.serviceWorker.ready;
                 logResult('swResult', '🚀 Service Worker is ready!');
-                
+
                 // Test communication with service worker
                 const channel = new MessageChannel();
                 channel.port1.onmessage = (event) => {
                     logResult('swResult', `💬 SW Response: ${JSON.stringify(event.data)}`);
                 };
-                
+
                 navigator.serviceWorker.controller?.postMessage({ type: 'PING' }, [channel.port2]);
-                
+
                 setStepStatus(3, 'success');
-                
+
             } catch (error) {
                 setStepStatus(3, 'error');
                 logResult('swResult', `❌ خطا در ثبت Service Worker: ${error.message}`, true);
@@ -378,27 +395,27 @@
         async function getVapidKey() {
             updateProgress(4);
             logResult('vapidResult', '🔑 دریافت VAPID Key از سرور...');
-            
+
             try {
                 const response = await fetch('/api/barber/vapid-key');
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
-                
+
                 const data = await response.json();
                 vapidKey = data.publicKey;
-                
+
                 logResult('vapidResult', '✅ VAPID Key دریافت شد');
                 logResult('vapidResult', `🔑 Public Key: ${vapidKey.substring(0, 50)}...`);
                 logResult('vapidResult', `📏 Key Length: ${vapidKey.length}`);
-                
+
                 setStepStatus(4, 'success');
-                
+
             } catch (error) {
                 setStepStatus(4, 'error');
                 logResult('vapidResult', `❌ خطا در دریافت VAPID Key: ${error.message}`, true);
-                
+
                 // Try with fallback key
                 vapidKey = 'BGhECE76AktsUUL4OjcT4lifhurEmWkMfFh_AaAhw_MSahdTwi6Fzh2PrGPQ8969n5lj6GINXYK5hlg0rAYWuuM';
                 logResult('vapidResult', '🔄 Using fallback VAPID key');
@@ -408,16 +425,16 @@
         async function subscribeToPush() {
             updateProgress(5);
             logResult('subscriptionResult', '📧 ایجاد Push Subscription...');
-            
+
             try {
                 if (!registration) {
                     throw new Error('Service Worker ثبت نشده است');
                 }
-                
+
                 if (!vapidKey) {
                     throw new Error('VAPID Key موجود نیست');
                 }
-                
+
                 // Convert VAPID key to Uint8Array
                 function urlBase64ToUint8Array(base64String) {
                     const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -429,20 +446,20 @@
                     }
                     return outputArray;
                 }
-                
+
                 const applicationServerKey = urlBase64ToUint8Array(vapidKey);
                 logResult('subscriptionResult', '🔄 Converting VAPID key...');
-                
+
                 // Subscribe to push notifications
                 subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: applicationServerKey
                 });
-                
+
                 logResult('subscriptionResult', '✅ Push Subscription created successfully!');
                 logResult('subscriptionResult', `📍 Endpoint: ${subscription.endpoint.substring(0, 100)}...`);
                 logResult('subscriptionResult', `🔑 Keys: ${Object.keys(subscription.toJSON().keys || {}).join(', ')}`);
-                
+
                 // Send subscription to server
                 const response = await fetch('/api/barber/subscribe', {
                     method: 'POST',
@@ -454,7 +471,7 @@
                         subscription: subscription.toJSON()
                     })
                 });
-                
+
                 if (response.ok) {
                     logResult('subscriptionResult', '✅ Subscription registered on server');
                     setStepStatus(5, 'success');
@@ -463,7 +480,7 @@
                     logResult('subscriptionResult', `⚠️ Server registration failed: ${response.status} - ${errorText}`);
                     setStepStatus(5, 'warning');
                 }
-                
+
             } catch (error) {
                 setStepStatus(5, 'error');
                 logResult('subscriptionResult', `❌ خطا در ایجاد اشتراک: ${error.message}`, true);
@@ -473,16 +490,16 @@
         async function showLocalNotification() {
             updateProgress(6);
             logResult('localNotifResult', '🔔 تست نوتیفیکیشن محلی...');
-            
+
             try {
                 if (Notification.permission !== 'granted') {
                     throw new Error('دسترسی نوتیفیکیشن اعطا نشده');
                 }
-                
+
                 if (!registration) {
                     throw new Error('Service Worker ثبت نشده است');
                 }
-                
+
                 // Show notification through service worker
                 await registration.showNotification('🎉 تست اندروید موفق!', {
                     body: 'این یک نوتیفیکیشن تست برای اندروید است',
@@ -510,11 +527,11 @@
                     dir: 'rtl',
                     lang: 'fa'
                 });
-                
+
                 logResult('localNotifResult', '✅ نوتیفیکیشن محلی نمایش داده شد!');
                 logResult('localNotifResult', '👀 بررسی کنید که نوتیفیکیشن ظاهر شده باشد');
                 setStepStatus(6, 'success');
-                
+
             } catch (error) {
                 setStepStatus(6, 'error');
                 logResult('localNotifResult', `❌ خطا در نمایش نوتیفیکیشن: ${error.message}`, true);
@@ -524,12 +541,12 @@
         async function testServerPush() {
             updateProgress(7);
             logResult('serverPushResult', '🚀 تست Push از سرور...');
-            
+
             try {
                 if (!subscription) {
                     throw new Error('Push Subscription ایجاد نشده است');
                 }
-                
+
                 const response = await fetch('/api/barber/notify', {
                     method: 'POST',
                     headers: {
@@ -548,7 +565,7 @@
                         }
                     })
                 });
-                
+
                 if (response.ok) {
                     const result = await response.json();
                     logResult('serverPushResult', '✅ Push notification sent from server!');
@@ -560,12 +577,12 @@
                     logResult('serverPushResult', `❌ Server push failed: ${response.status} - ${errorText}`, true);
                     setStepStatus(7, 'error');
                 }
-                
+
             } catch (error) {
                 setStepStatus(7, 'error');
                 logResult('serverPushResult', `❌ خطا در ارسال از سرور: ${error.message}`, true);
             }
-            
+
             updateOverallResults();
         }
 
@@ -579,21 +596,21 @@
                 { id: 'step6', name: 'نوتیفیکیشن محلی' },
                 { id: 'step7', name: 'Push سرور' }
             ];
-            
+
             const results = steps.map(step => {
                 const element = document.getElementById(step.id);
-                const status = element.classList.contains('success') ? '✅' : 
-                             element.classList.contains('error') ? '❌' : 
-                             element.classList.contains('warning') ? '⚠️' : '⏳';
+                const status = element.classList.contains('success') ? '✅' :
+                    element.classList.contains('error') ? '❌' :
+                        element.classList.contains('warning') ? '⚠️' : '⏳';
                 return `${status} ${step.name}`;
             }).join('<br>');
-            
+
             document.getElementById('overallResults').innerHTML = results;
         }
 
         // Initialize device info
         updateDeviceInfo();
-        
+
         // Listen for service worker messages
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.addEventListener('message', (event) => {
@@ -603,8 +620,9 @@
                 }
             });
         }
-        
+
         console.log('🔔 Android Push Test Page loaded successfully');
     </script>
 </body>
+
 </html>
