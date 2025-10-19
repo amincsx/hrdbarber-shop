@@ -108,15 +108,15 @@ export default function BarberDashboard() {
     const [barberData, setBarberData] = useState<BarberData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [selectedDate, setSelectedDate] = useState(() => {
-        // Default to today's date in YYYY-MM-DD format
-        return new Date().toISOString().split('T')[0];
-    });
+    const [selectedDate, setSelectedDate] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [barberSession, setBarberSession] = useState<any>(null);
     const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set());
     const [lastBookingCount, setLastBookingCount] = useState<number>(0);
     const [showNewBookingAlert, setShowNewBookingAlert] = useState(false);
+    const [showFutureBookings, setShowFutureBookings] = useState(false); // Hidden by default
+    const [showThisMonth, setShowThisMonth] = useState(false); // Hidden by default
+    const [showAllBookings, setShowAllBookings] = useState(false); // Hidden by default
 
     // Register service worker and set up push notifications
     useEffect(() => {
@@ -535,16 +535,110 @@ export default function BarberDashboard() {
         return yesterday.toISOString().split('T')[0];
     };
 
-    // Helper function to get current month's start and end dates
+    // Helper function to get current Persian month's start and end dates
     const getCurrentMonthRange = () => {
+        // Persian calendar months mapping based on Gregorian dates
+        // This is a simplified mapping for the current year (1404/2025)
         const now = new Date();
+        const month = now.getMonth(); // 0-11
         const year = now.getFullYear();
-        const month = now.getMonth();
         
+        // Current Persian calendar year 1404 month mappings:
+        const persianMonths = {
+            // فروردین (Farvardin) - March 21 to April 20
+            2: { start: '2025-03-21', end: '2025-04-20' }, // March (partial) + April (partial)
+            3: { start: '2025-03-21', end: '2025-04-20' }, // April (partial)
+            
+            // اردیبهشت (Ordibehesht) - April 21 to May 21
+            3: { start: '2025-04-21', end: '2025-05-21' }, // April (partial) + May (partial)
+            4: { start: '2025-04-21', end: '2025-05-21' }, // May (partial)
+            
+            // خرداد (Khordad) - May 22 to June 21
+            4: { start: '2025-05-22', end: '2025-06-21' }, // May (partial) + June (partial)
+            5: { start: '2025-05-22', end: '2025-06-21' }, // June (partial)
+            
+            // تیر (Tir) - June 22 to July 22
+            5: { start: '2025-06-22', end: '2025-07-22' }, // June (partial) + July (partial)
+            6: { start: '2025-06-22', end: '2025-07-22' }, // July (partial)
+            
+            // مرداد (Mordad) - July 23 to August 22
+            6: { start: '2025-07-23', end: '2025-08-22' }, // July (partial) + August (partial)
+            7: { start: '2025-07-23', end: '2025-08-22' }, // August (partial)
+            
+            // شهریور (Shahrivar) - August 23 to September 22
+            7: { start: '2025-08-23', end: '2025-09-22' }, // August (partial) + September (partial)
+            8: { start: '2025-08-23', end: '2025-09-22' }, // September (partial)
+            
+            // مهر (Mehr) - September 23 to October 22
+            8: { start: '2025-09-23', end: '2025-10-22' }, // September (partial) + October (partial)
+            9: { start: '2025-09-23', end: '2025-10-22' }, // October (partial)
+            
+            // آبان (Aban) - October 23 to November 21
+            9: { start: '2025-10-23', end: '2025-11-21' }, // October (partial) + November (partial)
+            10: { start: '2025-10-23', end: '2025-11-21' }, // November (partial)
+            
+            // آذر (Azar) - November 22 to December 21
+            10: { start: '2025-11-22', end: '2025-12-21' }, // November (partial) + December (partial)
+            11: { start: '2025-11-22', end: '2025-12-21' }, // December (partial)
+        };
+        
+        // Get today's date to determine which Persian month we're in
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        
+        // October 19, 2025 is in مهر (Mehr) month
+        if (todayStr >= '2025-09-23' && todayStr <= '2025-10-22') {
+            return { start: '2025-09-23', end: '2025-10-22' }; // مهر (Mehr)
+        }
+        // آبان (Aban) month
+        else if (todayStr >= '2025-10-23' && todayStr <= '2025-11-21') {
+            return { start: '2025-10-23', end: '2025-11-21' }; // آبان (Aban)
+        }
+        // آذر (Azar) month
+        else if (todayStr >= '2025-11-22' && todayStr <= '2025-12-21') {
+            return { start: '2025-11-22', end: '2025-12-21' }; // آذر (Azar)
+        }
+        
+        // Fallback to Gregorian month for other periods
         const startOfMonth = new Date(year, month, 1).toISOString().split('T')[0];
         const endOfMonth = new Date(year, month + 1, 0).toISOString().split('T')[0];
-        
         return { start: startOfMonth, end: endOfMonth };
+    };
+
+    // Helper function to get current Persian month name
+    const getCurrentPersianMonthName = () => {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        
+        if (todayStr >= '2025-09-23' && todayStr <= '2025-10-22') {
+            return 'مهر'; // Mehr
+        } else if (todayStr >= '2025-10-23' && todayStr <= '2025-11-21') {
+            return 'آبان'; // Aban
+        } else if (todayStr >= '2025-11-22' && todayStr <= '2025-12-21') {
+            return 'آذر'; // Azar
+        }
+        
+        return 'این ماه'; // Fallback
+    };
+
+    // Helper function to filter future bookings (tomorrow and beyond)
+    const filterFutureBookings = () => {
+        const today = getTodayDate();
+        const filtered = barberData?.bookings?.filter(booking => 
+            booking.date_key > today && 
+            (statusFilter === 'all' || booking.status === statusFilter)
+        ) || [];
+        return filtered;
+    };
+
+    // Helper function to filter past bookings (yesterday and before)
+    const filterPastBookings = () => {
+        const today = getTodayDate();
+        const filtered = barberData?.bookings?.filter(booking => 
+            booking.date_key < today && 
+            (statusFilter === 'all' || booking.status === statusFilter)
+        ) || [];
+        return filtered;
     };
 
     // Get today's bookings
@@ -557,21 +651,65 @@ export default function BarberDashboard() {
             .sort((a, b) => a.start_time.localeCompare(b.start_time));
     })();
 
-    // Get this month's bookings (excluding today)
+    // Get future bookings (next month and beyond, excluding this month)
+    const futureBookings = (() => {
+        const rawBookings = barberData?.bookings || [];
+        const today = getTodayDate();
+        const { end: thisMonthEnd } = getCurrentMonthRange();
+        
+        return rawBookings
+            .filter(booking => {
+                // Must be after this month ends
+                const isFuture = booking.date_key > thisMonthEnd;
+                
+                if (!isFuture) return false;
+                
+                // Apply status filter
+                return statusFilter === 'all' || booking.status === statusFilter;
+            })
+            .sort((a, b) => {
+                if (a.date_key !== b.date_key) return a.date_key.localeCompare(b.date_key);
+                return a.start_time.localeCompare(b.start_time);
+            });
+    })();
+
+    // Get this month's bookings (excluding today, including future dates in this month)
     const thisMonthBookings = (() => {
         const rawBookings = barberData?.bookings || [];
         const today = getTodayDate();
         const { start, end } = getCurrentMonthRange();
         
         return rawBookings
-            .filter(booking => 
-                booking.date_key >= start && 
-                booking.date_key <= end && 
-                booking.date_key !== today &&
-                booking.status !== 'cancelled'
-            )
+            .filter(booking => {
+                // Must be in this month and not today
+                const isThisMonth = booking.date_key >= start && 
+                                   booking.date_key <= end && 
+                                   booking.date_key !== today;
+                
+                if (!isThisMonth) return false;
+                
+                // Apply additional date filter if selected
+                if (selectedDate) {
+                    if (selectedDate === 'future') {
+                        // For future filter, only show bookings after today (within this month)
+                        return booking.date_key > today;
+                    } else if (selectedDate === 'past') {
+                        // For past filter, only show bookings before today (within this month)
+                        return booking.date_key < today;
+                    } else if (selectedDate === getTodayDate()) {
+                        // For today filter, don't show any this month bookings (they should be in today section)
+                        return false;
+                    } else if (selectedDate !== '') {
+                        // For specific date filter
+                        return booking.date_key === selectedDate;
+                    }
+                }
+                
+                // Apply status filter
+                return statusFilter === 'all' || booking.status === statusFilter;
+            })
             .sort((a, b) => {
-                if (a.date_key !== b.date_key) return b.date_key.localeCompare(a.date_key);
+                if (a.date_key !== b.date_key) return a.date_key.localeCompare(b.date_key);
                 return a.start_time.localeCompare(b.start_time);
             });
     })();
@@ -579,9 +717,27 @@ export default function BarberDashboard() {
     // Get all bookings for the comprehensive view (with filters)
     const allBookings = (() => {
         const rawBookings = barberData?.bookings || [];
+        const today = getTodayDate();
         
         const filtered = rawBookings.filter(booking => {
-            const matchesDate = !selectedDate || booking.date_key === selectedDate;
+            let matchesDate = true;
+            
+            if (selectedDate) {
+                if (selectedDate === 'future') {
+                    // Future: Only bookings AFTER today (tomorrow and beyond)
+                    matchesDate = booking.date_key > today;
+                } else if (selectedDate === 'past') {
+                    // Past: Only bookings BEFORE today
+                    matchesDate = booking.date_key < today;
+                } else if (selectedDate === getTodayDate()) {
+                    // Today: Only today's bookings
+                    matchesDate = booking.date_key === today;
+                } else {
+                    // Specific date
+                    matchesDate = booking.date_key === selectedDate;
+                }
+            }
+            
             const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
             return matchesDate && matchesStatus;
         }).sort((a, b) => {
@@ -735,13 +891,20 @@ export default function BarberDashboard() {
                 </div>
 
                 {/* Quick Stats */}
-                <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6">
+                <div className="grid grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6">
                     <div className="glass-card p-3 sm:p-4 text-center border-2 border-blue-400/40">
                         <div className="w-12 h-12 bg-blue-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
                             <span className="text-2xl">�</span>
                         </div>
                         <h3 className="text-sm font-medium text-white/90 mb-1">امروز</h3>
                         <p className="text-3xl font-bold text-blue-400">{todaysBookings.length}</p>
+                    </div>
+                    <div className="glass-card p-3 sm:p-4 text-center border-2 border-purple-400/40">
+                        <div className="w-12 h-12 bg-purple-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <span className="text-2xl">🔮</span>
+                        </div>
+                        <h3 className="text-sm font-medium text-white/90 mb-1">آینده</h3>
+                        <p className="text-3xl font-bold text-purple-400">{futureBookings.length}</p>
                     </div>
                     <div className="glass-card p-3 sm:p-4 text-center border-2 border-green-400/40">
                         <div className="w-12 h-12 bg-green-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -751,7 +914,7 @@ export default function BarberDashboard() {
                         <p className="text-3xl font-bold text-green-400">{thisMonthBookings.length + todaysBookings.length}</p>
                     </div>
                     <div className="glass-card p-3 sm:p-4 text-center border-2 border-white/30">
-                        <div className="w-12 h-12 bg-purple-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <div className="w-12 h-12 bg-orange-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
                             <span className="text-2xl">📊</span>
                         </div>
                         <h3 className="text-sm font-medium text-white/90 mb-1">کل رزروها</h3>
@@ -820,34 +983,24 @@ export default function BarberDashboard() {
                                 📅 امروز
                             </button>
                             <button
-                                onClick={() => setSelectedDate(getTomorrowDate())}
+                                onClick={() => setSelectedDate('future')}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                    selectedDate === getTomorrowDate()
+                                    selectedDate === 'future'
                                         ? 'bg-green-500/30 text-white border-2 border-green-400'
                                         : 'bg-white/10 text-white/80 border border-white/30 hover:bg-white/20'
                                 }`}
                             >
-                                ➡️ فردا
+                                🔮 آینده
                             </button>
                             <button
-                                onClick={() => setSelectedDate('')}
+                                onClick={() => setSelectedDate('past')}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                    selectedDate === ''
-                                        ? 'bg-purple-500/30 text-white border-2 border-purple-400'
-                                        : 'bg-white/10 text-white/80 border border-white/30 hover:bg-white/20'
-                                }`}
-                            >
-                                📊 همه روزها
-                            </button>
-                            <button
-                                onClick={() => setSelectedDate(getYesterdayDate())}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                    selectedDate === getYesterdayDate()
+                                    selectedDate === 'past'
                                         ? 'bg-orange-500/30 text-white border-2 border-orange-400'
                                         : 'bg-white/10 text-white/80 border border-white/30 hover:bg-white/20'
                                 }`}
                             >
-                                ⬅️ دیروز
+                                📜 گذشته
                             </button>
                         </div>
                     </div>
@@ -969,26 +1122,173 @@ export default function BarberDashboard() {
                     )}
                 </div>
 
-                {/* This Month's Bookings */}
+                {/* Future Bookings - Next Month and Beyond */}
                 <div className="glass-card mb-6">
-                    <div className="p-4 sm:p-6 border-b border-white/10">
-                        <h2 className="text-lg sm:text-xl font-bold text-green-400 flex items-center">
-                            📆 رزروهای این ماه ({thisMonthBookings.length})
-                        </h2>
-                        <p className="text-sm text-white/70 mt-1">
-                            به غیر از امروز
-                        </p>
+                    <div 
+                        className="p-4 sm:p-6 border-b border-white/10 cursor-pointer hover:bg-white/5 transition-colors"
+                        onClick={() => setShowFutureBookings(!showFutureBookings)}
+                    >
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h2 className="text-lg sm:text-xl font-bold text-purple-400 flex items-center">
+                                    🔮 رزروهای آینده ({futureBookings.length})
+                                </h2>
+                                <p className="text-sm text-white/70 mt-1">
+                                    آبان ماه و بعد از آن
+                                </p>
+                            </div>
+                            <div className="flex items-center">
+                                <span className="text-purple-400 text-2xl transition-transform duration-200" style={{ transform: showFutureBookings ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                                    ▼
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
-                    {thisMonthBookings.length === 0 ? (
-                        <div className="p-6 sm:p-8 text-center">
+                    {showFutureBookings && (
+                        <div>
+                            {futureBookings.length === 0 && (
+                                <div className="p-6 sm:p-8 text-center">
+                            <div className="w-12 sm:w-16 h-12 sm:h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-xl sm:text-2xl">🔮</span>
+                            </div>
+                                    <p className="text-purple-300 text-sm sm:text-base">رزرو آینده‌ای ندارید</p>
+                                </div>
+                            )}
+                            
+                            {futureBookings.length > 0 && (
+                                <div className="divide-y divide-white/10">
+                            {futureBookings.map((booking, index) => {
+                                const bookingUniqueId = booking.id || `future-${booking.user_phone}-${booking.date_key}-${booking.start_time}-${index}`;
+                                const isExpanded = expandedBookings.has(bookingUniqueId);
+                                return (
+                                    <div key={bookingUniqueId} className="p-3 sm:p-4 hover:bg-purple-500/5 transition-colors">
+                                        <div className="flex flex-col sm:flex-row justify-between gap-3">
+                                            <div className="flex-1">
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    <div className="flex items-center gap-3">
+                                                        <p className="text-white font-medium">👤 {booking.user_name}</p>
+                                                        <span className="text-purple-300 text-sm">📅 {formatDate(booking.date_key)}</span>
+                                                    </div>
+                                                    <div className="text-sm text-white/80">
+                                                        ⏰ {formatTime(booking.start_time)} | ✂️ {booking.services.join('، ')}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                                                {getStatusBadge(booking.status)}
+                                                <button
+                                                    onClick={() => {
+                                                        const newSet = new Set(expandedBookings);
+                                                        if (isExpanded) {
+                                                            newSet.delete(bookingUniqueId);
+                                                        } else {
+                                                            newSet.add(bookingUniqueId);
+                                                        }
+                                                        setExpandedBookings(newSet);
+                                                    }}
+                                                    className="glass-button px-3 py-2 text-xs"
+                                                >
+                                                    {isExpanded ? '🔼' : '🔽'}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {isExpanded && (
+                                            <div className="mt-4 pt-4 border-t border-white/10 bg-white/5 rounded-lg p-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                                    <div>
+                                                        <span className="text-white/70 text-sm">📞 تلفن:</span>
+                                                        <p className="text-white font-mono">{booking.user_phone}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-white/70 text-sm">🕒 مدت:</span>
+                                                        <p className="text-white">{booking.total_duration} دقیقه</p>
+                                                    </div>
+                                                </div>
+                                                {booking.notes && (
+                                                    <div className="mb-4">
+                                                        <span className="text-white/70 text-sm">📝 یادداشت:</span>
+                                                        <p className="text-white bg-white/10 p-2 rounded mt-1">{booking.notes}</p>
+                                                    </div>
+                                                )}
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button
+                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'confirmed')}
+                                                        className="glass-button bg-green-500/20 border-green-400/30 text-green-300 px-4 py-2 text-sm"
+                                                    >
+                                                        ✅ تأیید
+                                                    </button>
+                                                    <button
+                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'cancelled')}
+                                                        className="glass-button bg-red-500/20 border-red-400/30 text-red-300 px-4 py-2 text-sm"
+                                                    >
+                                                        ❌ لغو
+                                                    </button>
+                                                    <button
+                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'completed')}
+                                                        className="glass-button bg-blue-500/20 border-blue-400/30 text-blue-300 px-4 py-2 text-sm"
+                                                    >
+                                                        🎉 تکمیل
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* This Month's Bookings */}
+                <div className="glass-card mb-6">
+                    <div 
+                        className="p-4 sm:p-6 border-b border-white/10 cursor-pointer hover:bg-white/5 transition-colors"
+                        onClick={() => setShowThisMonth(!showThisMonth)}
+                    >
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h2 className="text-lg sm:text-xl font-bold text-green-400 flex items-center">
+                                    📆 رزروهای {getCurrentPersianMonthName()} ({thisMonthBookings.length})
+                                </h2>
+                                <p className="text-sm text-white/70 mt-1">
+                                    {selectedDate === 'future' ? `آینده در ${getCurrentPersianMonthName()}` : 
+                                     selectedDate === 'past' ? `گذشته در ${getCurrentPersianMonthName()}` : 
+                                     selectedDate === getTodayDate() ? 'امروز (در بخش بالا)' :
+                                     selectedDate ? `${formatDate(selectedDate)} در ${getCurrentPersianMonthName()}` :
+                                     'به غیر از امروز'}
+                                </p>
+                            </div>
+                            <div className="flex items-center">
+                                <span className="text-green-400 text-2xl transition-transform duration-200" style={{ transform: showThisMonth ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                                    ▼
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {showThisMonth && (
+                        <div>
+                            {thisMonthBookings.length === 0 && (
+                                <div className="p-6 sm:p-8 text-center">
                             <div className="w-12 sm:w-16 h-12 sm:h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <span className="text-xl sm:text-2xl">�</span>
                             </div>
-                            <p className="text-green-300 text-sm sm:text-base">این ماه رزرو دیگری ندارید</p>
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-white/10">
+                                    <p className="text-green-300 text-sm sm:text-base">
+                                        {selectedDate === 'future' ? `${getCurrentPersianMonthName()} رزرو آینده‌ای ندارید` :
+                                         selectedDate === 'past' ? `${getCurrentPersianMonthName()} رزرو گذشته‌ای ندارید` :
+                                         selectedDate === getTodayDate() ? 'رزروهای امروز در بخش بالا نمایش داده می‌شود' :
+                                         selectedDate ? `در ${getCurrentPersianMonthName()} رزروی ندارید` :
+                                         `${getCurrentPersianMonthName()} رزرو دیگری ندارید`}
+                                    </p>
+                                </div>
+                            )}
+                            
+                            {thisMonthBookings.length > 0 && (
+                                <div className="divide-y divide-white/10">
                             {thisMonthBookings.map((booking, index) => {
                                 const bookingUniqueId = booking.id || `month-${booking.user_phone}-${booking.date_key}-${booking.start_time}-${index}`;
                                 const isExpanded = expandedBookings.has(bookingUniqueId);
@@ -1068,22 +1368,40 @@ export default function BarberDashboard() {
                                     </div>
                                 );
                             })}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
 
                 {/* All Bookings - Comprehensive View with Filters */}
                 <div className="glass-card">
-                    <div className="p-4 sm:p-6 border-b border-white/10">
+                    <div 
+                        className="p-4 sm:p-6 border-b border-white/10 cursor-pointer hover:bg-white/5 transition-colors"
+                        onClick={() => setShowAllBookings(!showAllBookings)}
+                    >
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                            <h2 className="text-lg sm:text-xl font-bold text-purple-400 flex items-center">
-                                📋 همه رزروها ({allBookings.length})
-                            </h2>
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-lg sm:text-xl font-bold text-purple-400 flex items-center">
+                                    📋 همه رزروها ({allBookings.length})
+                                </h2>
+                                <span className="text-purple-400 text-2xl transition-transform duration-200" style={{ transform: showAllBookings ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                                    ▼
+                                </span>
+                            </div>
                             <div className="text-sm text-white/70">
                                 {selectedDate ? (
                                     selectedDate === getTodayDate() ? (
                                         <span className="bg-blue-500/20 px-3 py-1 rounded-full border border-blue-400/30">
                                             📅 امروز - {formatDate(selectedDate)}
+                                        </span>
+                                    ) : selectedDate === 'future' ? (
+                                        <span className="bg-green-500/20 px-3 py-1 rounded-full border border-green-400/30">
+                                            🔮 آینده
+                                        </span>
+                                    ) : selectedDate === 'past' ? (
+                                        <span className="bg-orange-500/20 px-3 py-1 rounded-full border border-orange-400/30">
+                                            📜 گذشته
                                         </span>
                                     ) : (
                                         <span className="bg-white/10 px-3 py-1 rounded-full border border-white/30">
@@ -1099,15 +1417,19 @@ export default function BarberDashboard() {
                         </div>
                     </div>
 
-                    {allBookings.length === 0 ? (
-                        <div className="p-6 sm:p-8 text-center">
+                    {showAllBookings && (
+                        <div>
+                            {allBookings.length === 0 && (
+                                <div className="p-6 sm:p-8 text-center">
                             <div className="w-12 sm:w-16 h-12 sm:h-16 bg-gray-300/20 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <span className="text-xl sm:text-2xl">📝</span>
                             </div>
-                            <p className="text-white/70 text-sm sm:text-base">هیچ رزروی یافت نشد</p>
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-white/10">
+                                    <p className="text-white/70 text-sm sm:text-base">هیچ رزروی یافت نشد</p>
+                                </div>
+                            )}
+                            
+                            {allBookings.length > 0 && (
+                                <div className="divide-y divide-white/10">
                             {allBookings.map((booking, index) => {
                                 const bookingUniqueId = booking.id || `all-${booking.user_phone}-${booking.date_key}-${booking.start_time}-${index}`;
                                 const isExpanded = expandedBookings.has(bookingUniqueId);
@@ -1231,6 +1553,8 @@ export default function BarberDashboard() {
                                     </div>
                                 );
                             })}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
