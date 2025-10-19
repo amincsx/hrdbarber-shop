@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import MongoDatabase from '../../../../../lib/mongoDatabase.js';
+import MongoDatabase from '../../../../lib/mongoDatabase.js';
 import bcrypt from 'bcryptjs';
 
 // Initialize default barbers
