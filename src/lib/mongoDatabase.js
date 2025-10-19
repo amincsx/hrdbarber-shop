@@ -8,10 +8,10 @@ class MongoDatabase {
     static async getAllBarbers() {
         try {
             await dbConnect();
-            
+
             // Production database initialization temporarily disabled to fix connection issues
             // Will be re-enabled once basic connection is working
-            
+
             const barbers = await Barber.find({ isActive: true }).sort({ name: 1 });
             return barbers;
         } catch (error) {
@@ -48,7 +48,7 @@ class MongoDatabase {
             await dbConnect();
             // Get all bookings (no sorting in query to avoid field name issues)
             const bookings = await Booking.find();
-            
+
             // Add id field for compatibility and sort in JavaScript (handles both created_at and createdAt)
             return bookings.map(booking => ({
                 ...booking.toObject(),
@@ -58,10 +58,10 @@ class MongoDatabase {
                 const aTime = new Date(a.created_at || a.createdAt || 0).getTime();
                 const bTime = new Date(b.created_at || b.createdAt || 0).getTime();
                 if (bTime !== aTime) return bTime - aTime;
-                
+
                 // Then by date
                 if (b.date_key !== a.date_key) return b.date_key.localeCompare(a.date_key);
-                
+
                 // Then by start time
                 return b.start_time.localeCompare(a.start_time);
             });
@@ -96,10 +96,10 @@ class MongoDatabase {
         try {
             await dbConnect();
             console.log('🔍 [MongoDB] Searching for barber:', barberName);
-            
+
             // Get all bookings for this barber (no sorting in query to avoid field name issues)
             const bookings = await Booking.find({ barber: barberName });
-            
+
             console.log('🔍 [MongoDB] Found', bookings.length, 'bookings for', barberName);
             if (bookings.length > 0) {
                 console.log('🔍 [MongoDB] Sample booking:', {
@@ -110,7 +110,7 @@ class MongoDatabase {
                     has_createdAt: !!bookings[0].createdAt
                 });
             }
-            
+
             // Add id field for compatibility and sort in JavaScript (handles both created_at and createdAt)
             const result = bookings.map(booking => ({
                 ...booking.toObject(),
@@ -120,14 +120,14 @@ class MongoDatabase {
                 const aTime = new Date(a.created_at || a.createdAt || 0).getTime();
                 const bTime = new Date(b.created_at || b.createdAt || 0).getTime();
                 if (bTime !== aTime) return bTime - aTime;
-                
+
                 // Then by date
                 if (b.date_key !== a.date_key) return b.date_key.localeCompare(a.date_key);
-                
+
                 // Then by start time
                 return b.start_time.localeCompare(a.start_time);
             });
-            
+
             console.log('🔍 [MongoDB] Returning', result.length, 'bookings after sort');
             return result;
         } catch (error) {
@@ -170,24 +170,24 @@ class MongoDatabase {
         try {
             await dbConnect();
             console.log('🔧 [MongoDB] Updating booking:', { bookingId, status, notes });
-            
-            const updateData = { 
-                status, 
+
+            const updateData = {
+                status,
                 updated_at: new Date(),
                 updatedAt: new Date() // Update both field formats
             };
             if (notes !== undefined) {
                 updateData.notes = notes;
             }
-            
+
             console.log('🔧 [MongoDB] Update data:', updateData);
-            
+
             const result = await Booking.findByIdAndUpdate(
                 bookingId,
                 updateData,
                 { new: true }
             );
-            
+
             if (result) {
                 console.log('✅ [MongoDB] Booking status updated successfully');
                 console.log('✅ [MongoDB] New status:', result.status);
@@ -226,7 +226,16 @@ class MongoDatabase {
     static async getUserByUsername(username) {
         try {
             await dbConnect();
+            console.log('🔍 [MongoDB] Searching for username:', username);
             const user = await User.findOne({ username: username });
+            console.log('🔍 [MongoDB] User query result:', !!user);
+            if (user) {
+                console.log('🔍 [MongoDB] Found user:', {
+                    username: user.username,
+                    name: user.name,
+                    role: user.role
+                });
+            }
             return user;
         } catch (error) {
             console.error('Error getting user by username:', error);
@@ -293,7 +302,7 @@ class MongoDatabase {
     static generateSecurePassword(username) {
         // Generate a stronger password with random characters
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
-        const randomPart = Array.from({ length: 8 }, () => 
+        const randomPart = Array.from({ length: 8 }, () =>
             chars.charAt(Math.floor(Math.random() * chars.length))
         ).join('');
         return `${username}_${randomPart}`;
@@ -344,7 +353,7 @@ class MongoDatabase {
                     await this.addUser(userData);
                     console.log(`✅ Created auth account for barber: ${barber.name} (${username})`);
                     console.log(`   Password: ${securePassword}`);
-                    
+
                     createdAccounts.push({
                         username: username,
                         name: barber.name,
@@ -356,7 +365,7 @@ class MongoDatabase {
             }
 
             console.log('✅ Barber authentication initialization completed');
-            
+
             // Return created accounts for reference
             return createdAccounts;
 

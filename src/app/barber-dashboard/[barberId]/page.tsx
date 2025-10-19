@@ -5,11 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import BarberPWAInstall from '@/components/BarberPWAInstall';
 import { persianToEnglish } from '../../../lib/numberUtils';
 
-// Convert a Base64 URL-safe VAPID public key to a Uint8Array for PushManager
+// Helper function to convert VAPID public key to Uint8Array
 function urlBase64ToUint8Array(base64String: string) {
-    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = typeof window !== 'undefined' ? window.atob(base64) : Buffer.from(base64, 'base64').toString('binary');
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
     const outputArray = new Uint8Array(rawData.length);
     for (let i = 0; i < rawData.length; ++i) {
         outputArray[i] = rawData.charCodeAt(i);
@@ -61,13 +61,13 @@ export default function BarberDashboard() {
                     console.log('🔧 Registering barber service worker...');
                     const registration = await navigator.serviceWorker.register('/barber-sw.js');
                     console.log('✅ Barber Service Worker registered:', registration);
-                    
+
                     // Request notification permission
                     if (Notification.permission === 'default') {
                         const permission = await Notification.requestPermission();
                         console.log('🔔 Notification permission:', permission);
                     }
-                    
+
                     // Subscribe to push notifications if granted
                     if (Notification.permission === 'granted') {
                         try {
@@ -78,7 +78,7 @@ export default function BarberDashboard() {
                                 const keyRes = await fetch('/api/push/public-key', { cache: 'no-store' });
                                 const keyJson = await keyRes.json();
                                 vapidPublicKey = keyJson.publicKey || null;
-                            } catch {}
+                            } catch { }
                             const applicationServerKey = vapidPublicKey ? urlBase64ToUint8Array(vapidPublicKey) : null;
 
                             const subscription = await registration.pushManager.subscribe({
@@ -88,7 +88,7 @@ export default function BarberDashboard() {
                                 console.log('⚠️ Push subscription not available (needs VAPID keys)');
                                 return null;
                             });
-                            
+
                             if (subscription) {
                                 // Send subscription to server
                                 const response = await fetch('/api/barber/subscribe', {
@@ -101,7 +101,7 @@ export default function BarberDashboard() {
                                         subscription
                                     })
                                 });
-                                
+
                                 if (response.ok) {
                                     console.log('✅ Push notification subscription registered');
                                 } else {
@@ -113,7 +113,7 @@ export default function BarberDashboard() {
                             console.log('⚠️ Push subscription error:', subError);
                         }
                     }
-                    
+
                     // Listen for messages from service worker
                     navigator.serviceWorker.addEventListener('message', (event) => {
                         console.log('💬 Message from service worker:', event.data);
@@ -121,7 +121,7 @@ export default function BarberDashboard() {
                             fetchBarberBookings();
                         }
                     });
-                    
+
                 } catch (error) {
                     console.error('❌ Service Worker registration failed:', error);
                 }
@@ -129,7 +129,7 @@ export default function BarberDashboard() {
                 console.log('⚠️ Service Worker or Push Manager not supported');
             }
         };
-        
+
         registerServiceWorker();
     }, [barberId]);
 
@@ -138,12 +138,12 @@ export default function BarberDashboard() {
         const urlParams = new URLSearchParams(window.location.search);
         const isPWA = urlParams.get('pwa') === '1';
         const isAuto = urlParams.get('auto') === '1';
-        
+
         if (isPWA) {
             console.log('🔧 PWA launch detected for barber:', barberId);
             console.log('📱 This is a PWA app opening for specific barber dashboard');
         }
-        
+
         if (isAuto) {
             console.log('🔧 Auto-login PWA detected for barber:', barberId);
         }
@@ -176,13 +176,13 @@ export default function BarberDashboard() {
             // Parse existing session
             const parsedSession = JSON.parse(session);
             const decodedBarberId = decodeURIComponent(barberId);
-            
+
             // For PWA or auto-login mode, always allow access to this barber's dashboard
             if (isPWA || isAuto || parsedSession.pwa || parsedSession.auto) {
                 // Check if barberId matches either username or name
                 const matchesUsername = parsedSession.user.username === decodedBarberId;
                 const matchesName = parsedSession.user.name === decodedBarberId;
-                
+
                 if (!matchesUsername && !matchesName) {
                     console.log('🔧 PWA: Updating session to match dashboard barber:', decodedBarberId);
                     const updatedSession = {
@@ -203,7 +203,7 @@ export default function BarberDashboard() {
             } else {
                 // For regular web access, enforce strict authentication
                 setBarberSession(parsedSession);
-                
+
                 if (parsedSession.user.type !== 'barber') {
                     router.push('/barber-login');
                     return;
@@ -212,7 +212,7 @@ export default function BarberDashboard() {
                 // Check if barber is accessing their own dashboard (match by username OR name)
                 const matchesUsername = parsedSession.user.username === decodedBarberId;
                 const matchesName = parsedSession.user.name === decodedBarberId;
-                
+
                 if (!matchesUsername && !matchesName) {
                     // Redirect using username if available, otherwise name
                     const redirectId = parsedSession.user.username || parsedSession.user.name;
@@ -223,17 +223,17 @@ export default function BarberDashboard() {
         }
         if (barberId) {
             fetchBarberBookings();
-            
+
             // Request notification permission
             if ('Notification' in window && Notification.permission === 'default') {
                 Notification.requestPermission();
             }
-            
+
             // Poll for new bookings every 30 seconds
             const pollInterval = setInterval(() => {
                 fetchBarberBookings();
             }, 30000);
-            
+
             return () => clearInterval(pollInterval);
         }
     }, [barberId, router]);
@@ -242,12 +242,12 @@ export default function BarberDashboard() {
         try {
             setLoading(true);
             console.log('🔄 Fetching bookings for barberId:', barberId);
-            
+
             // Add timestamp to bypass cache
             const timestamp = Date.now();
             const url = `/api/barber/${encodeURIComponent(barberId)}?t=${timestamp}`;
             console.log('🔄 Request URL:', url);
-            
+
             const response = await fetch(url, {
                 method: 'GET',
                 headers: {
@@ -259,7 +259,7 @@ export default function BarberDashboard() {
             });
             console.log('📡 Response status:', response.status);
             console.log('📡 Response ok:', response.ok);
-            
+
             const data = await response.json();
             console.log('📦 Response data:', data);
             console.log('📦 Total bookings:', data.total_bookings);
@@ -269,11 +269,11 @@ export default function BarberDashboard() {
                 // Check if there are new bookings
                 const newBookingCount = data.total_bookings || 0;
                 console.log('📊 Previous count:', lastBookingCount, '→ New count:', newBookingCount);
-                
+
                 if (lastBookingCount > 0 && newBookingCount > lastBookingCount) {
                     // New booking detected!
                     const newBookings = (data.bookings || []).slice(0, newBookingCount - lastBookingCount);
-                    
+
                     // Show browser notification with sound
                     if ('Notification' in window && Notification.permission === 'granted') {
                         const latestBooking = newBookings[0];
@@ -285,41 +285,41 @@ export default function BarberDashboard() {
                             requireInteraction: true,
                             silent: false // Ensure sound plays
                         });
-                        
+
                         // Play notification sound
                         try {
                             // Create a more noticeable notification sound
                             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-                            
+
                             // Play a sequence of beeps for better attention
                             const playBeep = (frequency: number, duration: number, delay: number) => {
                                 setTimeout(() => {
                                     const oscillator = audioContext.createOscillator();
                                     const gainNode = audioContext.createGain();
-                                    
+
                                     oscillator.connect(gainNode);
                                     gainNode.connect(audioContext.destination);
-                                    
+
                                     oscillator.frequency.value = frequency;
                                     oscillator.type = 'sine';
-                                    
+
                                     gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
                                     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
-                                    
+
                                     oscillator.start(audioContext.currentTime);
                                     oscillator.stop(audioContext.currentTime + duration);
                                 }, delay);
                             };
-                            
+
                             // Play 3 beeps: high, low, high
                             playBeep(1000, 0.2, 0);    // High beep
                             playBeep(600, 0.2, 300);   // Low beep  
                             playBeep(1000, 0.2, 600);  // High beep
-                            
+
                             // Show visual alert on page
                             setShowNewBookingAlert(true);
                             setTimeout(() => setShowNewBookingAlert(false), 5000);
-                            
+
                         } catch (err) {
                             console.log('Could not play notification sound:', err);
                         }
@@ -329,16 +329,16 @@ export default function BarberDashboard() {
                             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
                             const oscillator = audioContext.createOscillator();
                             const gainNode = audioContext.createGain();
-                            
+
                             oscillator.connect(gainNode);
                             gainNode.connect(audioContext.destination);
-                            
+
                             oscillator.frequency.value = 1000;
                             oscillator.type = 'sine';
-                            
+
                             gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
                             gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-                            
+
                             oscillator.start(audioContext.currentTime);
                             oscillator.stop(audioContext.currentTime + 0.3);
                         } catch (err) {
@@ -346,12 +346,12 @@ export default function BarberDashboard() {
                         }
                     }
                 }
-                
+
                 setLastBookingCount(newBookingCount);
                 setBarberData(data);
                 console.log('✅ Barber data set successfully');
                 console.log('✅ Bookings in state:', data.bookings?.length);
-                
+
                 // Log booking statuses
                 if (data.bookings && data.bookings.length > 0) {
                     console.log('📊 Booking statuses:', data.bookings.map(b => ({
@@ -360,7 +360,7 @@ export default function BarberDashboard() {
                         status: b.status
                     })));
                 }
-                
+
                 setError('');
             } else {
                 console.error('❌ API returned error:', data.error);
@@ -379,7 +379,7 @@ export default function BarberDashboard() {
     const updateBookingStatus = async (bookingId: string, status: string, notes?: string) => {
         try {
             console.log('🔄 Updating booking:', { bookingId, status, notes });
-            
+
             const response = await fetch(`/api/barber/${encodeURIComponent(barberId)}`, {
                 method: 'PUT',
                 headers: {
@@ -398,12 +398,12 @@ export default function BarberDashboard() {
 
             if (response.ok) {
                 console.log('✅ Status updated successfully, refreshing bookings...');
-                
+
                 // Force a delay to ensure database is updated
                 await new Promise(resolve => setTimeout(resolve, 500));
-                
+
                 await fetchBarberBookings();
-                
+
                 console.log('✅ Bookings refreshed after status update');
                 alert('وضعیت رزرو با موفقیت به‌روزرسانی شد');
             } else {
@@ -478,9 +478,9 @@ export default function BarberDashboard() {
             const aCreated = new Date(a.created_at).getTime();
             const bCreated = new Date(b.created_at).getTime();
             if (bCreated !== aCreated) return bCreated - aCreated;
-            
+
             if (b.date_key !== a.date_key) return b.date_key.localeCompare(a.date_key);
-            
+
             return b.start_time.localeCompare(a.start_time);
         });
 
@@ -628,9 +628,9 @@ export default function BarberDashboard() {
                             >
                                 🔒 تغییر رمز
                             </button>
-                            <BarberPWAInstall 
-                                barberName={barberSession?.user?.name || decodeURIComponent(barberId)} 
-                                barberId={barberSession?.user?.username || decodeURIComponent(barberId)} 
+                            <BarberPWAInstall
+                                barberName={barberSession?.user?.name || decodeURIComponent(barberId)}
+                                barberId={barberSession?.user?.username || decodeURIComponent(barberId)}
                             />
                             <button
                                 onClick={handleLogout}
@@ -748,7 +748,7 @@ export default function BarberDashboard() {
 
                                             <div className="ml-4 flex items-center space-x-3 space-x-reverse">
                                                 {getStatusBadge(booking.status)}
-                                                
+
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();

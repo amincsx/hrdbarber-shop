@@ -1,6 +1,7 @@
 // JavaScript version of admin route to bypass TypeScript module detection
 import { NextResponse } from 'next/server';
 import MongoDatabase from '../../../lib/mongoDatabase.js';
+import bcrypt from 'bcryptjs';
 
 // POST - Admin login (owner and barber)
 async function POST(request) {
@@ -21,15 +22,15 @@ async function POST(request) {
         }
 
         // Initialize barber authentication accounts if needed
-        await MongoDatabase.initializeBarberAuth();
+        // await MongoDatabase.initializeBarberAuth(); // Disabled - using manual initialization instead
 
         // Owner login - Database only (no hardcoded credentials)
         if (type === 'owner') {
             console.log('🔍 Processing owner login from MongoDB...');
-            
+
             // Try to find admin user by username (try both 'ceo' and username provided)
             let adminUser = await MongoDatabase.getUserByUsername(username);
-            
+
             // If not found and username is 'owner', try 'ceo' as well
             if (!adminUser && username === 'owner') {
                 adminUser = await MongoDatabase.getUserByUsername('ceo');
@@ -70,9 +71,28 @@ async function POST(request) {
         // Barber login - Use MongoDB
         if (type === 'barber') {
             console.log('🔍 Processing barber login from MongoDB...');
+            console.log('  - Looking for username:', username);
 
             const user = await MongoDatabase.getUserByUsername(username);
             console.log('  - User found in database:', !!user);
+
+            if (user) {
+                console.log('  - User details:', {
+                    username: user.username,
+                    name: user.name,
+                    role: user.role,
+                    hasPassword: !!user.password
+                });
+            } else {
+                // Try to find all barber users for debugging
+                console.log('  - Searching for all barber users...');
+                const allBarbers = await MongoDatabase.getUsersByRole('barber');
+                console.log('  - Found barber users:', allBarbers.map(b => ({
+                    username: b.username,
+                    name: b.name,
+                    role: b.role
+                })));
+            }
 
             if (!user || user.role !== 'barber') {
                 console.log('❌ Barber not found for username:', username);
@@ -82,8 +102,11 @@ async function POST(request) {
                 );
             }
 
-            console.log('  - Password check:', password === user.password);
-            if (password !== user.password) {
+            console.log('  - Password check with bcrypt...');
+            const passwordMatch = await bcrypt.compare(password, user.password);
+            console.log('  - Password match:', passwordMatch);
+
+            if (!passwordMatch) {
                 console.log('❌ Wrong password for barber:', username);
                 return NextResponse.json(
                     { success: false, error: 'رمز عبور اشتباه است' },
