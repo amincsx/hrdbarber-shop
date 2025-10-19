@@ -58,9 +58,15 @@ export default function BarberDashboard() {
         const registerServiceWorker = async () => {
             if ('serviceWorker' in navigator && 'PushManager' in window) {
                 try {
-                    console.log('🔧 Registering barber service worker...');
-                    const registration = await navigator.serviceWorker.register('/barber-sw.js');
-                    console.log('✅ Barber Service Worker registered:', registration);
+                    // Detect if we're on Android for enhanced service worker
+                    const isAndroid = /Android/i.test(navigator.userAgent);
+                    const swPath = isAndroid ? '/barber-sw-android.js' : '/barber-sw.js';
+                    
+                    console.log(`� Registering service worker: ${swPath} (Android: ${isAndroid})`);
+                    
+                    // Register service worker
+                    const registration = await navigator.serviceWorker.register(swPath);
+                    console.log('✅ Service Worker registered:', registration);
 
                     // Request notification permission
                     if (Notification.permission === 'default') {

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Android Push Notifications Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; direction: rtl; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .status { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Android Push Notifications Debug Tool</h1>
+    
+    <div class="section info">
+        <h3>📱 Device Information</h3>
+        <p><strong>User Agent:</strong> <span id="userAgent"></span></p>
+        <p><strong>Service Worker Support:</strong> <span id="swSupport" class="status"></span></p>
+        <p><strong>Push Manager Support:</strong> <span id="pushSupport" class="status"></span></p>
+        <p><strong>Notification Support:</strong> <span id="notifSupport" class="status"></span></p>
+        <p><strong>Current Permission:</strong> <span id="permission" class="status"></span></p>
+    </div>
+
+    <div class="section">
+        <h3>🔔 Step 1: Request Permission</h3>
+        <button onclick="requestPermission()">📱 Request Notification Permission</button>
+        <div id="permissionResult"></div>
+    </div>
+
+    <div class="section">
+        <h3>🔧 Step 2: Register Service Worker</h3>
+        <button onclick="registerServiceWorker()">🔧 Register Service Worker</button>
+        <div id="swResult"></div>
+    </div>
+
+    <div class="section">
+        <h3>🔑 Step 3: Get VAPID Public Key</h3>
+        <button onclick="getVapidKey()">🔑 Get VAPID Key</button>
+        <div id="vapidResult"></div>
+    </div>
+
+    <div class="section">
+        <h3>📡 Step 4: Subscribe to Push Notifications</h3>
+        <button onclick="subscribeToPush()">📡 Subscribe to Push</button>
+        <div id="subscribeResult"></div>
+    </div>
+
+    <div class="section">
+        <h3>🧪 Step 5: Test Push Notification</h3>
+        <button onclick="testPush()">🧪 Send Test Push</button>
+        <div id="testResult"></div>
+    </div>
+
+    <div class="section">
+        <h3>📊 Debug Information</h3>
+        <pre id="debugInfo"></pre>
+    </div>
+
+    <script>
+        let registration = null;
+        let subscription = null;
+        let vapidPublicKey = null;
+
+        // Initialize device info
+        document.getElementById('userAgent').textContent = navigator.userAgent;
+        document.getElementById('swSupport').textContent = 'serviceWorker' in navigator ? '✅ Supported' : '❌ Not Supported';
+        document.getElementById('pushSupport').textContent = 'PushManager' in window ? '✅ Supported' : '❌ Not Supported';
+        document.getElementById('notifSupport').textContent = 'Notification' in window ? '✅ Supported' : '❌ Not Supported';
+        document.getElementById('permission').textContent = 'Notification' in window ? Notification.permission : 'N/A';
+
+        function log(message) {
+            const debugInfo = document.getElementById('debugInfo');
+            debugInfo.textContent += new Date().toLocaleTimeString() + ': ' + message + '\\n';
+            console.log(message);
+        }
+
+        async function requestPermission() {
+            const resultDiv = document.getElementById('permissionResult');
+            try {
+                if (!('Notification' in window)) {
+                    resultDiv.innerHTML = '<div class="error">❌ This browser doesn\\'t support notifications</div>';
+                    return;
+                }
+
+                log('Requesting notification permission...');
+                const permission = await Notification.requestPermission();
+                
+                document.getElementById('permission').textContent = permission;
+                
+                if (permission === 'granted') {
+                    resultDiv.innerHTML = '<div class="success">✅ Permission granted!</div>';
+                    log('✅ Notification permission granted');
+                } else if (permission === 'denied') {
+                    resultDiv.innerHTML = '<div class="error">❌ Permission denied. Please enable notifications in browser settings.</div>';
+                    log('❌ Notification permission denied');
+                } else {
+                    resultDiv.innerHTML = '<div class="error">⚠️ Permission dismissed</div>';
+                    log('⚠️ Notification permission dismissed');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="error">❌ Error: ' + error.message + '</div>';
+                log('❌ Permission error: ' + error.message);
+            }
+        }
+
+        async function registerServiceWorker() {
+            const resultDiv = document.getElementById('swResult');
+            try {
+                if (!('serviceWorker' in navigator)) {
+                    resultDiv.innerHTML = '<div class="error">❌ Service Worker not supported</div>';
+                    return;
+                }
+
+                log('Registering service worker...');
+                registration = await navigator.serviceWorker.register('/barber-sw.js', {
+                    scope: '/'
+                });
+                
+                log('✅ Service Worker registered: ' + registration.scope);
+                resultDiv.innerHTML = '<div class="success">✅ Service Worker registered successfully!</div>';
+                
+                // Wait for service worker to be ready
+                await navigator.serviceWorker.ready;
+                log('✅ Service Worker is ready');
+                
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="error">❌ Error: ' + error.message + '</div>';
+                log('❌ Service Worker registration error: ' + error.message);
+            }
+        }
+
+        async function getVapidKey() {
+            const resultDiv = document.getElementById('vapidResult');
+            try {
+                log('Fetching VAPID public key...');
+                const response = await fetch('/api/push/public-key', { cache: 'no-store' });
+                const data = await response.json();
+                
+                vapidPublicKey = data.publicKey;
+                
+                if (vapidPublicKey) {
+                    resultDiv.innerHTML = '<div class="success">✅ VAPID Key: ' + vapidPublicKey.substring(0, 20) + '...</div>';
+                    log('✅ VAPID key retrieved: ' + vapidPublicKey.substring(0, 20) + '...');
+                } else {
+                    resultDiv.innerHTML = '<div class="error">❌ No VAPID key found</div>';
+                    log('❌ No VAPID key found');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="error">❌ Error: ' + error.message + '</div>';
+                log('❌ VAPID key error: ' + error.message);
+            }
+        }
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/\\-/g, '+')
+                .replace(/_/g, '/');
+
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        async function subscribeToPush() {
+            const resultDiv = document.getElementById('subscribeResult');
+            try {
+                if (!registration) {
+                    resultDiv.innerHTML = '<div class="error">❌ Please register service worker first</div>';
+                    return;
+                }
+
+                if (!vapidPublicKey) {
+                    resultDiv.innerHTML = '<div class="error">❌ Please get VAPID key first</div>';
+                    return;
+                }
+
+                log('Subscribing to push notifications...');
+                
+                const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+                
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: applicationServerKey
+                });
+
+                log('✅ Push subscription created');
+                
+                // Send subscription to server
+                const response = await fetch('/api/barber/subscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        barberId: 'test-debug',
+                        subscription: subscription.toJSON()
+                    })
+                });
+
+                if (response.ok) {
+                    resultDiv.innerHTML = '<div class="success">✅ Successfully subscribed to push notifications!</div>';
+                    log('✅ Subscription sent to server successfully');
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = '<div class="error">❌ Server error: ' + response.status + ' - ' + errorText + '</div>';
+                    log('❌ Server subscription error: ' + response.status + ' - ' + errorText);
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="error">❌ Error: ' + error.message + '</div>';
+                log('❌ Push subscription error: ' + error.message);
+            }
+        }
+
+        async function testPush() {
+            const resultDiv = document.getElementById('testResult');
+            try {
+                if (!subscription) {
+                    resultDiv.innerHTML = '<div class="error">❌ Please subscribe to push notifications first</div>';
+                    return;
+                }
+
+                log('Sending test push notification...');
+                
+                const response = await fetch('/api/barber/notify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        barberId: 'test-debug',
+                        message: {
+                            title: '🧪 Test Push Notification',
+                            body: 'این یک پیام تست از دستگاه اندروید شماست!',
+                            icon: '/icon-192x192.png'
+                        }
+                    })
+                });
+
+                if (response.ok) {
+                    resultDiv.innerHTML = '<div class="success">✅ Test push notification sent! Check your notifications.</div>';
+                    log('✅ Test push notification sent successfully');
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = '<div class="error">❌ Error: ' + response.status + ' - ' + errorText + '</div>';
+                    log('❌ Test push error: ' + response.status + ' - ' + errorText);
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="error">❌ Error: ' + error.message + '</div>';
+                log('❌ Test push error: ' + error.message);
+            }
+        }
+
+        // Auto-detect Android issues
+        log('🔧 Android Push Debug Tool loaded');
+        log('User Agent: ' + navigator.userAgent);
+        log('Service Worker Support: ' + ('serviceWorker' in navigator));
+        log('Push Manager Support: ' + ('PushManager' in window));
+        log('Notification Support: ' + ('Notification' in window));
+        
+        if ('Notification' in window) {
+            log('Current notification permission: ' + Notification.permission);
+        }
+        
+        // Check if it's Android
+        if (/Android/i.test(navigator.userAgent)) {
+            log('🤖 Android device detected');
+            
+            // Check Chrome version
+            const chromeVersion = navigator.userAgent.match(/Chrome\\/(\\d+)/);
+            if (chromeVersion) {
+                log('📱 Chrome version: ' + chromeVersion[1]);
+                if (parseInt(chromeVersion[1]) < 80) {
+                    log('⚠️ Chrome version might be too old for reliable push notifications');
+                }
+            }
+        } else {
+            log('💻 Non-Android device detected');
+        }
+    </script>
+</body>
+</html>
