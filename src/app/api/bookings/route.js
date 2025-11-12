@@ -67,6 +67,11 @@ async function POST(request) {
 
             // Send push notification to the barber about new pending booking
             try {
+                // Get barber username for URL
+                const barberUser = await MongoDatabase.getUserByUsername(barber) || 
+                                  (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === barber);
+                const barberUsername = barberUser?.username || barber;
+                
                 const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/barber/notify`, {
                     method: 'POST',
                     headers: {
@@ -78,10 +83,11 @@ async function POST(request) {
                         body: `مشتری: ${user_name || 'کاربر'}\nخدمات: ${services.join(', ')}\nزمان: ${start_time}\n\nلطفاً تایید یا رد کنید`,
                         data: {
                             bookingId: newBooking.id || newBooking._id,
-                            barberId: barber,
+                            barberId: barberUsername,
                             date: date_key,
                             time: start_time,
-                            status: 'pending'
+                            status: 'pending',
+                            url: `/barber-dashboard/${encodeURIComponent(barberUsername)}?notification=1`
                         }
                     })
                 });
@@ -207,17 +213,45 @@ async function DELETE(request) {
             );
         }
 
-        // Delete booking from MongoDB
-        const success = await MongoDatabase.deleteBooking(booking_id);
+                // Delete the booking from database
+        await MongoDatabase.deleteBooking(bookingId);
 
-        if (success) {
-            console.log('✅ Booking cancelled successfully');
-            return NextResponse.json({
-                message: 'رزرو با موفقیت لغو شد'
+        // Send notification to barber about the cancellation
+        try {
+            // Get barber username for URL
+            const barberUser = await MongoDatabase.getUserByUsername(booking.barber) || 
+                              (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === booking.barber);
+            const barberUsername = barberUser?.username || booking.barber;
+            
+            await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/barber/notify`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    barberId: booking.barber,
+                    title: '❌ لغو رزرو',
+                    body: `مشتری ${booking.user_name || 'کاربر'} رزرو خود را لغو کرد.\n\nتاریخ: ${booking.date}\nساعت: ${booking.start_time}\nخدمات: ${booking.services?.join(', ') || 'نامشخص'}`,
+                    data: {
+                        bookingId: bookingId,
+                        barberId: barberUsername,
+                        date: booking.date,
+                        time: booking.start_time,
+                        status: 'cancelled',
+                        url: `/barber-dashboard/${encodeURIComponent(barberUsername)}?notification=1`
+                    }
+                })
             });
-        } else {
-            throw new Error('Failed to delete booking');
+            console.log('✅ Cancellation notification sent to barber');
+        } catch (notifError) {
+            console.error('⚠️ Failed to send cancellation notification:', notifError);
+            // Don't fail the cancellation if notification fails
         }
+
+        return NextResponse.json({ 
+            success: true, 
+            message: 'رزرو با موفقیت لغو شد' 
+        });
 
     } catch (error) {
         console.error('❌ Booking deletion error:', error);
