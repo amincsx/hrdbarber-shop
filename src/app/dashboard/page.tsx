@@ -24,13 +24,13 @@ export default function DashboardPage() {
     const now = new Date();
     const currentTime = now.getTime();
 
-    // Find the most recent booking that hasn't ended yet AND is not cancelled
+    // Find the most recent booking that hasn't ended yet AND is confirmed (not cancelled or pending)
     const activeOrUpcomingBookings = bookings.filter((booking: any) => {
-      // Exclude cancelled bookings
-      if (booking.status === 'cancelled') {
+      // Exclude cancelled and pending bookings - only count confirmed bookings
+      if (booking.status === 'cancelled' || booking.status === 'pending') {
         return false;
       }
-      
+
       // Create date in local timezone to avoid UTC conversion issues
       const [year, month, day] = booking.date_key.split('-').map(Number);
       const [hour, minute] = booking.end_time.split(':').map(Number);
@@ -49,11 +49,11 @@ export default function DashboardPage() {
         const [yearLatest, monthLatest, dayLatest] = latest.date_key.split('-').map(Number);
         const [hourLatest, minuteLatest] = latest.end_time.split(':').map(Number);
         const latestEnd = new Date(yearLatest, monthLatest - 1, dayLatest, hourLatest, minuteLatest);
-        
+
         const [yearCurrent, monthCurrent, dayCurrent] = current.date_key.split('-').map(Number);
         const [hourCurrent, minuteCurrent] = current.end_time.split(':').map(Number);
         const currentEnd = new Date(yearCurrent, monthCurrent - 1, dayCurrent, hourCurrent, minuteCurrent);
-        
+
         return currentEnd > latestEnd ? current : latest;
       });
 
@@ -112,11 +112,11 @@ export default function DashboardPage() {
                 const [yearA, monthA, dayA] = a.date_key.split('-').map(Number);
                 const [hourA, minuteA] = a.start_time.split(':').map(Number);
                 const dateA = new Date(yearA, monthA - 1, dayA, hourA, minuteA);
-                
+
                 const [yearB, monthB, dayB] = b.date_key.split('-').map(Number);
                 const [hourB, minuteB] = b.start_time.split(':').map(Number);
                 const dateB = new Date(yearB, monthB - 1, dayB, hourB, minuteB);
-                
+
                 return dateB.getTime() - dateA.getTime();
               });
             }
@@ -156,15 +156,15 @@ export default function DashboardPage() {
     if (showPastBookings) {
       return false;
     }
-    
+
     const now = new Date();
     // Create date in local timezone to avoid UTC conversion issues
     const [year, month, day] = booking.date_key.split('-').map(Number);
     const [hour, minute] = booking.start_time.split(':').map(Number);
     const bookingDateTime = new Date(year, month - 1, day, hour, minute);
-    
+
     const hoursDifference = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-    
+
     // Can modify if more than 1 hour before start time and not cancelled
     return hoursDifference > 1 && booking.status !== 'cancelled';
   };
@@ -223,24 +223,24 @@ export default function DashboardPage() {
     const now = new Date();
     // Add 30 minutes buffer to ensure new bookings stay in upcoming (increased from 5 minutes)
     const bufferTime = new Date(now.getTime() + 30 * 60 * 1000);
-    
+
     return userBookings.filter(booking => {
       // Create date in local timezone to avoid UTC conversion issues
       const [year, month, day] = booking.date_key.split('-').map(Number);
       const [hour, minute] = booking.start_time.split(':').map(Number);
       const bookingDateTime = new Date(year, month - 1, day, hour, minute);
-      
+
       // Booking is upcoming if it's in the future (with buffer) and not cancelled
       return bookingDateTime >= bufferTime && booking.status !== 'cancelled';
     }).sort((a, b) => {
       const [yearA, monthA, dayA] = a.date_key.split('-').map(Number);
       const [hourA, minuteA] = a.start_time.split(':').map(Number);
       const dateA = new Date(yearA, monthA - 1, dayA, hourA, minuteA);
-      
+
       const [yearB, monthB, dayB] = b.date_key.split('-').map(Number);
       const [hourB, minuteB] = b.start_time.split(':').map(Number);
       const dateB = new Date(yearB, monthB - 1, dayB, hourB, minuteB);
-      
+
       return dateA.getTime() - dateB.getTime();
     });
   };
@@ -249,24 +249,24 @@ export default function DashboardPage() {
     const now = new Date();
     // Add 30 minutes buffer to ensure past bookings go to past section (increased from 5 minutes)
     const bufferTime = new Date(now.getTime() + 30 * 60 * 1000);
-    
+
     return userBookings.filter(booking => {
       // Create date in local timezone to avoid UTC conversion issues
       const [year, month, day] = booking.date_key.split('-').map(Number);
       const [hour, minute] = booking.start_time.split(':').map(Number);
       const bookingDateTime = new Date(year, month - 1, day, hour, minute);
-      
+
       // Booking is past if it's in the past (with buffer) or cancelled
       return bookingDateTime < bufferTime || booking.status === 'cancelled';
     }).sort((a, b) => {
       const [yearA, monthA, dayA] = a.date_key.split('-').map(Number);
       const [hourA, minuteA] = a.start_time.split(':').map(Number);
       const dateA = new Date(yearA, monthA - 1, dayA, hourA, minuteA);
-      
+
       const [yearB, monthB, dayB] = b.date_key.split('-').map(Number);
       const [hourB, minuteB] = b.start_time.split(':').map(Number);
       const dateB = new Date(yearB, monthB - 1, dayB, hourB, minuteB);
-      
+
       return dateB.getTime() - dateA.getTime();
     });
   };
@@ -313,65 +313,63 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   (showPastBookings ? getPastBookings() : getUpcomingBookings()).map((booking: any, index: number) => {
-                  const canModify = canModifyBooking(booking);
-                  return (
-                  <div key={index} className="glass-card p-4 space-y-3 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl">
-                    <h3 className="text-base font-semibold text-white">
-                      رزرو شماره {index + 1}
-                    </h3>
-                    <p className="text-sm text-white/90"><strong>تاریخ:</strong> {formatPersianDate(booking.dateKey || booking.date_key)}</p>
-                    <p className="text-sm text-white/90"><strong>ساعت:</strong> {booking.startTime || booking.start_time} تا {booking.endTime || booking.end_time}</p>
-                    <p className="text-sm text-white/90"><strong>آرایشگر:</strong> {booking.barber}</p>
-                    <p className="text-sm text-white/90"><strong>سرویس‌ها:</strong> {booking.services.join('، ')}</p>
-                    <p className="text-sm text-white/90"><strong>مدت زمان:</strong> {booking.totalDuration || booking.total_duration} دقیقه</p>
-                    {booking.status && (
-                      <p className="text-sm text-white/90"><strong>وضعیت:</strong>
-                        <span className={`ml-1 px-2 py-1 rounded text-xs ${booking.status === 'confirmed' ? 'bg-green-500/20 text-green-300' :
-                          booking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
-                            booking.status === 'cancelled' ? 'bg-red-500/20 text-red-300' :
-                              'bg-gray-500/20 text-gray-300'
-                          }`}>
-                          {booking.status === 'confirmed' ? 'تایید شده' :
-                            booking.status === 'pending' ? 'در انتظار' :
-                              booking.status === 'cancelled' ? 'لغو شده' : booking.status}
-                        </span>
-                      </p>
-                    )}
-                    
-                    {/* Action Buttons - Only show for upcoming bookings */}
-                    {!showPastBookings && booking.status !== 'cancelled' && (
-                      <div className="flex gap-2 pt-2 border-t border-white/10">
-                        <button
-                          onClick={() => handleChangeBooking(booking)}
-                          disabled={!canModify}
-                          className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            canModify
-                              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30'
-                              : 'bg-gray-500/10 text-gray-500 border border-gray-500/20 cursor-not-allowed'
-                          }`}
-                        >
-                          🔄 تغییر
-                        </button>
-                        <button
-                          onClick={() => handleCancelBooking(booking)}
-                          disabled={!canModify}
-                          className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            canModify
-                              ? 'bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30'
-                              : 'bg-gray-500/10 text-gray-500 border border-gray-500/20 cursor-not-allowed'
-                          }`}
-                        >
-                          ❌ لغو
-                        </button>
+                    const canModify = canModifyBooking(booking);
+                    return (
+                      <div key={index} className="glass-card p-4 space-y-3 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl">
+                        <h3 className="text-base font-semibold text-white">
+                          رزرو شماره {index + 1}
+                        </h3>
+                        <p className="text-sm text-white/90"><strong>تاریخ:</strong> {formatPersianDate(booking.dateKey || booking.date_key)}</p>
+                        <p className="text-sm text-white/90"><strong>ساعت:</strong> {booking.startTime || booking.start_time} تا {booking.endTime || booking.end_time}</p>
+                        <p className="text-sm text-white/90"><strong>آرایشگر:</strong> {booking.barber}</p>
+                        <p className="text-sm text-white/90"><strong>سرویس‌ها:</strong> {booking.services.join('، ')}</p>
+                        <p className="text-sm text-white/90"><strong>مدت زمان:</strong> {booking.totalDuration || booking.total_duration} دقیقه</p>
+                        {booking.status && (
+                          <p className="text-sm text-white/90"><strong>وضعیت:</strong>
+                            <span className={`ml-1 px-2 py-1 rounded text-xs ${booking.status === 'confirmed' ? 'bg-green-500/20 text-green-300' :
+                              booking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' :
+                                booking.status === 'cancelled' ? 'bg-red-500/20 text-red-300' :
+                                  'bg-gray-500/20 text-gray-300'
+                              }`}>
+                              {booking.status === 'confirmed' ? 'تایید شده' :
+                                booking.status === 'pending' ? 'در انتظار' :
+                                  booking.status === 'cancelled' ? 'لغو شده' : booking.status}
+                            </span>
+                          </p>
+                        )}
+
+                        {/* Action Buttons - Only show for upcoming bookings */}
+                        {!showPastBookings && booking.status !== 'cancelled' && (
+                          <div className="flex gap-2 pt-2 border-t border-white/10">
+                            <button
+                              onClick={() => handleChangeBooking(booking)}
+                              disabled={!canModify}
+                              className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${canModify
+                                  ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30'
+                                  : 'bg-gray-500/10 text-gray-500 border border-gray-500/20 cursor-not-allowed'
+                                }`}
+                            >
+                              🔄 تغییر
+                            </button>
+                            <button
+                              onClick={() => handleCancelBooking(booking)}
+                              disabled={!canModify}
+                              className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${canModify
+                                  ? 'bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30'
+                                  : 'bg-gray-500/10 text-gray-500 border border-gray-500/20 cursor-not-allowed'
+                                }`}
+                            >
+                              ❌ لغو
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  );
-                })
+                    );
+                  })
                 )}
-                
+
                 <p className="text-center font-medium mt-5 text-white">
-                  {showPastBookings 
+                  {showPastBookings
                     ? `مجموع رزروهای گذشته: ${getPastBookings().length}`
                     : `مجموع رزروهای آینده: ${getUpcomingBookings().length}`
                   }

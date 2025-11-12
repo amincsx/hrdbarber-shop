@@ -21,25 +21,25 @@ function urlBase64ToUint8Array(base64String: string) {
 async function showNotificationSafe(booking: any) {
     const isAndroid = /Android/i.test(navigator.userAgent);
     console.log('🔔 Showing Android-safe notification for booking:', booking, 'Android:', isAndroid);
-    
+
     if (!booking) return false;
 
     try {
         // Check if notifications are supported and permission is granted
         if ('Notification' in window) {
             console.log('🔔 Notification permission status:', Notification.permission);
-            
+
             // Android-specific permission handling
             if (isAndroid && Notification.permission === 'default') {
                 console.log('🔔 Android detected, requesting permission with user context');
             }
-            
+
             // Request permission if not granted
             if (Notification.permission === 'default') {
                 const permission = await Notification.requestPermission();
                 console.log('🔔 Permission requested, result:', permission);
             }
-            
+
             // Show notification if permission is granted
             if (Notification.permission === 'granted') {
                 const notificationOptions = {
@@ -72,7 +72,7 @@ async function showNotificationSafe(booking: any) {
                 }, isAndroid ? 15000 : 10000);
 
                 console.log('✅ Browser notification created successfully');
-                
+
                 // Play sound notification
                 try {
                     // Try to play system sound first
@@ -82,13 +82,13 @@ async function showNotificationSafe(booking: any) {
                     console.log('✅ Audio notification played');
                 } catch (audioError) {
                     console.warn('⚠️ Audio notification failed, trying Web Audio API:', audioError);
-                    
+
                     // Fallback to Web Audio API
                     try {
                         if ('AudioContext' in window || 'webkitAudioContext' in window) {
                             const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
                             const audioContext = new AudioContext();
-                            
+
                             // Resume context if suspended (required on mobile)
                             if (audioContext.state === 'suspended') {
                                 await audioContext.resume();
@@ -110,7 +110,7 @@ async function showNotificationSafe(booking: any) {
 
                             oscillator.start(audioContext.currentTime);
                             oscillator.stop(audioContext.currentTime + 0.5);
-                            
+
                             console.log('✅ Web Audio API notification played');
                         }
                     } catch (webAudioError) {
@@ -180,12 +180,12 @@ export default function BarberDashboard() {
                     // Detect if we're on Android for enhanced service worker
                     const isAndroid = /Android/i.test(navigator.userAgent);
                     const swPath = isAndroid ? '/barber-sw-android.js' : '/barber-sw.js';
-                    
+
                     console.log(`🔧 Registering service worker: ${swPath} (Android: ${isAndroid})`);
                     console.log('🔧 User agent:', navigator.userAgent);
                     console.log('🔧 Notification support:', 'Notification' in window);
                     console.log('🔧 PushManager support:', 'PushManager' in window);
-                    
+
                     // Register service worker
                     const registration = await navigator.serviceWorker.register(swPath);
                     console.log('✅ Service Worker registered:', registration);
@@ -521,6 +521,8 @@ export default function BarberDashboard() {
 
     const getStatusBadge = (status?: string) => {
         switch (status) {
+            case 'pending':
+                return <span className="px-3 py-1 text-xs bg-orange-400/20 text-orange-700 rounded-full border border-orange-400/30 backdrop-blur-sm animate-pulse">⏳ در انتظار تایید</span>;
             case 'confirmed':
                 return <span className="px-3 py-1 text-xs bg-green-400/20 text-green-700 rounded-full border border-green-400/30 backdrop-blur-sm">✅ تأیید شده</span>;
             case 'cancelled':
@@ -614,9 +616,9 @@ export default function BarberDashboard() {
         // Get today's date to determine which Persian month we're in
         const today = new Date();
         const todayStr = today.toISOString().split('T')[0];
-        
+
         // Persian calendar year 1404 month mappings (simplified for current period):
-        
+
         // مهر (Mehr) - September 23 to October 22, 2025
         if (todayStr >= '2025-09-23' && todayStr <= '2025-10-22') {
             return { start: '2025-09-23', end: '2025-10-22' };
@@ -665,7 +667,7 @@ export default function BarberDashboard() {
         else if (todayStr >= '2026-08-23' && todayStr <= '2026-09-22') {
             return { start: '2026-08-23', end: '2026-09-22' };
         }
-        
+
         // Fallback to Gregorian month for dates outside our mapping
         const now = new Date();
         const year = now.getFullYear();
@@ -679,7 +681,7 @@ export default function BarberDashboard() {
     const getCurrentPersianMonthName = () => {
         const today = new Date();
         const todayStr = today.toISOString().split('T')[0];
-        
+
         if (todayStr >= '2025-09-23' && todayStr <= '2025-10-22') {
             return 'مهر'; // Mehr
         } else if (todayStr >= '2025-10-23' && todayStr <= '2025-11-21') {
@@ -705,15 +707,15 @@ export default function BarberDashboard() {
         } else if (todayStr >= '2026-08-23' && todayStr <= '2026-09-22') {
             return 'شهریور'; // Shahrivar
         }
-        
+
         return 'این ماه'; // Fallback
     };
 
     // Helper function to filter future bookings (tomorrow and beyond)
     const filterFutureBookings = () => {
         const today = getTodayDate();
-        const filtered = barberData?.bookings?.filter(booking => 
-            booking.date_key > today && 
+        const filtered = barberData?.bookings?.filter(booking =>
+            booking.date_key > today &&
             (statusFilter === 'all' || booking.status === statusFilter)
         ) || [];
         return filtered;
@@ -722,8 +724,8 @@ export default function BarberDashboard() {
     // Helper function to filter past bookings (yesterday and before)
     const filterPastBookings = () => {
         const today = getTodayDate();
-        const filtered = barberData?.bookings?.filter(booking => 
-            booking.date_key < today && 
+        const filtered = barberData?.bookings?.filter(booking =>
+            booking.date_key < today &&
             (statusFilter === 'all' || booking.status === statusFilter)
         ) || [];
         return filtered;
@@ -733,24 +735,40 @@ export default function BarberDashboard() {
     const todaysBookings = (() => {
         const rawBookings = barberData?.bookings || [];
         const today = getTodayDate();
-        
+
         return rawBookings
             .filter(booking => booking.date_key === today && booking.status !== 'cancelled')
             .sort((a, b) => a.start_time.localeCompare(b.start_time));
+    })();
+
+    // Get pending bookings (waiting for barber confirmation) - Most Important!
+    const pendingBookings = (() => {
+        const rawBookings = barberData?.bookings || [];
+
+        return rawBookings
+            .filter(booking => booking.status === 'pending')
+            .sort((a, b) => {
+                // Sort by date (earliest first), then by creation time (oldest first)
+                if (a.date_key !== b.date_key) return a.date_key.localeCompare(b.date_key);
+                const aCreated = new Date(a.created_at).getTime();
+                const bCreated = new Date(b.created_at).getTime();
+                return aCreated - bCreated;
+            });
     })();
 
     // Get future bookings (all bookings after today, including this month)
     const futureBookings = (() => {
         const rawBookings = barberData?.bookings || [];
         const today = getTodayDate();
-        
+
         return rawBookings
             .filter(booking => {
-                // Must be after today (any future date)
+                // Must be after today (any future date) and not cancelled
                 const isFuture = booking.date_key > today;
-                
-                if (!isFuture) return false;
-                
+                const isNotCancelled = booking.status !== 'cancelled';
+
+                if (!isFuture || !isNotCancelled) return false;
+
                 // Apply status filter
                 return statusFilter === 'all' || booking.status === statusFilter;
             })
@@ -765,17 +783,17 @@ export default function BarberDashboard() {
         const rawBookings = barberData?.bookings || [];
         const today = getTodayDate();
         const { start, end } = getCurrentMonthRange();
-        
+
         return rawBookings
             .filter(booking => {
                 // Must be in this month, not today, and BEFORE today (past dates only)
-                const isThisMonth = booking.date_key >= start && 
-                                   booking.date_key <= end && 
-                                   booking.date_key !== today &&
-                                   booking.date_key < today; // Only past dates in this month
-                
+                const isThisMonth = booking.date_key >= start &&
+                    booking.date_key <= end &&
+                    booking.date_key !== today &&
+                    booking.date_key < today; // Only past dates in this month
+
                 if (!isThisMonth) return false;
-                
+
                 // Apply additional date filter if selected
                 if (selectedDate) {
                     if (selectedDate === 'future') {
@@ -792,7 +810,7 @@ export default function BarberDashboard() {
                         return booking.date_key === selectedDate;
                     }
                 }
-                
+
                 // Apply status filter
                 return statusFilter === 'all' || booking.status === statusFilter;
             })
@@ -806,10 +824,10 @@ export default function BarberDashboard() {
     const allBookings = (() => {
         const rawBookings = barberData?.bookings || [];
         const today = getTodayDate();
-        
+
         const filtered = rawBookings.filter(booking => {
             let matchesDate = true;
-            
+
             if (selectedDate) {
                 if (selectedDate === 'future') {
                     // Future: Only bookings AFTER today (tomorrow and beyond)
@@ -825,7 +843,7 @@ export default function BarberDashboard() {
                     matchesDate = booking.date_key === selectedDate;
                 }
             }
-            
+
             const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
             return matchesDate && matchesStatus;
         }).sort((a, b) => {
@@ -996,34 +1014,41 @@ export default function BarberDashboard() {
                 </div>
 
                 {/* Quick Stats */}
-                <div className="grid grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6">
+                <div className="grid grid-cols-5 gap-2 sm:gap-3 lg:gap-4 mb-6">
+                    <div className="glass-card p-3 sm:p-4 text-center border-2 border-orange-400/40 animate-pulse">
+                        <div className="w-12 h-12 bg-orange-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <span className="text-2xl">⏳</span>
+                        </div>
+                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1">در انتظار</h3>
+                        <p className="text-2xl sm:text-3xl font-bold text-orange-400">{pendingBookings.length}</p>
+                    </div>
                     <div className="glass-card p-3 sm:p-4 text-center border-2 border-blue-400/40">
                         <div className="w-12 h-12 bg-blue-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <span className="text-2xl">�</span>
+                            <span className="text-2xl">📅</span>
                         </div>
-                        <h3 className="text-sm font-medium text-white/90 mb-1">امروز</h3>
-                        <p className="text-3xl font-bold text-blue-400">{todaysBookings.length}</p>
+                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1">امروز</h3>
+                        <p className="text-2xl sm:text-3xl font-bold text-blue-400">{todaysBookings.length}</p>
                     </div>
                     <div className="glass-card p-3 sm:p-4 text-center border-2 border-purple-400/40">
                         <div className="w-12 h-12 bg-purple-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
                             <span className="text-2xl">🔮</span>
                         </div>
-                        <h3 className="text-sm font-medium text-white/90 mb-1">آینده</h3>
-                        <p className="text-3xl font-bold text-purple-400">{futureBookings.length}</p>
+                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1">آینده</h3>
+                        <p className="text-2xl sm:text-3xl font-bold text-purple-400">{futureBookings.length}</p>
                     </div>
                     <div className="glass-card p-3 sm:p-4 text-center border-2 border-green-400/40">
                         <div className="w-12 h-12 bg-green-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <span className="text-2xl">�</span>
+                            <span className="text-2xl">📆</span>
                         </div>
-                        <h3 className="text-sm font-medium text-white/90 mb-1">این ماه</h3>
-                        <p className="text-3xl font-bold text-green-400">{thisMonthBookings.length + todaysBookings.length}</p>
+                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1">این ماه</h3>
+                        <p className="text-2xl sm:text-3xl font-bold text-green-400">{thisMonthBookings.length + todaysBookings.length}</p>
                     </div>
                     <div className="glass-card p-3 sm:p-4 text-center border-2 border-white/30">
-                        <div className="w-12 h-12 bg-orange-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <div className="w-12 h-12 bg-white/30 rounded-full flex items-center justify-center mx-auto mb-2">
                             <span className="text-2xl">📊</span>
                         </div>
-                        <h3 className="text-sm font-medium text-white/90 mb-1">کل رزروها</h3>
-                        <p className="text-3xl font-bold text-white">{barberData?.total_bookings || 0}</p>
+                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1">کل رزروها</h3>
+                        <p className="text-2xl sm:text-3xl font-bold text-white">{barberData?.total_bookings || 0}</p>
                     </div>
                 </div>
 
@@ -1050,10 +1075,10 @@ export default function BarberDashboard() {
                                 {getUniquesDates()
                                     .filter(date => date !== getTodayDate())
                                     .map(date => (
-                                    <option key={date} value={date} style={{ color: 'black' }}>
-                                        {formatDate(date)}
-                                    </option>
-                                ))}
+                                        <option key={date} value={date} style={{ color: 'black' }}>
+                                            {formatDate(date)}
+                                        </option>
+                                    ))}
                             </select>
                         </div>
                         <div>
@@ -1067,49 +1092,158 @@ export default function BarberDashboard() {
                                 style={{ color: 'white' }}
                             >
                                 <option value="all" style={{ color: 'black' }}>همه وضعیت‌ها</option>
-                                <option value="confirmed" style={{ color: 'black' }}>تأیید شده</option>
-                                <option value="cancelled" style={{ color: 'black' }}>لغو شده</option>
+                                <option value="pending" style={{ color: 'black' }}>⏳ در انتظار تایید</option>
+                                <option value="confirmed" style={{ color: 'black' }}>✅ تأیید شده</option>
+                                <option value="cancelled" style={{ color: 'black' }}>❌ لغو شده</option>
+                                <option value="completed" style={{ color: 'black' }}>🎉 تکمیل شده</option>
                             </select>
                         </div>
                     </div>
-                    
+
                     {/* Quick Filter Buttons */}
                     <div className="mt-4 border-t border-white/10 pt-4">
                         <h3 className="text-sm font-medium text-white mb-3">🔗 فیلترهای سریع</h3>
                         <div className="flex flex-wrap gap-2">
                             <button
                                 onClick={() => setSelectedDate(getTodayDate())}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                    selectedDate === getTodayDate()
-                                        ? 'bg-blue-500/30 text-white border-2 border-blue-400'
-                                        : 'bg-white/10 text-white/80 border border-white/30 hover:bg-white/20'
-                                }`}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedDate === getTodayDate()
+                                    ? 'bg-blue-500/30 text-white border-2 border-blue-400'
+                                    : 'bg-white/10 text-white/80 border border-white/30 hover:bg-white/20'
+                                    }`}
                             >
                                 📅 امروز
                             </button>
                             <button
                                 onClick={() => setSelectedDate('future')}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                    selectedDate === 'future'
-                                        ? 'bg-green-500/30 text-white border-2 border-green-400'
-                                        : 'bg-white/10 text-white/80 border border-white/30 hover:bg-white/20'
-                                }`}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedDate === 'future'
+                                    ? 'bg-green-500/30 text-white border-2 border-green-400'
+                                    : 'bg-white/10 text-white/80 border border-white/30 hover:bg-white/20'
+                                    }`}
                             >
                                 🔮 آینده
                             </button>
                             <button
                                 onClick={() => setSelectedDate('past')}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                    selectedDate === 'past'
-                                        ? 'bg-orange-500/30 text-white border-2 border-orange-400'
-                                        : 'bg-white/10 text-white/80 border border-white/30 hover:bg-white/20'
-                                }`}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedDate === 'past'
+                                    ? 'bg-orange-500/30 text-white border-2 border-orange-400'
+                                    : 'bg-white/10 text-white/80 border border-white/30 hover:bg-white/20'
+                                    }`}
                             >
                                 📜 گذشته
                             </button>
                         </div>
                     </div>
                 </div>
+
+                {/* Pending Bookings - Highest Priority! Needs Barber Action */}
+                {pendingBookings.length > 0 && (
+                    <div className="glass-card mb-6 border-2 border-orange-400/50 animate-pulse">
+                        <div className="p-4 sm:p-6 border-b border-orange-400/30 bg-orange-500/10">
+                            <h2 className="text-lg sm:text-xl font-bold text-orange-400 flex items-center">
+                                ⏳ رزروهای در انتظار تایید ({pendingBookings.length})
+                            </h2>
+                            <p className="text-sm text-white/70 mt-1">
+                                این رزروها نیاز به تایید یا رد شما دارند
+                            </p>
+                        </div>
+
+                        <div className="divide-y divide-orange-400/10">
+                            {pendingBookings.map((booking, index) => {
+                                const bookingUniqueId = booking.id || `pending-${booking.user_phone}-${booking.start_time}-${index}`;
+                                const isExpanded = expandedBookings.has(bookingUniqueId);
+                                return (
+                                    <div key={bookingUniqueId} className="p-3 sm:p-4 hover:bg-orange-500/10 transition-colors border-l-4 border-orange-400">
+                                        {/* Summary View with Action Buttons */}
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex flex-col sm:flex-row justify-between gap-3">
+                                                <div className="flex-1">
+                                                    <div className="grid grid-cols-1 gap-2 sm:gap-3">
+                                                        <div>
+                                                            <p className="text-white font-medium">👤 {booking.user_name}</p>
+                                                            <p className="text-white/70 text-sm">📞 {booking.user_phone}</p>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-3 text-sm">
+                                                            <div>
+                                                                <span className="text-white/70">📅 تاریخ:</span>
+                                                                <p className="text-white">{formatDate(booking.date_key)}</p>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-white/70">🕐 ساعت:</span>
+                                                                <p className="text-white">{formatTime(booking.start_time)} - {formatTime(booking.end_time)}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-white/70">✂️ خدمات:</span>
+                                                            <p className="text-white">{booking.services.join(', ')}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col gap-2 justify-center">
+                                                    {getStatusBadge(booking.status)}
+                                                    <button
+                                                        onClick={() => {
+                                                            const newSet = new Set(expandedBookings);
+                                                            if (isExpanded) {
+                                                                newSet.delete(bookingUniqueId);
+                                                            } else {
+                                                                newSet.add(bookingUniqueId);
+                                                            }
+                                                            setExpandedBookings(newSet);
+                                                        }}
+                                                        className="glass-button px-3 py-2 text-xs"
+                                                    >
+                                                        {isExpanded ? '🔼 کمتر' : '🔽 جزئیات'}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Action Buttons - Always Visible */}
+                                            <div className="flex flex-wrap gap-2 pt-2 border-t border-orange-400/20">
+                                                <button
+                                                    onClick={() => updateBookingStatus(bookingUniqueId, 'confirmed')}
+                                                    className="glass-button bg-green-500/30 border-green-400/50 text-green-300 px-6 py-3 text-sm font-bold hover:bg-green-500/50 flex-1 sm:flex-initial"
+                                                >
+                                                    ✅ تایید رزرو
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        const reason = prompt('دلیل رد رزرو را وارد کنید (اختیاری):');
+                                                        updateBookingStatus(bookingUniqueId, 'cancelled', reason || 'رد شده توسط آرایشگر');
+                                                    }}
+                                                    className="glass-button bg-red-500/30 border-red-400/50 text-red-300 px-6 py-3 text-sm font-bold hover:bg-red-500/50 flex-1 sm:flex-initial"
+                                                >
+                                                    ❌ رد رزرو
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Expanded Details */}
+                                        {isExpanded && (
+                                            <div className="mt-4 pt-4 border-t border-orange-400/20 bg-orange-500/5 rounded-lg p-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                                    <div>
+                                                        <span className="text-white/70 text-sm">🕒 مدت زمان:</span>
+                                                        <p className="text-white">{booking.total_duration} دقیقه</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-white/70 text-sm">📅 تاریخ رزرو:</span>
+                                                        <p className="text-white">{new Date(booking.created_at).toLocaleString('fa-IR')}</p>
+                                                    </div>
+                                                </div>
+                                                {booking.notes && (
+                                                    <div className="mb-4">
+                                                        <span className="text-white/70 text-sm">📝 یادداشت:</span>
+                                                        <p className="text-white bg-white/10 p-2 rounded mt-1">{booking.notes}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {/* Today's Bookings - Main Priority */}
                 <div className="glass-card mb-6">
@@ -1229,7 +1363,7 @@ export default function BarberDashboard() {
 
                 {/* Future Bookings - Next Month and Beyond */}
                 <div className="glass-card mb-6">
-                    <div 
+                    <div
                         className="p-4 sm:p-6 border-b border-white/10 cursor-pointer hover:bg-white/5 transition-colors"
                         onClick={() => setShowFutureBookings(!showFutureBookings)}
                     >
@@ -1254,94 +1388,94 @@ export default function BarberDashboard() {
                         <div>
                             {futureBookings.length === 0 && (
                                 <div className="p-6 sm:p-8 text-center">
-                            <div className="w-12 sm:w-16 h-12 sm:h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span className="text-xl sm:text-2xl">🔮</span>
-                            </div>
+                                    <div className="w-12 sm:w-16 h-12 sm:h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <span className="text-xl sm:text-2xl">🔮</span>
+                                    </div>
                                     <p className="text-purple-300 text-sm sm:text-base">رزرو آینده‌ای ندارید</p>
                                 </div>
                             )}
-                            
+
                             {futureBookings.length > 0 && (
                                 <div className="divide-y divide-white/10">
-                            {futureBookings.map((booking, index) => {
-                                const bookingUniqueId = booking.id || `future-${booking.user_phone}-${booking.date_key}-${booking.start_time}-${index}`;
-                                const isExpanded = expandedBookings.has(bookingUniqueId);
-                                return (
-                                    <div key={bookingUniqueId} className="p-3 sm:p-4 hover:bg-purple-500/5 transition-colors">
-                                        <div className="flex flex-col sm:flex-row justify-between gap-3">
-                                            <div className="flex-1">
-                                                <div className="grid grid-cols-1 gap-2">
-                                                    <div className="flex items-center gap-3">
-                                                        <p className="text-white font-medium">👤 {booking.user_name}</p>
-                                                        <span className="text-purple-300 text-sm">📅 {formatDate(booking.date_key)}</span>
+                                    {futureBookings.map((booking, index) => {
+                                        const bookingUniqueId = booking.id || `future-${booking.user_phone}-${booking.date_key}-${booking.start_time}-${index}`;
+                                        const isExpanded = expandedBookings.has(bookingUniqueId);
+                                        return (
+                                            <div key={bookingUniqueId} className="p-3 sm:p-4 hover:bg-purple-500/5 transition-colors">
+                                                <div className="flex flex-col sm:flex-row justify-between gap-3">
+                                                    <div className="flex-1">
+                                                        <div className="grid grid-cols-1 gap-2">
+                                                            <div className="flex items-center gap-3">
+                                                                <p className="text-white font-medium">👤 {booking.user_name}</p>
+                                                                <span className="text-purple-300 text-sm">📅 {formatDate(booking.date_key)}</span>
+                                                            </div>
+                                                            <div className="text-sm text-white/80">
+                                                                ⏰ {formatTime(booking.start_time)} | ✂️ {booking.services.join('، ')}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-sm text-white/80">
-                                                        ⏰ {formatTime(booking.start_time)} | ✂️ {booking.services.join('، ')}
+                                                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                                                        {getStatusBadge(booking.status)}
+                                                        <button
+                                                            onClick={() => {
+                                                                const newSet = new Set(expandedBookings);
+                                                                if (isExpanded) {
+                                                                    newSet.delete(bookingUniqueId);
+                                                                } else {
+                                                                    newSet.add(bookingUniqueId);
+                                                                }
+                                                                setExpandedBookings(newSet);
+                                                            }}
+                                                            className="glass-button px-3 py-2 text-xs"
+                                                        >
+                                                            {isExpanded ? '🔼' : '🔽'}
+                                                        </button>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                                                {getStatusBadge(booking.status)}
-                                                <button
-                                                    onClick={() => {
-                                                        const newSet = new Set(expandedBookings);
-                                                        if (isExpanded) {
-                                                            newSet.delete(bookingUniqueId);
-                                                        } else {
-                                                            newSet.add(bookingUniqueId);
-                                                        }
-                                                        setExpandedBookings(newSet);
-                                                    }}
-                                                    className="glass-button px-3 py-2 text-xs"
-                                                >
-                                                    {isExpanded ? '🔼' : '🔽'}
-                                                </button>
-                                            </div>
-                                        </div>
 
-                                        {isExpanded && (
-                                            <div className="mt-4 pt-4 border-t border-white/10 bg-white/5 rounded-lg p-4">
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                                                    <div>
-                                                        <span className="text-white/70 text-sm">📞 تلفن:</span>
-                                                        <p className="text-white font-mono">{booking.user_phone}</p>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-white/70 text-sm">🕒 مدت:</span>
-                                                        <p className="text-white">{booking.total_duration} دقیقه</p>
-                                                    </div>
-                                                </div>
-                                                {booking.notes && (
-                                                    <div className="mb-4">
-                                                        <span className="text-white/70 text-sm">📝 یادداشت:</span>
-                                                        <p className="text-white bg-white/10 p-2 rounded mt-1">{booking.notes}</p>
+                                                {isExpanded && (
+                                                    <div className="mt-4 pt-4 border-t border-white/10 bg-white/5 rounded-lg p-4">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                                            <div>
+                                                                <span className="text-white/70 text-sm">📞 تلفن:</span>
+                                                                <p className="text-white font-mono">{booking.user_phone}</p>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-white/70 text-sm">🕒 مدت:</span>
+                                                                <p className="text-white">{booking.total_duration} دقیقه</p>
+                                                            </div>
+                                                        </div>
+                                                        {booking.notes && (
+                                                            <div className="mb-4">
+                                                                <span className="text-white/70 text-sm">📝 یادداشت:</span>
+                                                                <p className="text-white bg-white/10 p-2 rounded mt-1">{booking.notes}</p>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <button
+                                                                onClick={() => updateBookingStatus(bookingUniqueId, 'confirmed')}
+                                                                className="glass-button bg-green-500/20 border-green-400/30 text-green-300 px-4 py-2 text-sm"
+                                                            >
+                                                                ✅ تأیید
+                                                            </button>
+                                                            <button
+                                                                onClick={() => updateBookingStatus(bookingUniqueId, 'cancelled')}
+                                                                className="glass-button bg-red-500/20 border-red-400/30 text-red-300 px-4 py-2 text-sm"
+                                                            >
+                                                                ❌ لغو
+                                                            </button>
+                                                            <button
+                                                                onClick={() => updateBookingStatus(bookingUniqueId, 'completed')}
+                                                                className="glass-button bg-blue-500/20 border-blue-400/30 text-blue-300 px-4 py-2 text-sm"
+                                                            >
+                                                                🎉 تکمیل
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 )}
-                                                <div className="flex flex-wrap gap-2">
-                                                    <button
-                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'confirmed')}
-                                                        className="glass-button bg-green-500/20 border-green-400/30 text-green-300 px-4 py-2 text-sm"
-                                                    >
-                                                        ✅ تأیید
-                                                    </button>
-                                                    <button
-                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'cancelled')}
-                                                        className="glass-button bg-red-500/20 border-red-400/30 text-red-300 px-4 py-2 text-sm"
-                                                    >
-                                                        ❌ لغو
-                                                    </button>
-                                                    <button
-                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'completed')}
-                                                        className="glass-button bg-blue-500/20 border-blue-400/30 text-blue-300 px-4 py-2 text-sm"
-                                                    >
-                                                        🎉 تکمیل
-                                                    </button>
-                                                </div>
                                             </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -1350,7 +1484,7 @@ export default function BarberDashboard() {
 
                 {/* This Month's Bookings */}
                 <div className="glass-card mb-6">
-                    <div 
+                    <div
                         className="p-4 sm:p-6 border-b border-white/10 cursor-pointer hover:bg-white/5 transition-colors"
                         onClick={() => setShowThisMonth(!showThisMonth)}
                     >
@@ -1360,10 +1494,10 @@ export default function BarberDashboard() {
                                     📆 رزروهای گذشته {getCurrentPersianMonthName()} ({thisMonthBookings.length})
                                 </h2>
                                 <p className="text-sm text-white/70 mt-1">
-                                    {selectedDate === 'past' ? `گذشته در ${getCurrentPersianMonthName()}` : 
-                                     selectedDate === getTodayDate() ? 'امروز (در بخش بالا)' :
-                                     selectedDate ? `${formatDate(selectedDate)} در ${getCurrentPersianMonthName()}` :
-                                     'روزهای گذشته این ماه'}
+                                    {selectedDate === 'past' ? `گذشته در ${getCurrentPersianMonthName()}` :
+                                        selectedDate === getTodayDate() ? 'امروز (در بخش بالا)' :
+                                            selectedDate ? `${formatDate(selectedDate)} در ${getCurrentPersianMonthName()}` :
+                                                'روزهای گذشته این ماه'}
                                 </p>
                             </div>
                             <div className="flex items-center">
@@ -1378,99 +1512,99 @@ export default function BarberDashboard() {
                         <div>
                             {thisMonthBookings.length === 0 && (
                                 <div className="p-6 sm:p-8 text-center">
-                            <div className="w-12 sm:w-16 h-12 sm:h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span className="text-xl sm:text-2xl">�</span>
-                            </div>
+                                    <div className="w-12 sm:w-16 h-12 sm:h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <span className="text-xl sm:text-2xl">�</span>
+                                    </div>
                                     <p className="text-green-300 text-sm sm:text-base">
                                         {selectedDate === 'past' ? `${getCurrentPersianMonthName()} رزرو گذشته‌ای ندارید` :
-                                         selectedDate === getTodayDate() ? 'رزروهای امروز در بخش بالا نمایش داده می‌شود' :
-                                         selectedDate ? `در ${getCurrentPersianMonthName()} رزروی ندارید` :
-                                         `${getCurrentPersianMonthName()} رزرو گذشته‌ای ندارید`}
+                                            selectedDate === getTodayDate() ? 'رزروهای امروز در بخش بالا نمایش داده می‌شود' :
+                                                selectedDate ? `در ${getCurrentPersianMonthName()} رزروی ندارید` :
+                                                    `${getCurrentPersianMonthName()} رزرو گذشته‌ای ندارید`}
                                     </p>
                                 </div>
                             )}
-                            
+
                             {thisMonthBookings.length > 0 && (
                                 <div className="divide-y divide-white/10">
-                            {thisMonthBookings.map((booking, index) => {
-                                const bookingUniqueId = booking.id || `month-${booking.user_phone}-${booking.date_key}-${booking.start_time}-${index}`;
-                                const isExpanded = expandedBookings.has(bookingUniqueId);
-                                return (
-                                    <div key={bookingUniqueId} className="p-3 sm:p-4 hover:bg-green-500/5 transition-colors">
-                                        <div className="flex flex-col sm:flex-row justify-between gap-3">
-                                            <div className="flex-1">
-                                                <div className="grid grid-cols-1 gap-2">
-                                                    <div className="flex items-center gap-3">
-                                                        <p className="text-white font-medium">👤 {booking.user_name}</p>
-                                                        <span className="text-green-300 text-sm">📅 {formatDate(booking.date_key)}</span>
+                                    {thisMonthBookings.map((booking, index) => {
+                                        const bookingUniqueId = booking.id || `month-${booking.user_phone}-${booking.date_key}-${booking.start_time}-${index}`;
+                                        const isExpanded = expandedBookings.has(bookingUniqueId);
+                                        return (
+                                            <div key={bookingUniqueId} className="p-3 sm:p-4 hover:bg-green-500/5 transition-colors">
+                                                <div className="flex flex-col sm:flex-row justify-between gap-3">
+                                                    <div className="flex-1">
+                                                        <div className="grid grid-cols-1 gap-2">
+                                                            <div className="flex items-center gap-3">
+                                                                <p className="text-white font-medium">👤 {booking.user_name}</p>
+                                                                <span className="text-green-300 text-sm">📅 {formatDate(booking.date_key)}</span>
+                                                            </div>
+                                                            <div className="text-sm text-white/80">
+                                                                ⏰ {formatTime(booking.start_time)} | ✂️ {booking.services.join('، ')}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-sm text-white/80">
-                                                        ⏰ {formatTime(booking.start_time)} | ✂️ {booking.services.join('، ')}
+                                                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                                                        {getStatusBadge(booking.status)}
+                                                        <button
+                                                            onClick={() => {
+                                                                const newSet = new Set(expandedBookings);
+                                                                if (isExpanded) {
+                                                                    newSet.delete(bookingUniqueId);
+                                                                } else {
+                                                                    newSet.add(bookingUniqueId);
+                                                                }
+                                                                setExpandedBookings(newSet);
+                                                            }}
+                                                            className="glass-button px-3 py-2 text-xs"
+                                                        >
+                                                            {isExpanded ? '🔼' : '🔽'}
+                                                        </button>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                                                {getStatusBadge(booking.status)}
-                                                <button
-                                                    onClick={() => {
-                                                        const newSet = new Set(expandedBookings);
-                                                        if (isExpanded) {
-                                                            newSet.delete(bookingUniqueId);
-                                                        } else {
-                                                            newSet.add(bookingUniqueId);
-                                                        }
-                                                        setExpandedBookings(newSet);
-                                                    }}
-                                                    className="glass-button px-3 py-2 text-xs"
-                                                >
-                                                    {isExpanded ? '🔼' : '🔽'}
-                                                </button>
-                                            </div>
-                                        </div>
 
-                                        {isExpanded && (
-                                            <div className="mt-4 pt-4 border-t border-white/10 bg-white/5 rounded-lg p-4">
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                                                    <div>
-                                                        <span className="text-white/70 text-sm">📞 تلفن:</span>
-                                                        <p className="text-white font-mono">{booking.user_phone}</p>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-white/70 text-sm">🕒 مدت:</span>
-                                                        <p className="text-white">{booking.total_duration} دقیقه</p>
-                                                    </div>
-                                                </div>
-                                                {booking.notes && (
-                                                    <div className="mb-4">
-                                                        <span className="text-white/70 text-sm">📝 یادداشت:</span>
-                                                        <p className="text-white bg-white/10 p-2 rounded mt-1">{booking.notes}</p>
+                                                {isExpanded && (
+                                                    <div className="mt-4 pt-4 border-t border-white/10 bg-white/5 rounded-lg p-4">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                                            <div>
+                                                                <span className="text-white/70 text-sm">📞 تلفن:</span>
+                                                                <p className="text-white font-mono">{booking.user_phone}</p>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-white/70 text-sm">🕒 مدت:</span>
+                                                                <p className="text-white">{booking.total_duration} دقیقه</p>
+                                                            </div>
+                                                        </div>
+                                                        {booking.notes && (
+                                                            <div className="mb-4">
+                                                                <span className="text-white/70 text-sm">📝 یادداشت:</span>
+                                                                <p className="text-white bg-white/10 p-2 rounded mt-1">{booking.notes}</p>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <button
+                                                                onClick={() => updateBookingStatus(bookingUniqueId, 'confirmed')}
+                                                                className="glass-button bg-green-500/20 border-green-400/30 text-green-300 px-4 py-2 text-sm"
+                                                            >
+                                                                ✅ تأیید
+                                                            </button>
+                                                            <button
+                                                                onClick={() => updateBookingStatus(bookingUniqueId, 'cancelled')}
+                                                                className="glass-button bg-red-500/20 border-red-400/30 text-red-300 px-4 py-2 text-sm"
+                                                            >
+                                                                ❌ لغو
+                                                            </button>
+                                                            <button
+                                                                onClick={() => updateBookingStatus(bookingUniqueId, 'completed')}
+                                                                className="glass-button bg-blue-500/20 border-blue-400/30 text-blue-300 px-4 py-2 text-sm"
+                                                            >
+                                                                🎉 تکمیل
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 )}
-                                                <div className="flex flex-wrap gap-2">
-                                                    <button
-                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'confirmed')}
-                                                        className="glass-button bg-green-500/20 border-green-400/30 text-green-300 px-4 py-2 text-sm"
-                                                    >
-                                                        ✅ تأیید
-                                                    </button>
-                                                    <button
-                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'cancelled')}
-                                                        className="glass-button bg-red-500/20 border-red-400/30 text-red-300 px-4 py-2 text-sm"
-                                                    >
-                                                        ❌ لغو
-                                                    </button>
-                                                    <button
-                                                        onClick={() => updateBookingStatus(bookingUniqueId, 'completed')}
-                                                        className="glass-button bg-blue-500/20 border-blue-400/30 text-blue-300 px-4 py-2 text-sm"
-                                                    >
-                                                        🎉 تکمیل
-                                                    </button>
-                                                </div>
                                             </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -1479,7 +1613,7 @@ export default function BarberDashboard() {
 
                 {/* All Bookings - Comprehensive View with Filters */}
                 <div className="glass-card">
-                    <div 
+                    <div
                         className="p-4 sm:p-6 border-b border-white/10 cursor-pointer hover:bg-white/5 transition-colors"
                         onClick={() => setShowAllBookings(!showAllBookings)}
                     >
@@ -1524,138 +1658,138 @@ export default function BarberDashboard() {
                         <div>
                             {allBookings.length === 0 && (
                                 <div className="p-6 sm:p-8 text-center">
-                            <div className="w-12 sm:w-16 h-12 sm:h-16 bg-gray-300/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span className="text-xl sm:text-2xl">📝</span>
-                            </div>
+                                    <div className="w-12 sm:w-16 h-12 sm:h-16 bg-gray-300/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <span className="text-xl sm:text-2xl">📝</span>
+                                    </div>
                                     <p className="text-white/70 text-sm sm:text-base">هیچ رزروی یافت نشد</p>
                                 </div>
                             )}
-                            
+
                             {allBookings.length > 0 && (
                                 <div className="divide-y divide-white/10">
-                            {allBookings.map((booking, index) => {
-                                const bookingUniqueId = booking.id || `all-${booking.user_phone}-${booking.date_key}-${booking.start_time}-${index}`;
-                                const isExpanded = expandedBookings.has(bookingUniqueId);
-                                return (
-                                    <div key={bookingUniqueId} className="p-3 sm:p-4 hover:bg-white/5 transition-colors">{/* Summary View (Always Visible) */}
-                                        <div className="flex flex-col sm:flex-row justify-between gap-3">
-                                            <div className="flex-1">
-                                                <div className="grid grid-cols-1 gap-2 sm:gap-3">
-                                                    <div>
-                                                        <p className="text-glass font-medium">👤 {booking.user_name}</p>
+                                    {allBookings.map((booking, index) => {
+                                        const bookingUniqueId = booking.id || `all-${booking.user_phone}-${booking.date_key}-${booking.start_time}-${index}`;
+                                        const isExpanded = expandedBookings.has(bookingUniqueId);
+                                        return (
+                                            <div key={bookingUniqueId} className="p-3 sm:p-4 hover:bg-white/5 transition-colors">{/* Summary View (Always Visible) */}
+                                                <div className="flex flex-col sm:flex-row justify-between gap-3">
+                                                    <div className="flex-1">
+                                                        <div className="grid grid-cols-1 gap-2 sm:gap-3">
+                                                            <div>
+                                                                <p className="text-glass font-medium">👤 {booking.user_name}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-glass">📅 {formatDate(booking.date_key)}</p>
+                                                                <p className="text-glass text-sm">🕐 {formatTime(booking.start_time)} - {formatTime(booking.end_time)}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-glass">🛠️ {booking.services.join(', ')}</p>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="text-glass">📅 {formatDate(booking.date_key)}</p>
-                                                        <p className="text-glass text-sm">🕐 {formatTime(booking.start_time)} - {formatTime(booking.end_time)}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-glass">🛠️ {booking.services.join(', ')}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
 
-                                            <div className="ml-4 flex items-center space-x-3 space-x-reverse">
-                                                {getStatusBadge(booking.status)}
+                                                    <div className="ml-4 flex items-center space-x-3 space-x-reverse">
+                                                        {getStatusBadge(booking.status)}
 
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        toggleBookingExpansion(bookingUniqueId);
-                                                    }}
-                                                    className="px-3 py-1 glass-button text-sm"
-                                                >
-                                                    {isExpanded ? '📄 خلاصه' : '📋 جزئیات'}
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Expanded View (Conditional) */}
-                                        {isExpanded && (
-                                            <div className="mt-4 pt-4 border-t border-white/10">
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                    <div>
-                                                        <h3 className="font-semibold text-glass mb-2 flex items-center">
-                                                            👤 اطلاعات مشتری
-                                                        </h3>
-                                                        <p className="text-glass"><strong>نام:</strong> {booking.user_name}</p>
-                                                        <p className="text-glass"><strong>📞 تلفن:</strong> {booking.user_phone}</p>
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="font-semibold text-glass mb-2 flex items-center">
-                                                            ⏰ زمان رزرو
-                                                        </h3>
-                                                        <p className="text-glass"><strong>📅 تاریخ:</strong> {formatDate(booking.date_key)}</p>
-                                                        <p className="text-glass">
-                                                            <strong>🕐 ساعت:</strong> {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
-                                                        </p>
-                                                        <p className="text-glass"><strong>⏱️ مدت:</strong> {booking.total_duration} دقیقه</p>
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="font-semibold text-glass mb-2 flex items-center">
-                                                            🛠️ خدمات
-                                                        </h3>
-                                                        <ul className="text-glass">
-                                                            {booking.services.map((service, index) => (
-                                                                <li key={index} className="text-sm">• {service}</li>
-                                                            ))}
-                                                        </ul>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                toggleBookingExpansion(bookingUniqueId);
+                                                            }}
+                                                            className="px-3 py-1 glass-button text-sm"
+                                                        >
+                                                            {isExpanded ? '📄 خلاصه' : '📋 جزئیات'}
+                                                        </button>
                                                     </div>
                                                 </div>
 
-                                                {booking.notes && (
-                                                    <div className="mt-4 p-3 bg-white/10 rounded-xl border border-white/20">
-                                                        <h4 className="font-semibold text-glass flex items-center mb-2">
-                                                            📝 یادداشت:
-                                                        </h4>
-                                                        <p className="text-glass-secondary text-sm">{booking.notes}</p>
+                                                {/* Expanded View (Conditional) */}
+                                                {isExpanded && (
+                                                    <div className="mt-4 pt-4 border-t border-white/10">
+                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                            <div>
+                                                                <h3 className="font-semibold text-glass mb-2 flex items-center">
+                                                                    👤 اطلاعات مشتری
+                                                                </h3>
+                                                                <p className="text-glass"><strong>نام:</strong> {booking.user_name}</p>
+                                                                <p className="text-glass"><strong>📞 تلفن:</strong> {booking.user_phone}</p>
+                                                            </div>
+                                                            <div>
+                                                                <h3 className="font-semibold text-glass mb-2 flex items-center">
+                                                                    ⏰ زمان رزرو
+                                                                </h3>
+                                                                <p className="text-glass"><strong>📅 تاریخ:</strong> {formatDate(booking.date_key)}</p>
+                                                                <p className="text-glass">
+                                                                    <strong>🕐 ساعت:</strong> {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                                                                </p>
+                                                                <p className="text-glass"><strong>⏱️ مدت:</strong> {booking.total_duration} دقیقه</p>
+                                                            </div>
+                                                            <div>
+                                                                <h3 className="font-semibold text-glass mb-2 flex items-center">
+                                                                    🛠️ خدمات
+                                                                </h3>
+                                                                <ul className="text-glass">
+                                                                    {booking.services.map((service, index) => (
+                                                                        <li key={index} className="text-sm">• {service}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+
+                                                        {booking.notes && (
+                                                            <div className="mt-4 p-3 bg-white/10 rounded-xl border border-white/20">
+                                                                <h4 className="font-semibold text-glass flex items-center mb-2">
+                                                                    📝 یادداشت:
+                                                                </h4>
+                                                                <p className="text-glass-secondary text-sm">{booking.notes}</p>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Action Buttons */}
+                                                        <div className="mt-4 flex space-x-2 space-x-reverse">
+                                                            {(!booking.status || booking.status === 'pending') && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        updateBookingStatus(booking.id, 'confirmed');
+                                                                    }}
+                                                                    className="px-4 py-2 glass-button glass-success text-sm"
+                                                                >
+                                                                    ✅ تأیید
+                                                                </button>
+                                                            )}
+
+                                                            {booking.status === 'confirmed' && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        updateBookingStatus(booking.id, 'completed');
+                                                                    }}
+                                                                    className="px-4 py-2 glass-button text-sm"
+                                                                >
+                                                                    🎉 تکمیل
+                                                                </button>
+                                                            )}
+
+                                                            {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (confirm('آیا مطمئن هستید که می‌خواهید این رزرو را لغو کنید؟')) {
+                                                                            updateBookingStatus(booking.id, 'cancelled');
+                                                                        }
+                                                                    }}
+                                                                    className="px-4 py-2 glass-button glass-danger text-sm"
+                                                                >
+                                                                    ❌ لغو
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 )}
-
-                                                {/* Action Buttons */}
-                                                <div className="mt-4 flex space-x-2 space-x-reverse">
-                                                    {(!booking.status || booking.status === 'pending') && (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                updateBookingStatus(booking.id, 'confirmed');
-                                                            }}
-                                                            className="px-4 py-2 glass-button glass-success text-sm"
-                                                        >
-                                                            ✅ تأیید
-                                                        </button>
-                                                    )}
-
-                                                    {booking.status === 'confirmed' && (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                updateBookingStatus(booking.id, 'completed');
-                                                            }}
-                                                            className="px-4 py-2 glass-button text-sm"
-                                                        >
-                                                            🎉 تکمیل
-                                                        </button>
-                                                    )}
-
-                                                    {booking.status !== 'cancelled' && booking.status !== 'completed' && (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                if (confirm('آیا مطمئن هستید که می‌خواهید این رزرو را لغو کنید؟')) {
-                                                                    updateBookingStatus(booking.id, 'cancelled');
-                                                                }
-                                                            }}
-                                                            className="px-4 py-2 glass-button glass-danger text-sm"
-                                                        >
-                                                            ❌ لغو
-                                                        </button>
-                                                    )}
-                                                </div>
                                             </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

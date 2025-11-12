@@ -6,7 +6,7 @@ import MongoDatabase from '../../../lib/mongoDatabase.js';
 async function POST(request) {
     try {
         console.log('🔍 POST /api/bookings called at', new Date().toISOString());
-        
+
         const bookingData = await request.json();
         const { user_id, date_key, start_time, end_time, barber, services, total_duration, user_name, user_phone } = bookingData;
 
@@ -42,7 +42,7 @@ async function POST(request) {
             );
         }
 
-        // Create new booking
+        // Create new booking with pending status (waiting for barber confirmation)
         console.log('💾 Attempting to save booking to MongoDB...');
         const bookingToSave = {
             user_id,
@@ -52,20 +52,20 @@ async function POST(request) {
             barber,
             services: Array.isArray(services) ? services : [services],
             total_duration: total_duration || 60,
-            status: 'confirmed',
+            status: 'pending', // Booking starts as pending, waiting for barber acceptance
             user_name: user_name || 'کاربر',
             user_phone: user_phone || user_id,
             persian_date: bookingData.persian_date
         };
         console.log('📦 Booking object to save:', JSON.stringify(bookingToSave, null, 2));
-        
+
         const newBooking = await MongoDatabase.addBooking(bookingToSave);
 
         if (newBooking) {
             console.log('✅ Booking saved successfully to MongoDB');
             console.log('🆔 Booking ID:', newBooking._id?.toString());
-            
-            // Send push notification to the barber
+
+            // Send push notification to the barber about new pending booking
             try {
                 const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/barber/notify`, {
                     method: 'POST',
@@ -74,17 +74,18 @@ async function POST(request) {
                     },
                     body: JSON.stringify({
                         barberId: barber,
-                        title: '🎉 رزرو جدید!',
-                        body: `مشتری: ${user_name || 'کاربر'}\nخدمات: ${services.join(', ')}\nزمان: ${start_time}`,
+                        title: '⏳ درخواست رزرو جدید!',
+                        body: `مشتری: ${user_name || 'کاربر'}\nخدمات: ${services.join(', ')}\nزمان: ${start_time}\n\nلطفاً تایید یا رد کنید`,
                         data: {
                             bookingId: newBooking.id || newBooking._id,
                             barberId: barber,
                             date: date_key,
-                            time: start_time
+                            time: start_time,
+                            status: 'pending'
                         }
                     })
                 });
-                
+
                 if (notificationResponse.ok) {
                     console.log('✅ Notification sent to barber:', barber);
                 } else {
@@ -94,7 +95,7 @@ async function POST(request) {
                 console.error('⚠️ Notification error (non-critical):', notifError);
                 // Don't fail the booking if notification fails
             }
-            
+
             return NextResponse.json({
                 message: 'رزرو با موفقیت ثبت شد',
                 booking: newBooking,
@@ -198,7 +199,7 @@ async function DELETE(request) {
         const now = new Date();
         const bookingDateTime = new Date(booking.date_key + 'T' + booking.start_time);
         const hoursDifference = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-        
+
         if (hoursDifference < 1) {
             return NextResponse.json(
                 { error: 'زمان لغو به پایان رسیده است (کمتر از یک ساعت مانده)' },
@@ -264,12 +265,12 @@ async function PUT(request) {
                 if (booking.id === id) return false; // Skip current booking
                 if (booking.barber !== checkBarber) return false;
                 if (booking.status === 'cancelled') return false; // Ignore cancelled
-                
+
                 const requestStart = checkStart;
                 const requestEnd = checkEnd;
                 const existingStart = booking.start_time;
                 const existingEnd = booking.end_time;
-                
+
                 return (requestStart < existingEnd && requestEnd > existingStart);
             });
 

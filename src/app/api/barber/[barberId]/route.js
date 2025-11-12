@@ -32,7 +32,7 @@ async function GET(request, { params }) {
         // Try to find barber by username first (English), then by name (Farsi)
         const barberUser = await MongoDatabase.getUserByUsername(decodedBarberId);
         const barberName = barberUser ? barberUser.name : decodedBarberId;
-        
+
         console.log('  - Lookup ID:', decodedBarberId);
         console.log('  - Barber user found:', barberUser ? 'yes' : 'no');
         console.log('  - Barber name:', barberName);
@@ -51,7 +51,7 @@ async function GET(request, { params }) {
             const allBookings = await MongoDatabase.getBookingsByDate(date);
             console.log(`📅 Total bookings on ${date}:`, allBookings.length);
             // Match by either username or name
-            bookings = allBookings.filter(booking => 
+            bookings = allBookings.filter(booking =>
                 booking.barber === decodedBarberId || booking.barber === barberName
             );
             console.log(`📅 Found ${bookings.length} bookings for ${decodedBarberId} on ${date}`);
@@ -63,12 +63,12 @@ async function GET(request, { params }) {
             if (bookingsByName.length > 0) {
                 console.log('  - Sample booking by name:', bookingsByName[0]);
             }
-            
+
             console.log('🔍 Searching for bookings by username:', decodedBarberId);
-            const bookingsByUsername = decodedBarberId !== barberName ? 
+            const bookingsByUsername = decodedBarberId !== barberName ?
                 await MongoDatabase.getBookingsByBarber(decodedBarberId) : [];
             console.log('  - Bookings by username:', bookingsByUsername.length);
-            
+
             // Merge and deduplicate
             const allBookings = [...bookingsByName, ...bookingsByUsername];
             console.log('  - Combined bookings before dedup:', allBookings.length);
@@ -76,7 +76,7 @@ async function GET(request, { params }) {
                 new Map(allBookings.map(b => [b._id?.toString() || b.id, b])).values()
             );
             bookings = uniqueBookings;
-            
+
             console.log(`📊 Found ${bookings.length} total bookings for ${decodedBarberId}`);
             console.log(`📊 Returning bookings:`, bookings.map(b => ({
                 id: b.id,
@@ -211,8 +211,8 @@ async function PUT(request, { params }) {
 
         // Find the booking
         const allBookings = await MongoDatabase.getAllBookings();
-        const booking = allBookings.find(b => 
-            b._id?.toString() === bookingId || 
+        const booking = allBookings.find(b =>
+            b._id?.toString() === bookingId ||
             b.id === bookingId
         );
 
@@ -229,8 +229,8 @@ async function PUT(request, { params }) {
         const barberUser = await MongoDatabase.getUserByUsername(decodedBarberId);
         const barberName = barberUser ? barberUser.name : decodedBarberId;
 
-        console.log('🔍 Barber verification:', { 
-            bookingBarber: booking.barber, 
+        console.log('🔍 Barber verification:', {
+            bookingBarber: booking.barber,
             urlBarberId: decodedBarberId,
             barberName: barberName
         });
@@ -246,14 +246,98 @@ async function PUT(request, { params }) {
         // Update booking status using the _id or id
         const bookingIdToUpdate = booking._id?.toString() || booking.id;
         const updatedBooking = await MongoDatabase.updateBookingStatus(
-            bookingIdToUpdate, 
-            status, 
+            bookingIdToUpdate,
+            status,
             notes !== undefined ? notes : booking.notes
         );
 
         console.log('✅ Booking updated:', updatedBooking ? 'yes' : 'no');
 
         if (updatedBooking) {
+            // Send notification to user when barber confirms the booking
+            if (status === 'confirmed') {
+                try {
+                    console.log('📱 Sending confirmation notification to user:', booking.user_phone || booking.user_id);
+
+                    // TODO: Implement user notification API
+                    // For now, log it for future implementation
+                    const userNotificationData = {
+                        userId: booking.user_id,
+                        userPhone: booking.user_phone,
+                        title: '✅ رزرو شما تایید شد!',
+                        body: `آرایشگر: ${booking.barber}\nتاریخ: ${booking.date_key}\nساعت: ${booking.start_time}\nخدمات: ${booking.services.join(', ')}`,
+                        data: {
+                            bookingId: bookingIdToUpdate,
+                            barberId: booking.barber,
+                            date: booking.date_key,
+                            time: booking.start_time,
+                            status: 'confirmed'
+                        }
+                    };
+
+                    console.log('✅ User notification data prepared:', userNotificationData);
+
+                    // Send SMS notification if phone number exists
+                    if (booking.user_phone && booking.user_phone.length >= 10) {
+                        try {
+                            const smsResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/send-otp`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    phone: booking.user_phone,
+                                    message: `✅ رزرو شما تایید شد!\n\n👤 آرایشگر: ${booking.barber}\n📅 تاریخ: ${booking.date_key}\n🕐 ساعت: ${booking.start_time}\n✂️ خدمات: ${booking.services.join(', ')}\n\nبا تشکر از انتخاب شما`
+                                })
+                            });
+
+                            if (smsResponse.ok) {
+                                console.log('✅ SMS confirmation sent to user');
+                            }
+                        } catch (smsError) {
+                            console.warn('⚠️ SMS notification failed (non-critical):', smsError.message);
+                        }
+                    }
+
+                } catch (notifError) {
+                    console.error('⚠️ User notification error (non-critical):', notifError);
+                    // Don't fail the booking update if notification fails
+                }
+            }
+
+            // Send notification to user when barber cancels/rejects the booking
+            if (status === 'cancelled') {
+                try {
+                    console.log('📱 Sending cancellation notification to user:', booking.user_phone || booking.user_id);
+
+                    // Send SMS notification if phone number exists
+                    if (booking.user_phone && booking.user_phone.length >= 10) {
+                        try {
+                            const cancellationReason = notes ? `\n\n📝 دلیل: ${notes}` : '';
+                            const smsResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/send-otp`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    phone: booking.user_phone,
+                                    message: `❌ متاسفانه رزرو شما رد شد\n\n👤 آرایشگر: ${booking.barber}\n📅 تاریخ: ${booking.date_key}\n🕐 ساعت: ${booking.start_time}\n✂️ خدمات: ${booking.services.join(', ')}${cancellationReason}\n\nلطفا زمان دیگری انتخاب کنید`
+                                })
+                            });
+
+                            if (smsResponse.ok) {
+                                console.log('✅ SMS cancellation sent to user');
+                            }
+                        } catch (smsError) {
+                            console.warn('⚠️ SMS notification failed (non-critical):', smsError.message);
+                        }
+                    }
+
+                } catch (notifError) {
+                    console.error('⚠️ User notification error (non-critical):', notifError);
+                }
+            }
+
             return NextResponse.json({
                 message: 'وضعیت رزرو با موفقیت به‌روزرسانی شد',
                 booking: updatedBooking
