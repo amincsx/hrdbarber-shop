@@ -162,12 +162,14 @@ self.addEventListener('notificationclick', (event) => {
             }
           }
           
-          // Otherwise open new window
+          // Otherwise open new window with absolute URL
           if (clients.openWindow) {
             const barberId = event.notification.data?.barberId || '';
+            // Use self.location.origin to get the base URL
+            const baseUrl = self.location.origin;
             const url = barberId 
-              ? `/barber-dashboard/${encodeURIComponent(barberId)}?pwa=1&notification=1`
-              : '/barber-login?pwa=1';
+              ? `${baseUrl}/barber-dashboard/${encodeURIComponent(barberId)}?pwa=1&notification=1`
+              : `${baseUrl}/barber-login?pwa=1`;
             return clients.openWindow(url);
           }
         })

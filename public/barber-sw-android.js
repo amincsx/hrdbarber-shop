@@ -160,9 +160,12 @@ self.addEventListener('notificationclick', (event) => {
     }
 
     // Determine URL to open
-    let urlToOpen = '/barber-dashboard';
+    const baseUrl = self.location.origin;
+    let urlToOpen = `${baseUrl}/barber-dashboard`;
     if (event.notification.data && event.notification.data.url) {
-        urlToOpen = event.notification.data.url;
+        // If URL is relative, make it absolute
+        const dataUrl = event.notification.data.url;
+        urlToOpen = dataUrl.startsWith('http') ? dataUrl : `${baseUrl}${dataUrl}`;
     }
 
     event.waitUntil(
@@ -187,7 +190,7 @@ self.addEventListener('notificationclick', (event) => {
                     });
                 });
             } else {
-                // Open new window
+                // Open new window with absolute URL
                 console.log('🆕 Opening new window:', urlToOpen);
                 return self.clients.openWindow(urlToOpen).then(client => {
                     if (client) {
