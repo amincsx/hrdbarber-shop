@@ -39,11 +39,11 @@ function BarberLoginContent() {
                 password: persianToEnglish(loginData.password),
                 type: 'barber'
             };
-            
+
             console.log('🔐 Barber login - Original username:', loginData.username);
             console.log('🔐 Barber login - Normalized username:', normalizedLoginData.username);
             console.log('🔑 Barber login - Normalized password:', normalizedLoginData.password);
-            
+
             const response = await fetch('/api/admin', {
                 method: 'POST',
                 headers: {
@@ -65,10 +65,10 @@ function BarberLoginContent() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const isPWA = urlParams.get('pwa') === '1';
                 const barberParam = urlParams.get('barber');
-                
+
                 // Use username for clean URLs
                 const barberUrlId = result.user.username || result.user.name;
-                
+
                 if (isPWA || barberParam) {
                     // For PWA, use window.location to ensure proper navigation
                     window.location.href = `/barber-dashboard/${encodeURIComponent(barberUrlId)}?pwa=1`;
@@ -116,7 +116,7 @@ function BarberLoginContent() {
                     {/* Hidden fake inputs to prevent autofill */}
                     <input type="text" style={{ display: 'none' }} />
                     <input type="password" style={{ display: 'none' }} />
-                    
+
                     {/* Username */}
                     <div>
                         <label className="block text-sm font-medium text-white mb-2">
@@ -204,13 +204,13 @@ function BarberLoginContent() {
                     >
                         🔑 فراموشی رمز عبور
                     </button>
-                    
+
                     <div className="flex items-center gap-2">
                         <div className="flex-1 h-px bg-white/20"></div>
                         <span className="text-white/50 text-xs">یا</span>
                         <div className="flex-1 h-px bg-white/20"></div>
                     </div>
-                    
+
                     <button
                         onClick={() => router.push('/barber-register')}
                         className="w-full py-3 bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl text-white font-medium transition-all"

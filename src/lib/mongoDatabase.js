@@ -12,7 +12,22 @@ class MongoDatabase {
             // Production database initialization temporarily disabled to fix connection issues
             // Will be re-enabled once basic connection is working
 
-            const barbers = await Barber.find({ isActive: true }).sort({ name: 1 });
+            // Get all barber users (those with role 'barber')
+            const barberUsers = await User.find({ role: 'barber' }).sort({ createdAt: 1 });
+
+            // Convert to the expected format and include username
+            const barbers = barberUsers.map(user => ({
+                _id: user._id,
+                name: user.name,
+                username: user.username,
+                phone: user.phone,
+                isAvailable: user.availability?.isAvailable !== false,
+                availability: user.availability,
+                createdAt: user.createdAt
+            }));
+
+            console.log('📋 Loaded barbers with usernames:', barbers.map(b => `${b.name} (${b.username})`));
+
             return barbers;
         } catch (error) {
             console.error('Error getting barbers:', error);
@@ -39,6 +54,42 @@ class MongoDatabase {
         } catch (error) {
             console.error('Error getting barber by name:', error);
             return null;
+        }
+    }
+
+    static async getBarberByPhone(phone) {
+        try {
+            await dbConnect();
+            const barber = await Barber.findOne({ phone: phone });
+            return barber;
+        } catch (error) {
+            console.error('Error getting barber by phone:', error);
+            return null;
+        }
+    }
+
+    static async addBarber(barberData) {
+        try {
+            await dbConnect();
+            const barber = new Barber(barberData);
+            const savedBarber = await barber.save();
+            console.log('✅ Barber saved to MongoDB:', savedBarber._id);
+            return savedBarber;
+        } catch (error) {
+            console.error('Error saving barber:', error);
+            throw error;
+        }
+    }
+
+    static async updateBarber(barberId, updateData) {
+        try {
+            await dbConnect();
+            const updatedBarber = await Barber.findByIdAndUpdate(barberId, updateData, { new: true });
+            console.log('✅ Barber updated in MongoDB:', barberId);
+            return updatedBarber;
+        } catch (error) {
+            console.error('Error updating barber:', error);
+            throw error;
         }
     }
 
@@ -246,11 +297,32 @@ class MongoDatabase {
     static async findUserByPhone(phone) {
         try {
             await dbConnect();
-            // For our system, phone is used as username
-            const user = await User.findOne({ username: phone });
+            // Search in both username field (for regular users) and phone field (for barbers)
+            const user = await User.findOne({
+                $or: [
+                    { username: phone },
+                    { phone: phone }
+                ]
+            });
             return user;
         } catch (error) {
             console.error('Error getting user by phone:', error);
+            return null;
+        }
+    }
+
+    static async findBarberByPhone(phone) {
+        try {
+            await dbConnect();
+            // Find barber by phone number
+            const barber = await User.findOne({
+                phone: phone,
+                role: 'barber'
+            });
+            console.log('🔍 Barber search result for phone', phone, ':', barber ? 'Found' : 'Not found');
+            return barber;
+        } catch (error) {
+            console.error('Error getting barber by phone:', error);
             return null;
         }
     }
@@ -265,6 +337,17 @@ class MongoDatabase {
         } catch (error) {
             console.error('Error saving user:', error);
             throw error;
+        }
+    }
+
+    static async getUserById(userId) {
+        try {
+            await dbConnect();
+            const user = await User.findById(userId);
+            return user;
+        } catch (error) {
+            console.error('Error getting user by ID:', error);
+            return null;
         }
     }
 
@@ -298,38 +381,89 @@ class MongoDatabase {
         }
     }
 
+    static async createUser(userData) {
+        try {
+            await dbConnect();
+            const user = new User(userData);
+            const savedUser = await user.save();
+            console.log('✅ User created in MongoDB:', savedUser._id);
+            return {
+                success: true,
+                user: savedUser
+            };
+        } catch (error) {
+            console.error('Error creating user:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    static async deleteUser(userId) {
+        try {
+            await dbConnect();
+            const result = await User.findByIdAndDelete(userId);
+            if (result) {
+                console.log('✅ User deleted from MongoDB:', userId);
+                return {
+                    success: true
+                };
+            } else {
+                return {
+                    success: false,
+                    error: 'کاربر یافت نشد'
+                };
+            }
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
     static async updateBarberAvailability(barberIdentifier, availability) {
         try {
             await dbConnect();
-            
+
+            console.log('🔍 Searching for barber:', barberIdentifier);
+            console.log('📝 Availability to save:', JSON.stringify(availability, null, 2));
+
             // Find barber by username or name
             let user = await User.findOne({ username: barberIdentifier });
             if (!user) {
+                console.log('⚠️ User not found by username, trying by name...');
                 const barber = await Barber.findOne({ name: barberIdentifier });
                 if (barber) {
+                    console.log('✅ Found barber record:', barber._id);
                     user = await User.findOne({ barber_id: barber._id });
                 }
             }
-            
+
             if (!user) {
+                console.error('❌ User not found for barber:', barberIdentifier);
                 return { success: false, message: 'آرایشگر یافت نشد' };
             }
 
-            // Update availability
-            const result = await User.findByIdAndUpdate(
-                user._id,
-                { availability: availability },
-                { new: true }
-            );
+            console.log('✅ Found user:', user._id, 'Name:', user.name);
+            console.log('📊 Current availability:', JSON.stringify(user.availability, null, 2));
+
+            // Update availability using direct assignment with markModified
+            user.availability = availability;
+            user.markModified('availability');
+            const result = await user.save();
 
             if (result) {
-                console.log('✅ Barber availability updated:', barberIdentifier);
+                console.log('✅ Barber availability updated successfully');
+                console.log('📊 New availability:', JSON.stringify(result.availability, null, 2));
                 return { success: true, user: result };
             }
-            
+
             return { success: false, message: 'خطا در به‌روزرسانی' };
         } catch (error) {
-            console.error('Error updating barber availability:', error);
+            console.error('❌ Error updating barber availability:', error);
             return { success: false, message: 'خطا در پایگاه داده' };
         }
     }

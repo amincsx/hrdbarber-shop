@@ -40,7 +40,7 @@ export default function OwnerDashboard() {
     const [adminSession, setAdminSession] = useState<any>(null);
     const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set());
 
-    const availableBarbers = ['حمید', 'بنیامین', 'محمد'];
+    const availableBarbers: string[] = [];
 
     useEffect(() => {
         // Check admin session
@@ -257,12 +257,20 @@ export default function OwnerDashboard() {
                                 خوش آمدید {adminSession.user.name}
                             </p>
                         </div>
-                        <button
-                            onClick={handleLogout}
-                            className="glass-button glass-danger px-6 py-3"
-                        >
-                            🚪 خروج
-                        </button>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => router.push('/admin/barber-management')}
+                                className="glass-button bg-blue-500/20 border-blue-400/30 px-6 py-3 text-white hover:bg-blue-500/30"
+                            >
+                                ✂️ مدیریت آرایشگران
+                            </button>
+                            <button
+                                onClick={handleLogout}
+                                className="glass-button glass-danger px-6 py-3"
+                            >
+                                🚪 خروج
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -426,7 +434,7 @@ export default function OwnerDashboard() {
 
                                             <div className="ml-4 flex items-center space-x-3 space-x-reverse">
                                                 {getStatusBadge(booking.status)}
-                                                
+
                                                 <button
                                                     onClick={() => toggleBookingExpansion(booking.id)}
                                                     className="px-3 py-1 glass-button text-sm"

@@ -171,7 +171,9 @@ async function GET(request) {
 // DELETE - Cancel booking
 async function DELETE(request) {
     try {
-        const { booking_id, user_phone } = await request.json();
+        const requestData = await request.json();
+        const booking_id = requestData.booking_id || requestData.bookingId;
+        const user_phone = requestData.user_phone;
 
         if (!booking_id) {
             return NextResponse.json(
@@ -193,7 +195,7 @@ async function DELETE(request) {
             );
         }
 
-        // Verify user ownership if user_phone provided
+        // Verify user ownership if user_phone provided (skip for admin/owner access)
         if (user_phone && booking.user_phone !== user_phone && booking.user_id !== user_phone) {
             return NextResponse.json(
                 { error: 'شما مجاز به لغو این رزرو نیستید' },
@@ -214,7 +216,7 @@ async function DELETE(request) {
         }
 
         // Delete the booking from database
-        await MongoDatabase.deleteBooking(bookingId);
+        await MongoDatabase.deleteBooking(booking_id);
 
         // Send notification to barber about the cancellation
         try {
@@ -337,4 +339,48 @@ async function PUT(request) {
     }
 }
 
-export { POST, GET, DELETE, PUT };
+// PATCH - Update booking status
+async function PATCH(request) {
+    try {
+        const updateData = await request.json();
+        const { bookingId, status } = updateData;
+
+        if (!bookingId || !status) {
+            return NextResponse.json(
+                { error: 'شناسه رزرو و وضعیت الزامی است' },
+                { status: 400 }
+            );
+        }
+
+        // Valid status values
+        const validStatuses = ['pending', 'accepted', 'cancelled', 'completed'];
+        if (!validStatuses.includes(status)) {
+            return NextResponse.json(
+                { error: 'وضعیت نامعتبر است' },
+                { status: 400 }
+            );
+        }
+
+        // Update booking status
+        const updatedBooking = await MongoDatabase.updateBooking(bookingId, { status });
+
+        if (updatedBooking) {
+            return NextResponse.json({
+                success: true,
+                message: 'وضعیت رزرو با موفقیت به‌روزرسانی شد',
+                booking: updatedBooking
+            });
+        } else {
+            throw new Error('Failed to update booking status');
+        }
+
+    } catch (error) {
+        console.error('❌ Booking status update error:', error);
+        return NextResponse.json(
+            { error: 'خطا در به‌روزرسانی وضعیت رزرو' },
+            { status: 500 }
+        );
+    }
+}
+
+export { POST, GET, DELETE, PUT, PATCH };

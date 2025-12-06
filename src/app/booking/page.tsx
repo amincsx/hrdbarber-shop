@@ -232,11 +232,8 @@ export default function BookingPage() {
     const [existingBookings, setExistingBookings] = useState<any[]>([]);
     const [showAllTimeSlots, setShowAllTimeSlots] = useState(false);
     const [selectedBarber, setSelectedBarber] = useState<string>('');
-    const [availableBarbers, setAvailableBarbers] = useState<any[]>([
-        { name: 'بنیامین', _id: 'benyamin' },
-        { name: 'حمید', _id: 'hamid' },
-        { name: 'محمد', _id: 'mohammad' }
-    ]);
+    const [availableBarbers, setAvailableBarbers] = useState<any[]>([]);
+    const [barberAvailabilities, setBarberAvailabilities] = useState<{ [key: string]: any }>({});
 
     // Load barbers from MongoDB
     const loadBarbersFromDatabase = async () => {
@@ -249,6 +246,9 @@ export default function BookingPage() {
                     setAvailableBarbers(data.barbers);
                     console.log('✅ Loaded barbers from MongoDB:', data.barbers.length);
                     console.log('   Barbers:', data.barbers.map((b: any) => b.name));
+
+                    // Load availability for each barber
+                    await loadBarberAvailabilities(data.barbers);
                 } else {
                     console.log('ℹ️ No barbers found in MongoDB, keeping default list');
                 }
@@ -261,41 +261,183 @@ export default function BookingPage() {
         }
     };
 
-    // Individual barber schedules with off days and lunch breaks
-    const barberSchedules = {
-        'حمید': { 
-            start: 10, 
-            end: 21, 
-            offDays: ['یکشنبه'], // Off on Sunday
-            lunchStart: 14, // 2:00 PM
-            lunchEnd: 15    // 3:00 PM
-        },
-        'محمد': { 
-            start: 10, 
-            end: 21, 
-            offDays: ['شنبه'], // Off on Saturday
-            lunchStart: 14, // 2:00 PM
-            lunchEnd: 16    // 4:00 PM
-        },
-        'بنیامین': { 
-            start: 10, 
-            end: 21, 
-            offDays: ['دوشنبه'], // Off on Monday
-            lunchStart: 14, // 2:00 PM
-            lunchEnd: 16    // 4:00 PM
+    // Load availability for a single barber (with cache busting)
+    const loadSingleBarberAvailability = async (barberName: string) => {
+        try {
+            // Find the barber object to get the username
+            const barberObj = availableBarbers.find(b => b.name === barberName);
+            const barberId = barberObj?.username || barberName; // Use username if available, fallback to name
+
+            console.log('🔍 Loading availability for barber:', barberName, 'using ID:', barberId);
+
+            // Add timestamp to bypass cache
+            const timestamp = Date.now();
+            const response = await fetch(`/api/barber/availability?barberId=${encodeURIComponent(barberId)}&t=${timestamp}&_=${Math.random()}`, {
+                cache: 'no-store',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success && result.availability) {
+                    setBarberAvailabilities(prev => ({
+                        ...prev,
+                        [barberName]: result.availability
+                    }));
+                    console.log(`✅ Loaded fresh availability for ${barberName}:`, result.availability);
+                } else {
+                    console.log(`ℹ️ Using default schedule for ${barberName}`);
+                    setBarberAvailabilities(prev => ({
+                        ...prev,
+                        [barberName]: getDefaultBarberSchedule()
+                    }));
+                }
+            } else {
+                console.log(`⚠️ Failed to load availability for ${barberName}, using default`);
+                setBarberAvailabilities(prev => ({
+                    ...prev,
+                    [barberName]: getDefaultBarberSchedule()
+                }));
+            }
+        } catch (error) {
+            console.warn(`⚠️ Error loading availability for ${barberName}:`, error);
+            setBarberAvailabilities(prev => ({
+                ...prev,
+                [barberName]: getDefaultBarberSchedule()
+            }));
         }
+    };
+
+    // Load availability for all barbers
+    const loadBarberAvailabilities = async (barbers: any[]) => {
+        console.log('🔄 Loading availability for all barbers...');
+        for (const barber of barbers) {
+            try {
+                const barberId = barber.username || barber.name;
+                const timestamp = Date.now();
+                const response = await fetch(`/api/barber/availability?barberId=${encodeURIComponent(barberId)}&t=${timestamp}&_=${Math.random()}`, {
+                    cache: 'no-store',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.availability) {
+                        setBarberAvailabilities(prev => ({
+                            ...prev,
+                            [barber.name]: result.availability
+                        }));
+                        console.log(`✅ Loaded availability for ${barber.name}:`, result.availability);
+                    } else {
+                        console.log(`ℹ️ Using default schedule for ${barber.name}`);
+                        setBarberAvailabilities(prev => ({
+                            ...prev,
+                            [barber.name]: getDefaultBarberSchedule()
+                        }));
+                    }
+                } else {
+                    console.log(`⚠️ Failed to load availability for ${barber.name}, using default`);
+                    setBarberAvailabilities(prev => ({
+                        ...prev,
+                        [barber.name]: getDefaultBarberSchedule()
+                    }));
+                }
+            } catch (error) {
+                console.warn(`⚠️ Error loading availability for ${barber.name}:`, error);
+                setBarberAvailabilities(prev => ({
+                    ...prev,
+                    [barber.name]: getDefaultBarberSchedule()
+                }));
+            }
+        }
+        console.log('✅ Finished loading all barber availabilities');
+    };
+
+    // Get default barber schedule
+    const getDefaultBarberSchedule = () => ({
+        workingHours: { start: 10, end: 21 },
+        lunchBreak: { start: 14, end: 15 },
+        offDays: [],
+        offHours: [], // Add flexible off hours
+        isAvailable: true // Default to available
+    });
+
+    // Get barber schedule from loaded availability or fallback to hardcoded
+    const getBarberSchedule = (barberName: string) => {
+        // First try to get from loaded availability
+        if (barberAvailabilities[barberName]) {
+            const availability = barberAvailabilities[barberName];
+            return {
+                start: availability.workingHours?.start || 10,
+                end: availability.workingHours?.end || 21,
+                lunchStart: availability.lunchBreak?.start || 14,
+                lunchEnd: availability.lunchBreak?.end || 15,
+                offDays: availability.offDays || [],
+                offHours: availability.offHours || [], // Add flexible off hours
+                isAvailable: availability.isAvailable === true
+            };
+        }
+
+        // Fallback to hardcoded schedules for backward compatibility
+        const hardcodedSchedules = {};
+
+        return hardcodedSchedules[barberName as keyof typeof hardcodedSchedules] || {
+            start: 10,
+            end: 21,
+            lunchStart: 14,
+            lunchEnd: 15,
+            offDays: [],
+            offHours: [],
+            isAvailable: true
+        };
+    };
+
+    // Check if a specific time slot is blocked by flexible off hours
+    const isTimeSlotBlocked = (barberName: string, timeSlot: string, selectedDate: Date) => {
+        const schedule = getBarberSchedule(barberName);
+        if (!schedule.offHours || schedule.offHours.length === 0) return false;
+
+        const selectedDateStr = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+        for (const offHour of schedule.offHours) {
+            // If off hour has a specific date, check if it matches
+            if (offHour.date && offHour.date !== selectedDateStr) {
+                continue; // This off hour doesn't apply to the selected date
+            }
+
+            // Check if time slot falls within the off hour range
+            if (timeSlot >= offHour.start && timeSlot < offHour.end) {
+                return true; // Time slot is blocked
+            }
+        }
+
+        return false;
     };
 
     // Generate time slots based on selected barber's schedule
     const generateTimeSlots = (barberName: string) => {
         // Check if barber has custom schedule, otherwise use default
-        const schedule = barberSchedules[barberName as keyof typeof barberSchedules] || { start: 10, end: 21 };
+        const schedule = getBarberSchedule(barberName);
+
+        // Don't generate slots if barber is not available
+        if (!schedule.isAvailable) {
+            return [];
+        }
+
         const slots = [];
 
         // Only generate o'clock times (no :15, :30, :45)
         for (let hour = schedule.start; hour < schedule.end; hour++) {
             // Skip lunch break times
-            if ('lunchStart' in schedule && 'lunchEnd' in schedule && schedule.lunchStart && schedule.lunchEnd) {
+            if (schedule.lunchStart && schedule.lunchEnd) {
                 if (hour >= schedule.lunchStart && hour < schedule.lunchEnd) {
                     continue; // Skip this hour (it's lunch time)
                 }
@@ -351,18 +493,24 @@ export default function BookingPage() {
             ];
         }
 
-        const schedule = barberSchedules[selectedBarber as keyof typeof barberSchedules] || { start: 10, end: 21 };
+        const schedule = getBarberSchedule(selectedBarber);
+
+        // Don't generate slots if barber is not available
+        if (!schedule.isAvailable) {
+            return [];
+        }
+
         const slots = [];
 
         // Check if ONLY face cut or wax is selected (alone, not combined with other services)
-        const hasFaceCutOrWaxAlone = selectedServices.length === 1 && 
+        const hasFaceCutOrWaxAlone = selectedServices.length === 1 &&
             (selectedServices[0] === 'اصلاح صورت' || selectedServices[0] === 'وکس');
 
         if (hasFaceCutOrWaxAlone) {
             // For face cut and wax ALONE, show ONLY :30 times (no o'clock times)
             for (let hour = schedule.start; hour < schedule.end - 0.5; hour++) {
                 // Skip lunch break times
-                if ('lunchStart' in schedule && 'lunchEnd' in schedule && schedule.lunchStart && schedule.lunchEnd) {
+                if (schedule.lunchStart && schedule.lunchEnd) {
                     if (hour + 0.5 >= schedule.lunchStart && hour + 0.5 < schedule.lunchEnd) {
                         continue; // Skip this :30 slot (it's lunch time)
                     }
@@ -393,7 +541,7 @@ export default function BookingPage() {
             // For other services, show only o'clock times
             for (let hour = schedule.start; hour < schedule.end; hour++) {
                 // Skip lunch break times
-                if ('lunchStart' in schedule && 'lunchEnd' in schedule && schedule.lunchStart && schedule.lunchEnd) {
+                if (schedule.lunchStart && schedule.lunchEnd) {
                     if (hour >= schedule.lunchStart && hour < schedule.lunchEnd) {
                         continue; // Skip this hour (it's lunch time)
                     }
@@ -425,7 +573,7 @@ export default function BookingPage() {
         // Add :45 times if there are existing bookings that end at :45
         if (selectedDateObj && selectedBarber) {
             const dateKey = selectedDateObj.toISOString().split('T')[0];
-            const existingBookingsForDate = existingBookings.filter(booking => 
+            const existingBookingsForDate = existingBookings.filter(booking =>
                 booking.date === dateKey && booking.barber === selectedBarber
             );
 
@@ -466,8 +614,12 @@ export default function BookingPage() {
 
     // Check if barber is available on selected date
     const isBarberAvailableOnDate = (barberName: string, date: Date) => {
-        const schedule = barberSchedules[barberName as keyof typeof barberSchedules];
-        if (!schedule || !schedule.offDays) return true;
+        const schedule = getBarberSchedule(barberName);
+
+        // Check if barber is generally available
+        if (!schedule.isAvailable) return false;
+
+        if (!schedule.offDays || schedule.offDays.length === 0) return true;
 
         // Get Persian day name for the selected date
         const persianDate = formatPersianDateSync(date);
@@ -513,7 +665,7 @@ export default function BookingPage() {
             selectedDateObj.toDateString() === currentTime.toDateString();
 
         // Check if barber is available on selected date
-        const isBarberAvailable = selectedBarber && selectedDateObj ? 
+        const isBarberAvailable = selectedBarber && selectedDateObj ?
             isBarberAvailableOnDate(selectedBarber, selectedDateObj) : true;
 
         // If barber is not available on this date, return empty array
@@ -622,25 +774,25 @@ export default function BookingPage() {
                 const booking = JSON.parse(editingData);
                 setEditingBooking(booking);
                 setIsEditMode(true);
-                
+
                 // Pre-fill form with booking data
                 setSelectedBarber(booking.barber);
                 setSelectedServices(booking.services);
                 setSelectedTime(booking.start_time || booking.startTime);
-                
+
                 // Set date
                 const bookingDate = new Date(booking.date_key || booking.dateKey);
                 setSelectedDateObj(bookingDate);
-                
+
                 console.log('📝 Edit mode activated for booking:', booking.id);
-                
+
                 // Clear the editing data from localStorage
                 localStorage.removeItem('editingBooking');
             } catch (error) {
                 console.error('Error loading editing booking:', error);
             }
         }
-        
+
         // Check authentication first
         const storedData = localStorage.getItem('user');
         if (!storedData) {
@@ -684,8 +836,28 @@ export default function BookingPage() {
         // Load available barbers from MongoDB
         loadBarbersFromDatabase();
 
+        // Refresh availability every 10 seconds for real-time updates
+        const availabilityRefreshInterval = setInterval(() => {
+            console.log('🔄 Refreshing barber availabilities...');
+            loadBarbersFromDatabase();
+        }, 10000); // 10 seconds
+
         setIsLoading(false);
+
+        return () => clearInterval(availabilityRefreshInterval);
     }, [router]);
+
+    // Effect: Refresh selected barber's availability every 10 seconds if a barber is selected
+    useEffect(() => {
+        if (!selectedBarber) return;
+
+        const barberRefreshInterval = setInterval(() => {
+            console.log(`🔄 Refreshing availability for barber: ${selectedBarber}`);
+            loadSingleBarberAvailability(selectedBarber);
+        }, 10000); // 10 seconds for selected barber
+
+        return () => clearInterval(barberRefreshInterval);
+    }, [selectedBarber]);
 
     // Load bookings from file database
     const loadBookingsFromDatabase = async () => {
@@ -747,7 +919,7 @@ export default function BookingPage() {
     useEffect(() => {
         if (selectedBarber) {
             setSelectedTime(''); // Reset time selection when barber changes
-            
+
             // Check if currently selected date is available for this barber
             if (selectedDateObj && !isBarberAvailableOnDate(selectedBarber, selectedDateObj)) {
                 setSelectedDateObj(null); // Reset date if not available for this barber
@@ -848,6 +1020,27 @@ export default function BookingPage() {
                 return true;
             }
 
+            // Check for flexible off hours (only if barber and date are selected)
+            if (selectedBarber && selectedDateObj && isTimeSlotBlocked(selectedBarber, slot, selectedDateObj)) {
+                return false; // Time slot is blocked by flexible off hours
+            }
+
+            // Check working hours from real availability
+            if (selectedBarber && barberAvailabilities[selectedBarber]) {
+                const availability = barberAvailabilities[selectedBarber];
+                const slotHour = parseInt(slot.split(':')[0]);
+
+                // Check if time is within working hours
+                if (slotHour < availability.workingHours.start || slotHour >= availability.workingHours.end) {
+                    return false;
+                }
+
+                // Check if time is during lunch break
+                if (availability.lunchBreak && slotHour >= availability.lunchBreak.start && slotHour < availability.lunchBreak.end) {
+                    return false;
+                }
+            }
+
             // Check if service fits within operating hours
             if (endMinutes > timeToMinutes('21:00')) return false;
 
@@ -899,10 +1092,10 @@ export default function BookingPage() {
 
         // Create booking object for API (with correct field names)
         // Use local date format instead of UTC to avoid timezone issues
-        const localDateKey = selectedDateObj.getFullYear() + '-' + 
-            String(selectedDateObj.getMonth() + 1).padStart(2, '0') + '-' + 
+        const localDateKey = selectedDateObj.getFullYear() + '-' +
+            String(selectedDateObj.getMonth() + 1).padStart(2, '0') + '-' +
             String(selectedDateObj.getDate()).padStart(2, '0');
-            
+
         const apiBooking = {
             user_id: userData?.phone || 'unknown',
             date_key: localDateKey,
@@ -937,7 +1130,7 @@ export default function BookingPage() {
             if (isEditMode && editingBooking) {
                 // Update existing booking
                 console.log('📝 Updating booking:', editingBooking.id);
-                
+
                 // First delete the old booking
                 const deleteResponse = await fetch('/api/bookings', {
                     method: 'DELETE',
@@ -974,7 +1167,7 @@ export default function BookingPage() {
                 // Create new booking
                 console.log('📤 Sending booking to API:', apiBooking);
                 console.log('📤 Stringified:', JSON.stringify(apiBooking));
-                
+
                 const response = await fetch('/api/bookings', {
                     method: 'POST',
                     headers: {
@@ -990,7 +1183,7 @@ export default function BookingPage() {
                     const result = await response.json();
                     console.log('✅ Booking saved to database successfully:', result);
                     bookingSavedToDatabase = true;
-                    
+
                     // Send notification to barber
                     try {
                         await fetch('/api/bookings/notify', {
@@ -1121,19 +1314,29 @@ export default function BookingPage() {
                         <form onSubmit={handleBooking} className="space-y-3">
                             {/* Step 1: Barber Selection - Always Active */}
                             <div style={{ marginBottom: '12px' }}>
-                                <label
-                                    className="block text-sm font-medium text-white mb-2"
-                                    style={{
-                                        display: 'block',
-                                        fontSize: '16px',
-                                        fontWeight: '600',
-                                        color: '#ffffff',
-                                        marginBottom: '12px',
-                                        textShadow: '0 1px 2px rgba(0,0,0,0.5)'
-                                    }}
-                                >
-                                    ✂️ انتخاب آرایشگر
-                                </label>
+                                <div className="flex items-center justify-between mb-3">
+                                    <label
+                                        className="text-sm font-medium text-white"
+                                        style={{
+                                            fontSize: '16px',
+                                            fontWeight: '600',
+                                            color: '#ffffff',
+                                            textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                                        }}
+                                    >
+                                        ✂️ انتخاب آرایشگر
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            console.log('🔄 Manual refresh triggered');
+                                            loadBarbersFromDatabase();
+                                        }}
+                                        className="text-xs text-white/60 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-1 rounded-lg transition-colors"
+                                    >
+                                        🔄 بروزرسانی
+                                    </button>
+                                </div>
                                 <div
                                     className="grid grid-cols-3 gap-2"
                                     style={{
@@ -1142,27 +1345,52 @@ export default function BookingPage() {
                                         gap: '8px'
                                     }}
                                 >
-                                    {availableBarbers.map((barber) => {
-                                        const isSelected = selectedBarber === barber.name;
-                                        return (
-                                            <button
-                                                key={barber._id || barber.name}
-                                                type="button"
-                                                onClick={() => setSelectedBarber(barber.name)}
-                                                className={`p-3 rounded-2xl text-center backdrop-blur-xl border transition-all duration-300 ${isSelected
-                                                    ? 'bg-white/30 text-white border-white/50 shadow-lg'
-                                                    : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
-                                                    }`}
-                                            >
-                                                {barber.name}
-                                            </button>
-                                        );
-                                    })}
+                                    {availableBarbers
+                                        .filter((barber) => {
+                                            const schedule = getBarberSchedule(barber.name);
+                                            const availability = barberAvailabilities[barber.name];
+
+                                            // Log availability data for debugging
+                                            console.log(`🔍 Checking barber: ${barber.name}`, {
+                                                hasAvailabilityData: !!availability,
+                                                isAvailable: availability?.isAvailable,
+                                                scheduleIsAvailable: schedule.isAvailable
+                                            });
+
+                                            // Hide barbers where isAvailable is explicitly false
+                                            if (schedule.isAvailable === false) {
+                                                console.log(`🚫 Hiding barber: ${barber.name} (isAvailable: false)`);
+                                                return false;
+                                            }
+
+                                            console.log(`✅ Showing barber: ${barber.name} (isAvailable: ${schedule.isAvailable})`);
+                                            return true;
+                                        })
+                                        .map((barber) => {
+                                            const isSelected = selectedBarber === barber.name;
+                                            return (
+                                                <button
+                                                    key={barber._id || barber.name}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedBarber(barber.name);
+                                                        // Load fresh availability for this barber
+                                                        loadSingleBarberAvailability(barber.name);
+                                                    }}
+                                                    className={`p-3 rounded-2xl text-center backdrop-blur-xl border transition-all duration-300 ${isSelected
+                                                        ? 'bg-white/30 text-white border-white/50 shadow-lg'
+                                                        : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
+                                                        }`}
+                                                >
+                                                    {barber.name}
+                                                </button>
+                                            );
+                                        })}
                                 </div>
                             </div>
 
                             {/* Step 2: Date Selection - Active after barber is selected */}
-                            <div style={{ 
+                            <div style={{
                                 marginBottom: '12px',
                                 opacity: selectedBarber ? '1' : '0.4',
                                 pointerEvents: selectedBarber ? 'auto' : 'none',
@@ -1200,10 +1428,10 @@ export default function BookingPage() {
                                         // Filter dates based on barber availability
                                         const filteredDates = [];
                                         let dateIndex = 0;
-                                        
+
                                         while (filteredDates.length < 2 && dateIndex < availableDates.length) {
                                             const date = availableDates[dateIndex];
-                                            
+
                                             // If no barber selected, show all dates
                                             if (!selectedBarber) {
                                                 filteredDates.push({ date, index: dateIndex });
@@ -1215,11 +1443,11 @@ export default function BookingPage() {
                                             }
                                             dateIndex++;
                                         }
-                                        
+
                                         return filteredDates.map(({ date, index }) => {
                                             const isSelected = selectedDateObj?.getTime() === date.getTime();
                                             const persianDate = formatPersianDateSync(date);
-                                            
+
                                             // Determine label based on actual date position
                                             let label;
                                             if (index === 0) {
@@ -1231,7 +1459,7 @@ export default function BookingPage() {
                                             } else {
                                                 label = persianDate.split(' ')[0]; // Use day name
                                             }
-                                            
+
                                             return (
                                                 <button
                                                     key={index}
@@ -1269,10 +1497,10 @@ export default function BookingPage() {
                                         // Filter future dates based on barber availability
                                         const filteredFutureDates = [];
                                         let dateIndex = 2; // Start from day 3 (after today and tomorrow)
-                                        
+
                                         while (filteredFutureDates.length < 4 && dateIndex < availableDates.length) {
                                             const date = availableDates[dateIndex];
-                                            
+
                                             // If no barber selected, show all dates
                                             if (!selectedBarber) {
                                                 filteredFutureDates.push({ date, originalIndex: dateIndex });
@@ -1284,7 +1512,7 @@ export default function BookingPage() {
                                             }
                                             dateIndex++;
                                         }
-                                        
+
                                         return filteredFutureDates.map(({ date, originalIndex }, index) => {
                                             const isSelected = selectedDateObj?.getTime() === date.getTime();
                                             const persianDate = formatPersianDateSync(date);
@@ -1317,7 +1545,7 @@ export default function BookingPage() {
                             </div>
 
                             {/* Step 3: Service Selection - Active after date is selected */}
-                            <div style={{ 
+                            <div style={{
                                 marginBottom: '12px',
                                 opacity: selectedDateObj ? '1' : '0.4',
                                 pointerEvents: selectedDateObj ? 'auto' : 'none',
@@ -1397,7 +1625,7 @@ export default function BookingPage() {
                             </div>
 
                             {/* Step 4: Time Selection or Phone Number - Active after service is selected */}
-                            <div style={{ 
+                            <div style={{
                                 marginBottom: '24px',
                                 opacity: selectedServices.length > 0 ? '1' : '0.4',
                                 pointerEvents: selectedServices.length > 0 ? 'auto' : 'none',
@@ -1446,146 +1674,146 @@ export default function BookingPage() {
                                             ⏰ انتخاب ساعت
                                         </label>
 
-                                {/* First row of times - Always visible */}
-                                <div
-                                    className="grid grid-cols-3 gap-2 mb-3"
-                                    style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: 'repeat(3, 1fr)',
-                                        gap: '8px',
-                                        marginBottom: '12px',
-                                        transform: selectedServices.length > 0 ? 'scale(1)' : 'scale(0.98)',
-                                        transition: 'transform 0.3s ease'
-                                    }}
-                                >
-                                    {getAvailableStartTimes().slice(0, 3).map((time) => (
-                                        <button
-                                            key={time}
-                                            type="button"
-                                            onClick={() => setSelectedTime(time)}
-                                            className={`p-3 rounded-2xl text-sm backdrop-blur-xl border transition-all duration-300 ${selectedTime === time
-                                                ? 'bg-white/30 text-white border-white/50 shadow-lg'
-                                                : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
-                                                }`}
-                                        >
-                                            {time}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* Toggle button for more rows */}
-                                {getAvailableStartTimes().length > 3 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAllTimeSlots(!showAllTimeSlots)}
-                                        className="w-full p-3 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all duration-300 text-white text-sm flex items-center justify-center mb-2"
-                                    >
-                                        <span style={{ marginLeft: '4px' }}>
-                                            {showAllTimeSlots ? 'بستن' : 'مشاهده ساعت‌های بیشتر'}
-                                        </span>
-                                        <span
+                                        {/* First row of times - Always visible */}
+                                        <div
+                                            className="grid grid-cols-3 gap-2 mb-3"
                                             style={{
-                                                transform: showAllTimeSlots ? 'rotate(180deg)' : 'rotate(0deg)',
-                                                transition: 'transform 0.2s',
-                                                fontSize: '10px'
+                                                display: 'grid',
+                                                gridTemplateColumns: 'repeat(3, 1fr)',
+                                                gap: '8px',
+                                                marginBottom: '12px',
+                                                transform: selectedServices.length > 0 ? 'scale(1)' : 'scale(0.98)',
+                                                transition: 'transform 0.3s ease'
                                             }}
                                         >
-                                            ▼
-                                        </span>
-                                    </button>
-                                )}
+                                            {getAvailableStartTimes().slice(0, 3).map((time) => (
+                                                <button
+                                                    key={time}
+                                                    type="button"
+                                                    onClick={() => setSelectedTime(time)}
+                                                    className={`p-3 rounded-2xl text-sm backdrop-blur-xl border transition-all duration-300 ${selectedTime === time
+                                                        ? 'bg-white/30 text-white border-white/50 shadow-lg'
+                                                        : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
+                                                        }`}
+                                                >
+                                                    {time}
+                                                </button>
+                                            ))}
+                                        </div>
 
-                                {/* Additional rows - Collapsible */}
-                                {showAllTimeSlots && getAvailableStartTimes().length > 3 && (
-                                    <div
-                                        className="grid grid-cols-3 gap-2"
-                                        style={{
-                                            display: 'grid',
-                                            gridTemplateColumns: 'repeat(3, 1fr)',
-                                            gap: '8px'
-                                        }}
-                                    >
-                                        {getAvailableStartTimes().slice(3).map((time) => (
+                                        {/* Toggle button for more rows */}
+                                        {getAvailableStartTimes().length > 3 && (
                                             <button
-                                                key={time}
                                                 type="button"
-                                                onClick={() => setSelectedTime(time)}
-                                                className={`p-3 rounded-2xl text-sm backdrop-blur-xl border transition-all duration-300 ${selectedTime === time
-                                                    ? 'bg-white/30 text-white border-white/50 shadow-lg'
-                                                    : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
-                                                    }`}
+                                                onClick={() => setShowAllTimeSlots(!showAllTimeSlots)}
+                                                className="w-full p-3 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all duration-300 text-white text-sm flex items-center justify-center mb-2"
                                             >
-                                                {time}
+                                                <span style={{ marginLeft: '4px' }}>
+                                                    {showAllTimeSlots ? 'بستن' : 'مشاهده ساعت‌های بیشتر'}
+                                                </span>
+                                                <span
+                                                    style={{
+                                                        transform: showAllTimeSlots ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                        transition: 'transform 0.2s',
+                                                        fontSize: '10px'
+                                                    }}
+                                                >
+                                                    ▼
+                                                </span>
                                             </button>
-                                        ))}
-                                    </div>
-                                )}
+                                        )}
 
-                                {/* Show exact booking times */}
-                                {selectedServices.length > 0 && getAvailableStartTimes().length > 0 && (
-                                    <p
-                                        className="mt-2 text-xs text-white/70 text-center"
-                                        style={{
-                                            marginTop: '8px',
-                                            fontSize: '11px',
-                                            color: 'rgba(255, 255, 255, 0.7)',
-                                            textAlign: 'center'
-                                        }}
-                                    >
-                                        {getAvailableStartTimes().length} زمان آزاد موجود است
-                                    </p>
-                                )}
+                                        {/* Additional rows - Collapsible */}
+                                        {showAllTimeSlots && getAvailableStartTimes().length > 3 && (
+                                            <div
+                                                className="grid grid-cols-3 gap-2"
+                                                style={{
+                                                    display: 'grid',
+                                                    gridTemplateColumns: 'repeat(3, 1fr)',
+                                                    gap: '8px'
+                                                }}
+                                            >
+                                                {getAvailableStartTimes().slice(3).map((time) => (
+                                                    <button
+                                                        key={time}
+                                                        type="button"
+                                                        onClick={() => setSelectedTime(time)}
+                                                        className={`p-3 rounded-2xl text-sm backdrop-blur-xl border transition-all duration-300 ${selectedTime === time
+                                                            ? 'bg-white/30 text-white border-white/50 shadow-lg'
+                                                            : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
+                                                            }`}
+                                                    >
+                                                        {time}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
 
-                                {/* Show no available times message */}
-                                {selectedServices.length > 0 && getAvailableStartTimes().length === 0 && (
-                                    <p
-                                        className="mt-2 text-xs text-red-600 text-center"
-                                        style={{
-                                            marginTop: '8px',
-                                            fontSize: '11px',
-                                            color: '#dc2626',
-                                            textAlign: 'center'
-                                        }}
-                                    >
-                                        {selectedBarber && selectedDateObj && !isBarberAvailableOnDate(selectedBarber, selectedDateObj)
-                                            ? `${selectedBarber} در این روز تعطیل است`
-                                            : 'در این تاریخ زمان آزادی برای سرویس‌های انتخابی وجود ندارد'
-                                        }
-                                    </p>
-                                )}
+                                        {/* Show exact booking times */}
+                                        {selectedServices.length > 0 && getAvailableStartTimes().length > 0 && (
+                                            <p
+                                                className="mt-2 text-xs text-white/70 text-center"
+                                                style={{
+                                                    marginTop: '8px',
+                                                    fontSize: '11px',
+                                                    color: 'rgba(255, 255, 255, 0.7)',
+                                                    textAlign: 'center'
+                                                }}
+                                            >
+                                                {getAvailableStartTimes().length} زمان آزاد موجود است
+                                            </p>
+                                        )}
 
-                                {/* Show message when no services selected */}
-                                {selectedServices.length === 0 && (
-                                    <p
-                                        className="mt-2 text-xs text-gray-500 text-center"
-                                        style={{
-                                            marginTop: '8px',
-                                            fontSize: '11px',
-                                            color: '#6b7280',
-                                            textAlign: 'center'
-                                        }}
-                                    >
-                                        ابتدا سرویس‌های مورد نظر را انتخاب کنید تا زمان‌های دقیق نمایش داده شود
-                                    </p>
-                                )}
+                                        {/* Show no available times message */}
+                                        {selectedServices.length > 0 && getAvailableStartTimes().length === 0 && (
+                                            <p
+                                                className="mt-2 text-xs text-red-600 text-center"
+                                                style={{
+                                                    marginTop: '8px',
+                                                    fontSize: '11px',
+                                                    color: '#dc2626',
+                                                    textAlign: 'center'
+                                                }}
+                                            >
+                                                {selectedBarber && selectedDateObj && !isBarberAvailableOnDate(selectedBarber, selectedDateObj)
+                                                    ? `${selectedBarber} در این روز تعطیل است`
+                                                    : 'در این تاریخ زمان آزادی برای سرویس‌های انتخابی وجود ندارد'
+                                                }
+                                            </p>
+                                        )}
 
-                                {/* Show time range if service selected */}
-                                {selectedServices.length > 0 && selectedTime && (
-                                    <div
-                                        className="mt-2 p-2 bg-white/10 rounded text-center text-xs backdrop-blur-sm border border-white/20"
-                                        style={{
-                                            marginTop: '8px',
-                                            padding: '8px',
-                                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                            borderRadius: '4px',
-                                            textAlign: 'center',
-                                            fontSize: '11px',
-                                            color: 'rgba(255, 255, 255, 0.9)'
-                                        }}
-                                    >
-                                        زمان رزرو: {selectedTime} تا {minutesToTime(timeToMinutes(selectedTime) + getTotalDuration())}
-                                    </div>
-                                )}
+                                        {/* Show message when no services selected */}
+                                        {selectedServices.length === 0 && (
+                                            <p
+                                                className="mt-2 text-xs text-gray-500 text-center"
+                                                style={{
+                                                    marginTop: '8px',
+                                                    fontSize: '11px',
+                                                    color: '#6b7280',
+                                                    textAlign: 'center'
+                                                }}
+                                            >
+                                                ابتدا سرویس‌های مورد نظر را انتخاب کنید تا زمان‌های دقیق نمایش داده شود
+                                            </p>
+                                        )}
+
+                                        {/* Show time range if service selected */}
+                                        {selectedServices.length > 0 && selectedTime && (
+                                            <div
+                                                className="mt-2 p-2 bg-white/10 rounded text-center text-xs backdrop-blur-sm border border-white/20"
+                                                style={{
+                                                    marginTop: '8px',
+                                                    padding: '8px',
+                                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                    borderRadius: '4px',
+                                                    textAlign: 'center',
+                                                    fontSize: '11px',
+                                                    color: 'rgba(255, 255, 255, 0.9)'
+                                                }}
+                                            >
+                                                زمان رزرو: {selectedTime} تا {minutesToTime(timeToMinutes(selectedTime) + getTotalDuration())}
+                                            </div>
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -1593,11 +1821,10 @@ export default function BookingPage() {
                             <button
                                 type="submit"
                                 disabled={!selectedBarber || !selectedDateObj || selectedServices.length === 0 || (!selectedTime && !selectedServices.includes('حالت'))}
-                                className={`w-full p-4 rounded-2xl font-medium backdrop-blur-xl border transition-all duration-300 shadow-xl ${
-                                    selectedBarber && selectedDateObj && selectedServices.length > 0 && (selectedTime || selectedServices.includes('حالت'))
-                                        ? 'bg-white/10 border-white/20 hover:bg-white/20 text-white cursor-pointer'
-                                        : 'bg-white/5 border-white/10 text-white/50 cursor-not-allowed'
-                                }`}
+                                className={`w-full p-4 rounded-2xl font-medium backdrop-blur-xl border transition-all duration-300 shadow-xl ${selectedBarber && selectedDateObj && selectedServices.length > 0 && (selectedTime || selectedServices.includes('حالت'))
+                                    ? 'bg-white/10 border-white/20 hover:bg-white/20 text-white cursor-pointer'
+                                    : 'bg-white/5 border-white/10 text-white/50 cursor-not-allowed'
+                                    }`}
                             >
                                 {selectedBarber && selectedDateObj && selectedServices.length > 0 && (selectedTime || selectedServices.includes('حالت'))
                                     ? 'ثبت رزرو'

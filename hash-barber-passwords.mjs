@@ -16,7 +16,7 @@ async function hashBarberPasswords() {
             if (barber.password && !barber.password.startsWith('$2')) {
                 console.log(`🔐 Hashing password for ${barber.username}...`);
                 const hashedPassword = await bcrypt.hash(barber.password, 10);
-                
+
                 // Update the user with hashed password
                 await User.findByIdAndUpdate(
                     barber._id,

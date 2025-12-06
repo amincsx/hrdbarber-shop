@@ -1,6 +1,7 @@
 // Reset password for barbers
 import { NextResponse } from 'next/server';
 import MongoDatabase from '../../../../lib/mongoDatabase.js';
+import bcrypt from 'bcryptjs';
 
 export async function POST(request) {
     try {
@@ -22,24 +23,21 @@ export async function POST(request) {
             );
         }
 
-        // Find user by phone
-        let user = await MongoDatabase.findUserByPhone(phone);
-        
-        // If username provided and user not found by phone, try username
+        // Find barber by phone number specifically
+        let user = await MongoDatabase.findBarberByPhone(phone);
+
+        // If username provided and user not found by phone, try username for barber
         if (!user && username) {
-            user = await MongoDatabase.getUserByUsername(username);
-            // Verify phone matches
-            if (user && user.phone !== phone) {
-                return NextResponse.json(
-                    { error: 'شماره تلفن و نام کاربری مطابقت ندارند' },
-                    { status: 401 }
-                );
+            const userByUsername = await MongoDatabase.getUserByUsername(username);
+            // Verify it's a barber and phone matches
+            if (userByUsername && userByUsername.role === 'barber' && userByUsername.phone === phone) {
+                user = userByUsername;
             }
         }
 
         if (!user) {
             return NextResponse.json(
-                { error: 'کاربری با این مشخصات یافت نشد' },
+                { error: 'آرایشگری با این مشخصات یافت نشد' },
                 { status: 404 }
             );
         }
@@ -51,8 +49,11 @@ export async function POST(request) {
             );
         }
 
+        // Hash password before updating
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
         // Update password
-        await MongoDatabase.updateUser(user._id, { password: newPassword });
+        await MongoDatabase.updateUser(user._id, { password: hashedPassword });
 
         console.log('✅ Password reset successful for:', user.username);
 

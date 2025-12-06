@@ -136,6 +136,16 @@ const UserSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Barber',
         sparse: true // Only for users who are barbers
+    },
+    availability: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {
+            workingHours: { start: 10, end: 21 },
+            lunchBreak: { start: 14, end: 15 },
+            offDays: [],
+            offHours: [],
+            isAvailable: true
+        }
     }
 }, {
     timestamps: true

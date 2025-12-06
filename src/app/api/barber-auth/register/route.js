@@ -1,6 +1,7 @@
 // Barber self-registration endpoint
 import { NextResponse } from 'next/server';
 import MongoDatabase from '../../../../lib/mongoDatabase.js';
+import bcrypt from 'bcryptjs';
 
 export async function POST(request) {
     try {
@@ -23,7 +24,7 @@ export async function POST(request) {
             );
         }
 
-        // Check if username already exists
+        // Check if username already exists (in Users collection)
         const existingUser = await MongoDatabase.getUserByUsername(username);
         if (existingUser) {
             return NextResponse.json(
@@ -32,32 +33,52 @@ export async function POST(request) {
             );
         }
 
-        // Check if phone already exists
-        const existingPhone = await MongoDatabase.findUserByPhone(phone);
-        if (existingPhone) {
+        // Check if phone already exists as a BARBER (allow same phone for user and barber)
+        const existingBarberPhone = await MongoDatabase.getBarberByPhone(phone);
+        if (existingBarberPhone) {
             return NextResponse.json(
-                { error: 'این شماره تلفن قبلاً ثبت شده است' },
+                { error: 'این شماره تلفن قبلاً به عنوان آرایشگر ثبت شده است' },
                 { status: 409 }
             );
         }
 
-        // Find barber by name (if exists in Barber collection)
-        const barber = await MongoDatabase.getBarberByName(name);
+        // Check if barber with same name already exists
+        const existingBarber = await MongoDatabase.getBarberByName(name);
+        if (existingBarber) {
+            return NextResponse.json(
+                { error: 'این نام آرایشگر قبلاً ثبت شده است' },
+                { status: 409 }
+            );
+        }
 
-        // Create user account
+        // Hash password before saving
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Step 1: Create barber in Barber collection
+        const barberData = {
+            name: name,
+            phone: phone,
+            username: username,
+            password: hashedPassword,
+            isActive: true
+        };
+
+        const newBarber = await MongoDatabase.addBarber(barberData);
+        console.log('✅ Barber created in Barbers collection:', newBarber._id);
+
+        // Step 2: Create user account linked to barber
         const userData = {
             username: username,
             name: name,
             phone: phone,
-            password: password,
+            password: hashedPassword,
             role: 'barber',
-            barber_id: barber ? barber._id : null,
+            barber_id: newBarber._id,
             isVerified: true // Since they verified phone with OTP
         };
 
         const newUser = await MongoDatabase.addUser(userData);
-
-        console.log('✅ Barber registered successfully:', username);
+        console.log('✅ User account created linked to barber:', newUser._id);
 
         return NextResponse.json({
             success: true,
@@ -65,7 +86,8 @@ export async function POST(request) {
             user: {
                 username: newUser.username,
                 name: newUser.name,
-                role: newUser.role
+                role: newUser.role,
+                barber_id: newBarber._id
             }
         });
 

@@ -16,15 +16,17 @@ export default function BarberForgotPassword() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Send OTP to phone
     const sendOTP = async () => {
         try {
             setLoading(true);
             setError('');
-            
+
             const normalizedPhone = persianToEnglish(phone);
-            
+
             const response = await fetch('/api/send-otp', {
                 method: 'POST',
                 headers: {
@@ -52,10 +54,11 @@ export default function BarberForgotPassword() {
     // Verify OTP
     const verifyOTP = (e: React.FormEvent) => {
         e.preventDefault();
-        
-        const normalizedOtp = persianToEnglish(otp);
-        
-        if (normalizedOtp !== sentOtp) {
+
+        const normalizedOtp = persianToEnglish(otp).trim();
+        const expectedOtp = String(sentOtp).trim();
+
+        if (normalizedOtp !== expectedOtp) {
             setError('کد تأیید اشتباه است');
             return;
         }
@@ -203,15 +206,15 @@ export default function BarberForgotPassword() {
 
                         <div>
                             <label className="block text-sm font-medium text-white mb-2">
-                                کد تأیید (4 رقمی)
+                                کد تأیید (6 رقمی)
                             </label>
                             <input
                                 type="text"
                                 value={otp}
                                 onChange={(e) => setOtp(e.target.value)}
                                 className="w-full p-4 rounded-xl bg-white/90 text-gray-800 text-center text-2xl tracking-widest border border-white/40 focus:bg-white focus:border-white/60 focus:outline-none transition-all"
-                                placeholder="----"
-                                maxLength={4}
+                                placeholder="------"
+                                maxLength={6}
                                 autoComplete="off"
                                 required
                             />
@@ -233,7 +236,7 @@ export default function BarberForgotPassword() {
                             </button>
                             <button
                                 type="submit"
-                                disabled={loading || otp.length !== 4}
+                                disabled={loading || otp.length !== 6}
                                 className="flex-1 py-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 disabled:from-gray-500 disabled:to-gray-600 rounded-xl text-white font-semibold transition-all disabled:cursor-not-allowed"
                             >
                                 تأیید
@@ -255,31 +258,67 @@ export default function BarberForgotPassword() {
                             <label className="block text-sm font-medium text-white mb-2">
                                 رمز عبور جدید
                             </label>
-                            <input
-                                type="password"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                className="w-full p-4 rounded-xl bg-white/90 text-gray-800 border border-white/40 placeholder-gray-500 focus:bg-white focus:border-white/60 focus:outline-none transition-all"
-                                placeholder="حداقل 6 کاراکتر"
-                                autoComplete="new-password"
-                                minLength={6}
-                                required
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showNewPassword ? "text" : "password"}
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    className="w-full p-4 rounded-xl bg-white/90 text-gray-800 border border-white/40 placeholder-gray-500 focus:bg-white focus:border-white/60 focus:outline-none transition-all pr-12"
+                                    placeholder="حداقل 6 کاراکتر"
+                                    autoComplete="new-password"
+                                    minLength={6}
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowNewPassword(!showNewPassword)}
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800 transition-colors"
+                                >
+                                    {showNewPassword ? (
+                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-14-14zM4 10a6 6 0 1110.949-3.236 1 1 0 11-1.898.756A4 4 0 006 10c0 .294-.023.583-.066.866a1 1 0 11-1.868-.272zm12 0c0 1.657-.672 3.157-1.757 4.243a1 1 0 001.414 1.414A6 6 0 0016 10z" clipRule="evenodd" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-white mb-2">
                                 تأیید رمز عبور جدید
                             </label>
-                            <input
-                                type="password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full p-4 rounded-xl bg-white/90 text-gray-800 border border-white/40 placeholder-gray-500 focus:bg-white focus:border-white/60 focus:outline-none transition-all"
-                                placeholder="تکرار رمز عبور"
-                                autoComplete="new-password"
-                                required
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    className="w-full p-4 rounded-xl bg-white/90 text-gray-800 border border-white/40 placeholder-gray-500 focus:bg-white focus:border-white/60 focus:outline-none transition-all pr-12"
+                                    placeholder="تکرار رمز عبور"
+                                    autoComplete="new-password"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800 transition-colors"
+                                >
+                                    {showConfirmPassword ? (
+                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-14-14zM4 10a6 6 0 1110.949-3.236 1 1 0 11-1.898.756A4 4 0 006 10c0 .294-.023.583-.066.866a1 1 0 11-1.868-.272zm12 0c0 1.657-.672 3.157-1.757 4.243a1 1 0 001.414 1.414A6 6 0 0016 10z" clipRule="evenodd" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
                         </div>
 
                         {error && (

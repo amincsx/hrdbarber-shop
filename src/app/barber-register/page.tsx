@@ -27,9 +27,9 @@ export default function BarberRegister() {
         try {
             setLoading(true);
             setError('');
-            
+
             const normalizedPhone = persianToEnglish(formData.phone);
-            
+
             const response = await fetch('/api/send-otp', {
                 method: 'POST',
                 headers: {
@@ -41,7 +41,7 @@ export default function BarberRegister() {
             const result = await response.json();
 
             if (response.ok) {
-                setSentOtp(result.otp); // In production, don't return OTP
+                setSentOtp(result.otp);
                 setMessage(`کد تأیید به شماره ${normalizedPhone} ارسال شد`);
                 setStep(2);
             } else {
@@ -57,7 +57,7 @@ export default function BarberRegister() {
     // Validate basic info and send OTP
     const handleBasicInfoSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         // Validation
         if (formData.password !== formData.confirmPassword) {
             setError('رمز عبور و تأیید رمز عبور یکسان نیستند');
@@ -81,10 +81,11 @@ export default function BarberRegister() {
     // Verify OTP and create account
     const handleOTPVerification = async (e: React.FormEvent) => {
         e.preventDefault();
-        
-        const normalizedOtp = persianToEnglish(otp);
-        
-        if (normalizedOtp !== sentOtp) {
+
+        const normalizedOtp = persianToEnglish(otp).trim();
+        const expectedOtp = String(sentOtp).trim();
+
+        if (normalizedOtp !== expectedOtp) {
             setError('کد تأیید اشتباه است');
             return;
         }
@@ -303,17 +304,23 @@ export default function BarberRegister() {
                             </div>
                         )}
 
-                        <div>
+                        {sentOtp && (
+                            <div className="p-4 bg-yellow-500/20 border border-yellow-500/30 rounded-xl">
+                                <p className="text-yellow-200 text-xs text-center mb-2">کد تأیید (همان کد ارسال شده به موبایل):</p>
+                                <p className="text-yellow-300 text-2xl font-bold text-center font-mono">{sentOtp}</p>
+                                <p className="text-yellow-200 text-xs text-center mt-2">این کد باید با کد دریافتی در پیامک یکسان باشد</p>
+                            </div>
+                        )}                        <div>
                             <label className="block text-sm font-medium text-white mb-2">
-                                کد تأیید (4 رقمی)
+                                کد تأیید (6 رقمی)
                             </label>
                             <input
                                 type="text"
                                 value={otp}
                                 onChange={(e) => setOtp(e.target.value)}
                                 className="w-full p-4 rounded-xl bg-white/90 text-gray-800 text-center text-2xl tracking-widest border border-white/40 placeholder-gray-500 focus:bg-white focus:border-white/60 focus:outline-none transition-all"
-                                placeholder="----"
-                                maxLength={4}
+                                placeholder="------"
+                                maxLength={6}
                                 autoComplete="off"
                                 required
                             />
@@ -339,7 +346,7 @@ export default function BarberRegister() {
                             </button>
                             <button
                                 type="submit"
-                                disabled={loading || otp.length !== 4}
+                                disabled={loading || otp.length !== 6}
                                 className="flex-1 py-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 disabled:from-gray-500 disabled:to-gray-600 rounded-xl text-white font-semibold transition-all disabled:cursor-not-allowed"
                             >
                                 {loading ? 'در حال ثبت...' : 'ثبت نام'}

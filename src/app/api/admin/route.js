@@ -3,10 +3,100 @@ import { NextResponse } from 'next/server';
 import MongoDatabase from '../../../lib/mongoDatabase.js';
 import bcrypt from 'bcryptjs';
 
-// POST - Admin login (owner and barber)
+// POST - Admin login (owner and barber) and barber management
 async function POST(request) {
     try {
-        const { username, password, type } = await request.json();
+        const { searchParams } = new URL(request.url);
+        const action = searchParams.get('action');
+        const body = await request.json();
+
+        // Handle barber creation
+        if (action === 'create-barber') {
+            const { username, name, password, role } = body;
+
+            console.log('🆕 Creating new barber:', { username, name, role });
+
+            if (!username || !name || !password || !role) {
+                return NextResponse.json({
+                    success: false,
+                    message: 'همه فیلدها الزامی است'
+                }, { status: 400 });
+            }
+
+            // Check if username already exists
+            const existingUser = await MongoDatabase.getUserByUsername(username);
+            if (existingUser) {
+                return NextResponse.json({
+                    success: false,
+                    message: 'نام کاربری قبلاً استفاده شده است'
+                }, { status: 400 });
+            }
+
+            // Hash the password
+            const hashedPassword = await bcrypt.hash(password, 10);
+
+            // Create new barber user
+            const newBarber = {
+                username,
+                name,
+                password: hashedPassword,
+                role: 'barber',
+                created_at: new Date().toISOString(),
+                availability: {
+                    workingHours: { start: 10, end: 21 },
+                    lunchBreak: { start: 14, end: 15 },
+                    offDays: [],
+                    offHours: [],
+                    isAvailable: true
+                }
+            };
+
+            const result = await MongoDatabase.createUser(newBarber);
+            if (result.success) {
+                console.log('✅ Barber created successfully:', username);
+                return NextResponse.json({
+                    success: true,
+                    message: 'آرایشگر با موفقیت اضافه شد',
+                    barber: result.user
+                });
+            } else {
+                return NextResponse.json({
+                    success: false,
+                    message: 'خطا در ایجاد آرایشگر'
+                }, { status: 500 });
+            }
+        }
+
+        // Handle barber deletion
+        if (action === 'delete-barber') {
+            const { barberId } = body;
+
+            console.log('🗑️ Deleting barber:', barberId);
+
+            if (!barberId) {
+                return NextResponse.json({
+                    success: false,
+                    message: 'شناسه آرایشگر الزامی است'
+                }, { status: 400 });
+            }
+
+            const result = await MongoDatabase.deleteUser(barberId);
+            if (result.success) {
+                console.log('✅ Barber deleted successfully:', barberId);
+                return NextResponse.json({
+                    success: true,
+                    message: 'آرایشگر با موفقیت حذف شد'
+                });
+            } else {
+                return NextResponse.json({
+                    success: false,
+                    message: 'خطا در حذف آرایشگر'
+                }, { status: 500 });
+            }
+        }
+
+        // Original login logic
+        const { username, password, type } = body;
 
         console.log('🔐 Admin login attempt:');
         console.log('  - Username:', username);

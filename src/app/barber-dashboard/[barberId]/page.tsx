@@ -172,10 +172,21 @@ export default function BarberDashboard() {
     const [showThisMonth, setShowThisMonth] = useState(false); // Hidden by default
     const [showAllBookings, setShowAllBookings] = useState(false); // Hidden by default
     const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+    const [showProfileModal, setShowProfileModal] = useState(false);
+    const [profileLoading, setProfileLoading] = useState(false);
+    const [profileData, setProfileData] = useState({
+        name: '',
+        phone: '',
+        username: '',
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
     const [availability, setAvailability] = useState({
         workingHours: { start: 10, end: 21 },
         lunchBreak: { start: 14, end: 15 },
-        offDays: [],
+        offDays: [], // Full day off
+        offHours: [], // Specific time slots off: [{ start: '13:00', end: '14:00', date: '2025-12-06' }]
         isAvailable: true
     });
     const [availabilityLoading, setAvailabilityLoading] = useState(false);
@@ -294,9 +305,11 @@ export default function BarberDashboard() {
             console.log('🔧 Auto-login PWA detected for barber:', barberId);
         }
 
-        // Check if user is authenticated barber
-        const session = localStorage.getItem('barberSession');
-        if (!session) {
+        // Check if user is authenticated barber OR owner
+        const barberSession = localStorage.getItem('barberSession');
+        const ownerSession = localStorage.getItem('ownerSession');
+
+        if (!barberSession && !ownerSession) {
             if (isPWA || isAuto) {
                 // For PWA launch, create auto-session for this barber
                 console.log('🔧 Creating auto-session for PWA barber:', barberId);
@@ -319,8 +332,30 @@ export default function BarberDashboard() {
                 return;
             }
         } else {
-            // Parse existing session
-            const parsedSession = JSON.parse(session);
+            // Check if owner is logged in - if so, allow full access to this barber dashboard
+            if (ownerSession) {
+                const parsedOwnerSession = JSON.parse(ownerSession);
+                console.log('👑 Owner detected with full access to barber dashboard:', barberId);
+
+                // Create a special session for owner viewing barber dashboard
+                const ownerViewSession = {
+                    user: {
+                        name: decodeURIComponent(barberId),
+                        username: decodeURIComponent(barberId),
+                        type: 'barber',
+                        viewingAsOwner: true,
+                        ownerName: parsedOwnerSession.user.name
+                    },
+                    loginTime: new Date().toISOString(),
+                    ownerAccess: true
+                };
+                setBarberSession(ownerViewSession);
+                console.log('✅ Owner access granted to barber dashboard');
+                return;
+            }
+
+            // Parse existing barber session
+            const parsedSession = JSON.parse(barberSession);
             const decodedBarberId = decodeURIComponent(barberId);
 
             // For PWA or auto-login mode, always allow access to this barber's dashboard
@@ -511,15 +546,151 @@ export default function BarberDashboard() {
         }
     };
 
+    // Fetch barber profile data
+    const fetchProfileData = async () => {
+        try {
+            setProfileLoading(true);
+            const response = await fetch(`/api/barber/profile?barberId=${encodeURIComponent(barberId)}`);
+            const result = await response.json();
+
+            if (result.success && result.barber) {
+                setProfileData({
+                    name: result.barber.name || '',
+                    phone: result.barber.phone || '',
+                    username: result.barber.username || '',
+                    currentPassword: '',
+                    newPassword: '',
+                    confirmPassword: ''
+                });
+            }
+        } catch (error) {
+            console.error('❌ Error fetching profile data:', error);
+        } finally {
+            setProfileLoading(false);
+        }
+    };
+
+    // Update barber profile
+    const updateProfile = async () => {
+        try {
+            // Validation
+            if (!profileData.name.trim()) {
+                alert('نام آرایشگر الزامی است');
+                return;
+            }
+
+            if (!profileData.phone.trim()) {
+                alert('شماره تلفن الزامی است');
+                return;
+            }
+
+            if (!profileData.username.trim()) {
+                alert('نام کاربری الزامی است');
+                return;
+            }
+
+            // Password validation if changing
+            if (profileData.newPassword) {
+                if (!profileData.currentPassword) {
+                    alert('برای تغییر رمز عبور، رمز فعلی را وارد کنید');
+                    return;
+                }
+                if (profileData.newPassword.length < 6) {
+                    alert('رمز عبور جدید باید حداقل 6 کاراکتر باشد');
+                    return;
+                }
+                if (profileData.newPassword !== profileData.confirmPassword) {
+                    alert('رمز عبور جدید و تأیید آن یکسان نیستند');
+                    return;
+                }
+            }
+
+            setProfileLoading(true);
+            const response = await fetch('/api/barber/profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    barberId: barberId,
+                    name: profileData.name.trim(),
+                    phone: profileData.phone.trim(),
+                    username: profileData.username.trim(),
+                    currentPassword: profileData.currentPassword || null,
+                    newPassword: profileData.newPassword || null
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('اطلاعات پروفایل با موفقیت به‌روزرسانی شد');
+                setShowProfileModal(false);
+
+                // Update session if name changed
+                if (barberSession && profileData.name !== barberSession.user.name) {
+                    const updatedSession = {
+                        ...barberSession,
+                        user: {
+                            ...barberSession.user,
+                            name: profileData.name
+                        }
+                    };
+                    localStorage.setItem('barberSession', JSON.stringify(updatedSession));
+                    setBarberSession(updatedSession);
+                }
+
+                // Clear password fields
+                setProfileData(prev => ({
+                    ...prev,
+                    currentPassword: '',
+                    newPassword: '',
+                    confirmPassword: ''
+                }));
+
+                // Refresh barber data
+                fetchBarberBookings();
+            } else {
+                alert(result.message || 'خطا در به‌روزرسانی اطلاعات');
+            }
+        } catch (error) {
+            console.error('❌ Error updating profile:', error);
+            alert('خطا در به‌روزرسانی اطلاعات');
+        } finally {
+            setProfileLoading(false);
+        }
+    };
+
     // Fetch barber availability
     const fetchAvailability = async () => {
         try {
             setAvailabilityLoading(true);
-            const response = await fetch(`/api/barber/availability?barberId=${encodeURIComponent(barberId)}`);
-            const result = await response.json();
+            console.log('🔍 Fetching availability for barberId:', barberId);
 
-            if (result.success) {
-                setAvailability(result.availability);
+            // Add timestamp to bypass cache
+            const timestamp = Date.now();
+            const response = await fetch(`/api/barber/availability?barberId=${encodeURIComponent(barberId)}&t=${timestamp}`, {
+                cache: 'no-store',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache'
+                }
+            });
+            const result = await response.json();
+            console.log('📥 Received availability response:', result);
+
+            if (result.success && result.availability) {
+                console.log('📋 Setting availability state:', result.availability);
+                setAvailability({
+                    workingHours: result.availability.workingHours || { start: 10, end: 21 },
+                    lunchBreak: result.availability.lunchBreak || { start: 14, end: 15 },
+                    offDays: result.availability.offDays || [],
+                    offHours: result.availability.offHours || [],
+                    isAvailable: result.availability.isAvailable !== false
+                });
+                console.log('✅ Loaded availability successfully');
+            } else {
+                console.log('⚠️ No availability data or request failed:', result);
             }
         } catch (error) {
             console.error('❌ Error fetching availability:', error);
@@ -529,9 +700,11 @@ export default function BarberDashboard() {
     };
 
     // Update barber availability
-    const updateAvailability = async (newAvailability: any) => {
+    const updateAvailability = async (availabilityData) => {
         try {
             setAvailabilityLoading(true);
+            console.log('💾 Saving availability:', availabilityData);
+
             const response = await fetch('/api/barber/availability', {
                 method: 'POST',
                 headers: {
@@ -539,16 +712,18 @@ export default function BarberDashboard() {
                 },
                 body: JSON.stringify({
                     barberId: barberId,
-                    availability: newAvailability
+                    availability: availabilityData
                 })
             });
 
             const result = await response.json();
-            
+
             if (result.success) {
-                setAvailability(newAvailability);
                 setShowAvailabilityModal(false);
                 alert('تنظیمات با موفقیت ذخیره شد');
+                console.log('✅ Availability updated successfully');
+                // Reload availability to confirm changes were saved
+                await fetchAvailability();
             } else {
                 alert(result.message || 'خطا در ذخیره تنظیمات');
             }
@@ -1035,30 +1210,19 @@ export default function BarberDashboard() {
                                 🔄 تازه‌سازی
                             </button>
                             <button
-                                onClick={async () => {
-                                    const testBooking = {
-                                        user_name: 'تست اندروید',
-                                        services: ['اصلاح موی سر'],
-                                        start_time: '14:30'
-                                    };
-                                    console.log('🧪 Testing Android notification...');
-                                    const result = await showNotificationSafe(testBooking);
-                                    const message = result ? 'اعلان اندروید موفق بود ✅' : 'اعلان اندروید ناموفق بود ❌';
-                                    alert(message);
-                                    console.log('🧪 Android notification test result:', result);
+                                onClick={() => {
+                                    setShowProfileModal(true);
+                                    fetchProfileData();
                                 }}
-                                className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial bg-green-500/20 border-green-400/30"
+                                className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial bg-blue-500/20 border-blue-400/30"
                             >
-                                🧪 تست اندروید
+                                ⚙️ ویرایش پروفایل
                             </button>
                             <button
-                                onClick={() => alert('تغییر رمز عبور در نسخه بعدی فعال خواهد شد')}
-                                className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial opacity-50 cursor-not-allowed"
-                            >
-                                🔒 تغییر رمز
-                            </button>
-                            <button
-                                onClick={() => setShowAvailabilityModal(true)}
+                                onClick={() => {
+                                    setShowAvailabilityModal(true);
+                                    fetchAvailability();
+                                }}
                                 className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial bg-purple-500/20 border-purple-400/30"
                             >
                                 ⏰ ساعات کاری
@@ -1863,32 +2027,36 @@ export default function BarberDashboard() {
 
             {/* Availability Settings Modal */}
             {showAvailabilityModal && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="glass-card p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-white">⏰ تنظیمات ساعات کاری</h2>
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 overflow-y-auto">
+                    <div className="glass-card p-8 max-w-md w-full max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl border border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-white/10">
+                        {/* Header */}
+                        <div className="flex justify-between items-center mb-8 pb-6 border-b border-white/10">
+                            <div>
+                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">⏰ ساعات کاری</h2>
+                                <p className="text-white/60 text-sm mt-1">تنظیم دسترسی و وقت‌های تعطیل</p>
+                            </div>
                             <button
                                 onClick={() => setShowAvailabilityModal(false)}
-                                className="text-white/70 hover:text-white text-2xl"
+                                className="text-white/60 hover:text-white text-2xl transition-colors duration-200 hover:bg-white/10 rounded-full w-10 h-10 flex items-center justify-center"
                             >
                                 ✕
                             </button>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             {/* Working Hours */}
-                            <div>
-                                <label className="block text-white mb-2">ساعات کاری</label>
-                                <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                                <label className="block text-white font-semibold mb-3 flex items-center gap-2">🕐 ساعات کاری</label>
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-white/70 text-sm mb-1">شروع</label>
+                                        <label className="block text-white/70 text-xs mb-2 font-medium">شروع کار</label>
                                         <select
                                             value={availability.workingHours.start}
                                             onChange={(e) => setAvailability({
                                                 ...availability,
                                                 workingHours: { ...availability.workingHours, start: Number(e.target.value) }
                                             })}
-                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
+                                            className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 text-white focus:bg-white/20 focus:border-white/40 transition-colors outline-none"
                                         >
                                             {Array.from({ length: 24 }, (_, i) => (
                                                 <option key={i} value={i} className="bg-gray-800">{i.toString().padStart(2, '0')}:00</option>
@@ -1914,9 +2082,9 @@ export default function BarberDashboard() {
                             </div>
 
                             {/* Lunch Break */}
-                            <div>
-                                <label className="block text-white mb-2">زمان استراحت</label>
-                                <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                                <label className="block text-white font-semibold mb-3 flex items-center gap-2">🍽️ زمان استراحت</label>
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-white/70 text-sm mb-1">شروع</label>
                                         <select
@@ -1951,11 +2119,11 @@ export default function BarberDashboard() {
                             </div>
 
                             {/* Off Days */}
-                            <div>
-                                <label className="block text-white mb-2">روزهای تعطیل</label>
+                            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                                <label className="block text-white font-semibold mb-3 flex items-center gap-2">📅 روزهای تعطیل</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'].map((day) => (
-                                        <label key={day} className="flex items-center space-x-2 space-x-reverse">
+                                        <label key={day} className="flex items-center space-x-2 space-x-reverse p-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 checked={availability.offDays.includes(day)}
@@ -1965,47 +2133,249 @@ export default function BarberDashboard() {
                                                         : availability.offDays.filter(d => d !== day);
                                                     setAvailability({ ...availability, offDays });
                                                 }}
-                                                className="rounded text-yellow-500"
+                                                className="rounded text-yellow-500 cursor-pointer"
                                             />
-                                            <span className="text-white/90 text-sm">{day}</span>
+                                            <span className="text-white/90 text-sm font-medium">{day}</span>
                                         </label>
                                     ))}
                                 </div>
                             </div>
 
+                            {/* Flexible Off Hours */}
+                            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                                <label className="block text-white font-semibold mb-3 flex items-center gap-2">⏱️ ساعات تعطیل خاص</label>
+                                <div className="space-y-3">
+                                    {availability.offHours.map((offHour, index) => (
+                                        <div key={index} className="bg-white/5 p-3 rounded-lg border border-white/10">
+                                            <div className="grid grid-cols-2 gap-2 mb-2">
+                                                <div>
+                                                    <label className="block text-white/70 text-xs mb-1">از ساعت</label>
+                                                    <input
+                                                        type="time"
+                                                        value={offHour.start}
+                                                        onChange={(e) => {
+                                                            const newOffHours = [...availability.offHours];
+                                                            newOffHours[index].start = e.target.value;
+                                                            setAvailability({ ...availability, offHours: newOffHours });
+                                                        }}
+                                                        className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-white/70 text-xs mb-1">تا ساعت</label>
+                                                    <input
+                                                        type="time"
+                                                        value={offHour.end}
+                                                        onChange={(e) => {
+                                                            const newOffHours = [...availability.offHours];
+                                                            newOffHours[index].end = e.target.value;
+                                                            setAvailability({ ...availability, offHours: newOffHours });
+                                                        }}
+                                                        className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="mb-2">
+                                                <label className="block text-white/70 text-xs mb-1">تاریخ (اختیاری)</label>
+                                                <input
+                                                    type="date"
+                                                    value={offHour.date || ''}
+                                                    onChange={(e) => {
+                                                        const newOffHours = [...availability.offHours];
+                                                        newOffHours[index].date = e.target.value;
+                                                        setAvailability({ ...availability, offHours: newOffHours });
+                                                    }}
+                                                    className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
+                                                    placeholder="اگر خالی بماند، برای همه روزها اعمال می‌شود"
+                                                />
+                                                <p className="text-xs text-white/50 mt-1">اگر خالی باشد، این ساعت روزانه تعطیل است</p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    const newOffHours = availability.offHours.filter((_, i) => i !== index);
+                                                    setAvailability({ ...availability, offHours: newOffHours });
+                                                }}
+                                                className="text-red-400 hover:text-red-300 text-xs"
+                                            >
+                                                🗑️ حذف این ساعت تعطیل
+                                            </button>
+                                        </div>
+                                    ))}
+
+                                    <button
+                                        onClick={() => {
+                                            const newOffHours = [...availability.offHours, { start: '12:00', end: '13:00', date: '' }];
+                                            setAvailability({ ...availability, offHours: newOffHours });
+                                        }}
+                                        className="w-full py-2 border-2 border-dashed border-white/30 rounded-lg text-white/70 hover:text-white hover:border-white/50 transition-all"
+                                    >
+                                        ➕ افزودن ساعت تعطیل
+                                    </button>
+                                </div>
+                            </div>
+
                             {/* Availability Toggle */}
-                            <div>
-                                <label className="flex items-center space-x-2 space-x-reverse">
+                            <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-xl p-4 border border-green-400/30">
+                                <label className="flex items-center space-x-2 space-x-reverse cursor-pointer">
                                     <input
                                         type="checkbox"
                                         checked={availability.isAvailable}
-                                        onChange={(e) => setAvailability({ 
-                                            ...availability, 
-                                            isAvailable: e.target.checked 
+                                        onChange={(e) => setAvailability({
+                                            ...availability,
+                                            isAvailable: e.target.checked
                                         })}
-                                        className="rounded text-green-500"
+                                        className="rounded text-green-500 cursor-pointer"
                                     />
-                                    <span className="text-white">در دسترس برای رزرو</span>
+                                    <span className="text-white font-medium flex items-center gap-1">✅ در دسترس برای رزرو</span>
                                 </label>
                             </div>
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex gap-3 mt-6">
+                        <div className="flex gap-3 mt-8 pt-6 border-t border-white/10">
                             <button
                                 onClick={() => setShowAvailabilityModal(false)}
-                                className="flex-1 glass-button glass-secondary px-4 py-2"
+                                className="flex-1 px-4 py-3 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white font-medium hover:bg-white/20 transition-colors duration-200"
                             >
-                                لغو
+                                ❌ لغو
                             </button>
                             <button
                                 onClick={() => updateAvailability(availability)}
                                 disabled={availabilityLoading}
-                                className="flex-1 glass-button glass-success px-4 py-2 disabled:opacity-50"
+                                className="flex-1 px-4 py-3 rounded-lg bg-gradient-to-r from-green-500/30 to-emerald-500/30 backdrop-blur-sm border border-green-400/50 text-white font-medium hover:from-green-500/40 hover:to-emerald-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                             >
-                                {availabilityLoading ? 'در حال ذخیره...' : '💾 ذخیره'}
+                                {availabilityLoading ? '⏳ در حال ذخیره...' : '💾 ذخیره'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Profile Settings Modal */}
+            {showProfileModal && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 overflow-y-auto">
+                    <div className="glass-card p-8 max-w-md w-full max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl border border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-white/10">
+                        {/* Header */}
+                        <div className="flex justify-between items-center mb-8 pb-6 border-b border-white/10">
+                            <div>
+                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">⚙️ پروفایل</h2>
+                                <p className="text-white/60 text-sm mt-1">تغییر اطلاعات و رمز عبور</p>
+                            </div>
+                            <button
+                                onClick={() => setShowProfileModal(false)}
+                                className="text-white/60 hover:text-white text-2xl transition-colors duration-200 hover:bg-white/10 rounded-full w-10 h-10 flex items-center justify-center"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {profileLoading ? (
+                            <div className="text-center py-12">
+                                <div className="animate-spin text-5xl mb-4">⏳</div>
+                                <p className="text-white/70 text-sm">در حال بارگذاری...</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-5">
+                                {/* Name */}
+                                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                                    <label className="block text-white font-semibold mb-2 flex items-center gap-2">👤 نام آرایشگر</label>
+                                    <input
+                                        type="text"
+                                        value={profileData.name}
+                                        onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                                        className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-2.5 text-white placeholder-white/50 focus:bg-white/20 focus:border-white/40 transition-colors outline-none"
+                                        placeholder="نام آرایشگر"
+                                    />
+                                </div>
+
+                                {/* Phone */}
+                                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                                    <label className="block text-white font-semibold mb-2 flex items-center gap-2">📱 شماره تلفن</label>
+                                    <input
+                                        type="tel"
+                                        value={profileData.phone}
+                                        onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                                        className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-2.5 text-white placeholder-white/50 focus:bg-white/20 focus:border-white/40 transition-colors outline-none"
+                                        placeholder="09xxxxxxxxx"
+                                        maxLength={11}
+                                    />
+                                </div>
+
+                                {/* Username */}
+                                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                                    <label className="block text-white font-semibold mb-2 flex items-center gap-2">🔑 نام کاربری</label>
+                                    <input
+                                        type="text"
+                                        value={profileData.username}
+                                        onChange={(e) => setProfileData({ ...profileData, username: e.target.value.toLowerCase() })}
+                                        className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-2.5 text-white placeholder-white/50 focus:bg-white/20 focus:border-white/40 transition-colors outline-none"
+                                        placeholder="username"
+                                    />
+                                    <p className="text-xs text-white/60 mt-2">فقط حروف انگلیسی کوچک و اعداد</p>
+                                </div>
+
+                                {/* Password Section */}
+                                <div className="bg-gradient-to-r from-orange-500/10 via-white/5 to-red-500/10 rounded-xl p-4 border border-white/10">
+                                    <h3 className="text-white font-semibold mb-3 flex items-center gap-2">🔒 تغییر رمز عبور</h3>
+
+                                    <div className="space-y-3">
+                                        {/* Current Password */}
+                                        <div>
+                                            <label className="block text-white/70 mb-1.5 text-xs font-medium">رمز عبور فعلی</label>
+                                            <input
+                                                type="password"
+                                                value={profileData.currentPassword}
+                                                onChange={(e) => setProfileData({ ...profileData, currentPassword: e.target.value })}
+                                                className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-2.5 text-white placeholder-white/50 focus:bg-white/20 focus:border-white/40 transition-colors outline-none"
+                                                placeholder="رمز فعلی"
+                                            />
+                                        </div>
+
+                                        {/* New Password */}
+                                        <div>
+                                            <label className="block text-white/70 mb-1.5 text-xs font-medium">رمز عبور جدید</label>
+                                            <input
+                                                type="password"
+                                                value={profileData.newPassword}
+                                                onChange={(e) => setProfileData({ ...profileData, newPassword: e.target.value })}
+                                                className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-2.5 text-white placeholder-white/50 focus:bg-white/20 focus:border-white/40 transition-colors outline-none"
+                                                placeholder="حداقل 6 کاراکتر"
+                                                minLength={6}
+                                            />
+                                        </div>
+
+                                        {/* Confirm Password */}
+                                        <div>
+                                            <label className="block text-white/70 mb-1.5 text-xs font-medium">تأیید رمز عبور جدید</label>
+                                            <input
+                                                type="password"
+                                                value={profileData.confirmPassword}
+                                                onChange={(e) => setProfileData({ ...profileData, confirmPassword: e.target.value })}
+                                                className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-2.5 text-white placeholder-white/50 focus:bg-white/20 focus:border-white/40 transition-colors outline-none"
+                                                placeholder="تکرار رمز جدید"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-3 mt-8 pt-6 border-t border-white/10">
+                                    <button
+                                        onClick={() => setShowProfileModal(false)}
+                                        className="flex-1 px-4 py-3 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white font-medium hover:bg-white/20 transition-colors duration-200"
+                                    >
+                                        ❌ لغو
+                                    </button>
+                                    <button
+                                        onClick={updateProfile}
+                                        disabled={profileLoading}
+                                        className="flex-1 px-4 py-3 rounded-lg bg-gradient-to-r from-blue-500/30 to-cyan-500/30 backdrop-blur-sm border border-blue-400/50 text-white font-medium hover:from-blue-500/40 hover:to-cyan-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                                    >
+                                        {profileLoading ? '⏳ در حال ذخیره...' : '💾 ذخیره'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

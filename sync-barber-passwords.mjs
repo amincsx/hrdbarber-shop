@@ -15,10 +15,10 @@ async function updateBarberPasswords() {
 
         for (const cred of credentials) {
             console.log(`\n🔐 Processing ${cred.username}...`);
-            
+
             // Find the user
             let user = await User.findOne({ username: cred.username });
-            
+
             if (!user) {
                 console.log(`❌ User ${cred.username} not found, creating...`);
                 // Create the user if it doesn't exist
@@ -35,7 +35,7 @@ async function updateBarberPasswords() {
                 // Update existing user's password
                 console.log(`Found existing user: ${user.name}`);
                 const hashedPassword = await bcrypt.hash(cred.plainPassword, 10);
-                
+
                 // Update the password
                 user.password = hashedPassword;
                 await user.save();
