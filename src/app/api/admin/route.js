@@ -104,9 +104,15 @@ async function POST(request) {
 
             console.log('  - Password check with bcrypt...');
             const passwordMatch = await bcrypt.compare(password, user.password);
-            console.log('  - Password match:', passwordMatch);
+            console.log('  - Password match (bcrypt):', passwordMatch);
 
-            if (!passwordMatch) {
+            // Fallback: also check plain text password for backward compatibility
+            let finalMatch = passwordMatch || (password === user.password);
+            if (!passwordMatch && password === user.password) {
+                console.log('  - Password match (plain text fallback):', true);
+            }
+
+            if (!finalMatch) {
                 console.log('❌ Wrong password for barber:', username);
                 return NextResponse.json(
                     { success: false, error: 'رمز عبور اشتباه است' },
