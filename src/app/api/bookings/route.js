@@ -68,10 +68,10 @@ async function POST(request) {
             // Send push notification to the barber about new pending booking
             try {
                 // Get barber username for URL
-                const barberUser = await MongoDatabase.getUserByUsername(barber) || 
-                                  (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === barber);
+                const barberUser = await MongoDatabase.getUserByUsername(barber) ||
+                    (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === barber);
                 const barberUsername = barberUser?.username || barber;
-                
+
                 const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/barber/notify`, {
                     method: 'POST',
                     headers: {
@@ -213,16 +213,16 @@ async function DELETE(request) {
             );
         }
 
-                // Delete the booking from database
+        // Delete the booking from database
         await MongoDatabase.deleteBooking(bookingId);
 
         // Send notification to barber about the cancellation
         try {
             // Get barber username for URL
-            const barberUser = await MongoDatabase.getUserByUsername(booking.barber) || 
-                              (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === booking.barber);
+            const barberUser = await MongoDatabase.getUserByUsername(booking.barber) ||
+                (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === booking.barber);
             const barberUsername = barberUser?.username || booking.barber;
-            
+
             await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/barber/notify`, {
                 method: 'POST',
                 headers: {
@@ -248,9 +248,9 @@ async function DELETE(request) {
             // Don't fail the cancellation if notification fails
         }
 
-        return NextResponse.json({ 
-            success: true, 
-            message: 'رزرو با موفقیت لغو شد' 
+        return NextResponse.json({
+            success: true,
+            message: 'رزرو با موفقیت لغو شد'
         });
 
     } catch (error) {

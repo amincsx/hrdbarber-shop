@@ -13,6 +13,7 @@ function BarberLoginContent() {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     // Check for barber parameter in URL
     useEffect(() => {
@@ -143,21 +144,39 @@ function BarberLoginContent() {
                         <label className="block text-sm font-medium text-white mb-2">
                             رمز عبور
                         </label>
-                        <input
-                            type="password"
-                            name="prevent-autofill-password"
-                            value={loginData.password}
-                            onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                            className="w-full p-4 rounded-xl bg-white/90 text-gray-800 border border-white/40 placeholder-gray-500 focus:bg-white focus:border-white/60 focus:outline-none transition-all duration-300"
-                            placeholder="رمز عبور"
-                            autoComplete="off"
-                            autoCorrect="off"
-                            autoCapitalize="off"
-                            spellCheck="false"
-                            data-lpignore="true"
-                            data-form-type="other"
-                            required
-                        />
+                        <div className="relative">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                name="prevent-autofill-password"
+                                value={loginData.password}
+                                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                                className="w-full p-4 rounded-xl bg-white/90 text-gray-800 border border-white/40 placeholder-gray-500 focus:bg-white focus:border-white/60 focus:outline-none transition-all duration-300 pr-12"
+                                placeholder="رمز عبور"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck="false"
+                                data-lpignore="true"
+                                data-form-type="other"
+                                required
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800 transition-colors"
+                            >
+                                {showPassword ? (
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-14-14zM4 10a6 6 0 1110.949-3.236 1 1 0 11-1.898.756A4 4 0 006 10c0 .294-.023.583-.066.866a1 1 0 11-1.868-.272zm12 0c0 1.657-.672 3.157-1.757 4.243a1 1 0 001.414 1.414A6 6 0 0016 10z" clipRule="evenodd" />
+                                    </svg>
+                                )}
+                            </button>
+                        </div>
                     </div>
 
                     {/* Error Message */}

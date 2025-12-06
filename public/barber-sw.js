@@ -13,7 +13,7 @@ const urlsToCache = [
 // Install event - cache resources
 self.addEventListener('install', (event) => {
   console.log('🔧 Barber Service Worker: Installing...');
-  
+
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -24,7 +24,7 @@ self.addEventListener('install', (event) => {
         console.error('❌ Barber Service Worker: Cache error:', error);
       })
   );
-  
+
   // Force the waiting service worker to become the active service worker
   self.skipWaiting();
 });
@@ -32,7 +32,7 @@ self.addEventListener('install', (event) => {
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   console.log('🔧 Barber Service Worker: Activating...');
-  
+
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -45,7 +45,7 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  
+
   // Take control of all clients immediately
   return self.clients.claim();
 });
@@ -56,7 +56,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') {
     return;
   }
-  
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -64,13 +64,13 @@ self.addEventListener('fetch', (event) => {
         if (response) {
           return response;
         }
-        
+
         return fetch(event.request).then((response) => {
           // Don't cache non-successful responses
           if (!response || response.status !== 200 || response.type === 'error') {
             return response;
           }
-          
+
           // Cache API responses for barber data
           if (event.request.url.includes('/api/barber/')) {
             const responseToCache = response.clone();
@@ -78,7 +78,7 @@ self.addEventListener('fetch', (event) => {
               cache.put(event.request, responseToCache);
             });
           }
-          
+
           return response;
         });
       })
@@ -94,7 +94,7 @@ self.addEventListener('fetch', (event) => {
 // Push notification event
 self.addEventListener('push', (event) => {
   console.log('🔔 Barber Service Worker: Push notification received');
-  
+
   let data = {
     title: '🎉 رزرو جدید!',
     body: 'یک رزرو جدید ثبت شد',
@@ -104,7 +104,7 @@ self.addEventListener('push', (event) => {
     requireInteraction: true,
     data: {}
   };
-  
+
   if (event.data) {
     try {
       const pushData = event.data.json();
@@ -116,7 +116,7 @@ self.addEventListener('push', (event) => {
       console.error('❌ Error parsing push data:', e);
     }
   }
-  
+
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
@@ -147,9 +147,9 @@ self.addEventListener('push', (event) => {
 // Notification click event
 self.addEventListener('notificationclick', (event) => {
   console.log('🔔 Barber Service Worker: Notification clicked');
-  
+
   event.notification.close();
-  
+
   if (event.action === 'view' || !event.action) {
     // Open the app when notification is clicked
     event.waitUntil(
@@ -161,13 +161,13 @@ self.addEventListener('notificationclick', (event) => {
               return client.focus();
             }
           }
-          
+
           // Otherwise open new window with absolute URL
           if (clients.openWindow) {
             const barberId = event.notification.data?.barberId || '';
             // Use self.location.origin to get the base URL
             const baseUrl = self.location.origin;
-            const url = barberId 
+            const url = barberId
               ? `${baseUrl}/barber-dashboard/${encodeURIComponent(barberId)}?pwa=1&notification=1`
               : `${baseUrl}/barber-login?pwa=1`;
             return clients.openWindow(url);
@@ -180,7 +180,7 @@ self.addEventListener('notificationclick', (event) => {
 // Background sync event for offline booking updates
 self.addEventListener('sync', (event) => {
   console.log('🔄 Barber Service Worker: Background sync triggered');
-  
+
   if (event.tag === 'sync-barber-bookings') {
     event.waitUntil(
       // Fetch latest bookings when back online
@@ -208,11 +208,11 @@ self.addEventListener('sync', (event) => {
 // Message event - handle messages from clients
 self.addEventListener('message', (event) => {
   console.log('💬 Barber Service Worker: Message received:', event.data);
-  
+
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
-  
+
   if (event.data && event.data.type === 'REFRESH_BOOKINGS') {
     // Broadcast to all clients to refresh their bookings
     self.clients.matchAll().then((clients) => {

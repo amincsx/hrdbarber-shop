@@ -298,6 +298,42 @@ class MongoDatabase {
         }
     }
 
+    static async updateBarberAvailability(barberIdentifier, availability) {
+        try {
+            await dbConnect();
+            
+            // Find barber by username or name
+            let user = await User.findOne({ username: barberIdentifier });
+            if (!user) {
+                const barber = await Barber.findOne({ name: barberIdentifier });
+                if (barber) {
+                    user = await User.findOne({ barber_id: barber._id });
+                }
+            }
+            
+            if (!user) {
+                return { success: false, message: 'آرایشگر یافت نشد' };
+            }
+
+            // Update availability
+            const result = await User.findByIdAndUpdate(
+                user._id,
+                { availability: availability },
+                { new: true }
+            );
+
+            if (result) {
+                console.log('✅ Barber availability updated:', barberIdentifier);
+                return { success: true, user: result };
+            }
+            
+            return { success: false, message: 'خطا در به‌روزرسانی' };
+        } catch (error) {
+            console.error('Error updating barber availability:', error);
+            return { success: false, message: 'خطا در پایگاه داده' };
+        }
+    }
+
     // Generate a secure random password
     static generateSecurePassword(username) {
         // Generate a stronger password with random characters

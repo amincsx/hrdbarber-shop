@@ -171,6 +171,14 @@ export default function BarberDashboard() {
     const [showFutureBookings, setShowFutureBookings] = useState(false); // Hidden by default
     const [showThisMonth, setShowThisMonth] = useState(false); // Hidden by default
     const [showAllBookings, setShowAllBookings] = useState(false); // Hidden by default
+    const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+    const [availability, setAvailability] = useState({
+        workingHours: { start: 10, end: 21 },
+        lunchBreak: { start: 14, end: 15 },
+        offDays: [],
+        isAvailable: true
+    });
+    const [availabilityLoading, setAvailabilityLoading] = useState(false);
 
     // Register service worker and set up push notifications
     useEffect(() => {
@@ -361,6 +369,7 @@ export default function BarberDashboard() {
         }
         if (barberId) {
             fetchBarberBookings();
+            fetchAvailability(); // Fetch availability settings
 
             // Request notification permission
             if ('Notification' in window && Notification.permission === 'default') {
@@ -499,6 +508,55 @@ export default function BarberDashboard() {
         } catch (err) {
             console.error('❌ Update error:', err);
             alert('خطا در اتصال به سرور');
+        }
+    };
+
+    // Fetch barber availability
+    const fetchAvailability = async () => {
+        try {
+            setAvailabilityLoading(true);
+            const response = await fetch(`/api/barber/availability?barberId=${encodeURIComponent(barberId)}`);
+            const result = await response.json();
+
+            if (result.success) {
+                setAvailability(result.availability);
+            }
+        } catch (error) {
+            console.error('❌ Error fetching availability:', error);
+        } finally {
+            setAvailabilityLoading(false);
+        }
+    };
+
+    // Update barber availability
+    const updateAvailability = async (newAvailability: any) => {
+        try {
+            setAvailabilityLoading(true);
+            const response = await fetch('/api/barber/availability', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    barberId: barberId,
+                    availability: newAvailability
+                })
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                setAvailability(newAvailability);
+                setShowAvailabilityModal(false);
+                alert('تنظیمات با موفقیت ذخیره شد');
+            } else {
+                alert(result.message || 'خطا در ذخیره تنظیمات');
+            }
+        } catch (error) {
+            console.error('❌ Error updating availability:', error);
+            alert('خطا در ذخیره تنظیمات');
+        } finally {
+            setAvailabilityLoading(false);
         }
     };
 
@@ -998,6 +1056,12 @@ export default function BarberDashboard() {
                                 className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial opacity-50 cursor-not-allowed"
                             >
                                 🔒 تغییر رمز
+                            </button>
+                            <button
+                                onClick={() => setShowAvailabilityModal(true)}
+                                className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial bg-purple-500/20 border-purple-400/30"
+                            >
+                                ⏰ ساعات کاری
                             </button>
                             <BarberPWAInstall
                                 barberName={barberSession?.user?.name || decodeURIComponent(barberId)}
@@ -1796,6 +1860,155 @@ export default function BarberDashboard() {
                     )}
                 </div>
             </div>
+
+            {/* Availability Settings Modal */}
+            {showAvailabilityModal && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="glass-card p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-white">⏰ تنظیمات ساعات کاری</h2>
+                            <button
+                                onClick={() => setShowAvailabilityModal(false)}
+                                className="text-white/70 hover:text-white text-2xl"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {/* Working Hours */}
+                            <div>
+                                <label className="block text-white mb-2">ساعات کاری</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-white/70 text-sm mb-1">شروع</label>
+                                        <select
+                                            value={availability.workingHours.start}
+                                            onChange={(e) => setAvailability({
+                                                ...availability,
+                                                workingHours: { ...availability.workingHours, start: Number(e.target.value) }
+                                            })}
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
+                                        >
+                                            {Array.from({ length: 24 }, (_, i) => (
+                                                <option key={i} value={i} className="bg-gray-800">{i.toString().padStart(2, '0')}:00</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-white/70 text-sm mb-1">پایان</label>
+                                        <select
+                                            value={availability.workingHours.end}
+                                            onChange={(e) => setAvailability({
+                                                ...availability,
+                                                workingHours: { ...availability.workingHours, end: Number(e.target.value) }
+                                            })}
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
+                                        >
+                                            {Array.from({ length: 24 }, (_, i) => (
+                                                <option key={i} value={i} className="bg-gray-800">{i.toString().padStart(2, '0')}:00</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Lunch Break */}
+                            <div>
+                                <label className="block text-white mb-2">زمان استراحت</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-white/70 text-sm mb-1">شروع</label>
+                                        <select
+                                            value={availability.lunchBreak.start}
+                                            onChange={(e) => setAvailability({
+                                                ...availability,
+                                                lunchBreak: { ...availability.lunchBreak, start: Number(e.target.value) }
+                                            })}
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
+                                        >
+                                            {Array.from({ length: 24 }, (_, i) => (
+                                                <option key={i} value={i} className="bg-gray-800">{i.toString().padStart(2, '0')}:00</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-white/70 text-sm mb-1">پایان</label>
+                                        <select
+                                            value={availability.lunchBreak.end}
+                                            onChange={(e) => setAvailability({
+                                                ...availability,
+                                                lunchBreak: { ...availability.lunchBreak, end: Number(e.target.value) }
+                                            })}
+                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
+                                        >
+                                            {Array.from({ length: 24 }, (_, i) => (
+                                                <option key={i} value={i} className="bg-gray-800">{i.toString().padStart(2, '0')}:00</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Off Days */}
+                            <div>
+                                <label className="block text-white mb-2">روزهای تعطیل</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'].map((day) => (
+                                        <label key={day} className="flex items-center space-x-2 space-x-reverse">
+                                            <input
+                                                type="checkbox"
+                                                checked={availability.offDays.includes(day)}
+                                                onChange={(e) => {
+                                                    const offDays = e.target.checked
+                                                        ? [...availability.offDays, day]
+                                                        : availability.offDays.filter(d => d !== day);
+                                                    setAvailability({ ...availability, offDays });
+                                                }}
+                                                className="rounded text-yellow-500"
+                                            />
+                                            <span className="text-white/90 text-sm">{day}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Availability Toggle */}
+                            <div>
+                                <label className="flex items-center space-x-2 space-x-reverse">
+                                    <input
+                                        type="checkbox"
+                                        checked={availability.isAvailable}
+                                        onChange={(e) => setAvailability({ 
+                                            ...availability, 
+                                            isAvailable: e.target.checked 
+                                        })}
+                                        className="rounded text-green-500"
+                                    />
+                                    <span className="text-white">در دسترس برای رزرو</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                onClick={() => setShowAvailabilityModal(false)}
+                                className="flex-1 glass-button glass-secondary px-4 py-2"
+                            >
+                                لغو
+                            </button>
+                            <button
+                                onClick={() => updateAvailability(availability)}
+                                disabled={availabilityLoading}
+                                className="flex-1 glass-button glass-success px-4 py-2 disabled:opacity-50"
+                            >
+                                {availabilityLoading ? 'در حال ذخیره...' : '💾 ذخیره'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
