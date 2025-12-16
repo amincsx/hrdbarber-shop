@@ -767,32 +767,6 @@ export default function BookingPage() {
     };
 
     useEffect(() => {
-        // Check for editing booking first
-        const editingData = localStorage.getItem('editingBooking');
-        if (editingData) {
-            try {
-                const booking = JSON.parse(editingData);
-                setEditingBooking(booking);
-                setIsEditMode(true);
-
-                // Pre-fill form with booking data
-                setSelectedBarber(booking.barber);
-                setSelectedServices(booking.services);
-                setSelectedTime(booking.start_time || booking.startTime);
-
-                // Set date
-                const bookingDate = new Date(booking.date_key || booking.dateKey);
-                setSelectedDateObj(bookingDate);
-
-                console.log('📝 Edit mode activated for booking:', booking.id);
-
-                // Clear the editing data from localStorage
-                localStorage.removeItem('editingBooking');
-            } catch (error) {
-                console.error('Error loading editing booking:', error);
-            }
-        }
-
         // Check authentication first
         const storedData = localStorage.getItem('user');
         if (!storedData) {
@@ -815,6 +789,39 @@ export default function BookingPage() {
             setIsLoading(false);
             router.push('/login');
             return;
+        }
+
+        // Check for edit mode - if there's a booking to edit
+        const editingData = localStorage.getItem('editingBooking');
+        if (editingData) {
+            try {
+                const bookingToEdit = JSON.parse(editingData);
+                console.log('📝 Edit mode detected, loading booking:', bookingToEdit);
+
+                setEditingBooking(bookingToEdit);
+                setIsEditMode(true);
+
+                // Pre-fill form with existing booking data
+                setSelectedBarber(bookingToEdit.barber || '');
+                setSelectedServices(bookingToEdit.services || []);
+
+                // Set the date and time
+                if (bookingToEdit.date_key) {
+                    const [year, month, day] = bookingToEdit.date_key.split('-').map(Number);
+                    const editDate = new Date(year, month - 1, day);
+                    setSelectedDateObj(editDate);
+                }
+                if (bookingToEdit.start_time) {
+                    setSelectedTime(bookingToEdit.start_time);
+                }
+
+                // Clear the editing data from localStorage
+                localStorage.removeItem('editingBooking');
+                console.log('✅ Edit mode initialized');
+            } catch (error) {
+                console.error('❌ Error loading editing data:', error);
+                localStorage.removeItem('editingBooking');
+            }
         }
 
         // Generate next 30 days for selection
@@ -870,19 +877,11 @@ export default function BookingPage() {
                 console.log('Sample booking format:', data.bookings?.[0]);
             } else {
                 console.error('Failed to load bookings from database');
-                // Fallback to localStorage if API fails
-                const bookings = localStorage.getItem('allBookings');
-                if (bookings) {
-                    setExistingBookings(JSON.parse(bookings));
-                }
+                setExistingBookings([]);
             }
         } catch (error) {
             console.error('Error loading bookings:', error);
-            // Fallback to localStorage if API fails
-            const bookings = localStorage.getItem('allBookings');
-            if (bookings) {
-                setExistingBookings(JSON.parse(bookings));
-            }
+            setExistingBookings([]);
         }
     };
 
@@ -1128,40 +1127,41 @@ export default function BookingPage() {
         let bookingSavedToDatabase = false;
         try {
             if (isEditMode && editingBooking) {
-                // Update existing booking
+                // Update existing booking using PUT method
                 console.log('📝 Updating booking:', editingBooking.id);
 
-                // First delete the old booking
-                const deleteResponse = await fetch('/api/bookings', {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        booking_id: editingBooking.id,
-                        user_phone: userData?.phone
-                    })
-                });
+                const updateData = {
+                    id: editingBooking.id,
+                    date_key: apiBooking.date_key,
+                    start_time: apiBooking.start_time,
+                    end_time: apiBooking.end_time,
+                    barber: apiBooking.barber,
+                    services: apiBooking.services,
+                    total_duration: apiBooking.total_duration,
+                    user_name: apiBooking.user_name,
+                    user_phone: apiBooking.user_phone,
+                    persian_date: apiBooking.persian_date,
+                    updated_by_user: true, // Flag to indicate user made changes
+                    user_updated_at: new Date().toISOString() // Timestamp of user change
+                    // Keep existing status and barber approval - no need to re-approve
+                };
 
-                if (!deleteResponse.ok) {
-                    throw new Error('Failed to delete old booking');
-                }
-
-                // Then create new booking
                 const response = await fetch('/api/bookings', {
-                    method: 'POST',
+                    method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(apiBooking)
+                    body: JSON.stringify(updateData)
                 });
 
                 if (response.ok) {
+                    const responseData = await response.json();
                     console.log('✅ Booking updated successfully');
                     bookingSavedToDatabase = true;
-                    alert('رزرو با موفقیت تغییر یافت');
+                    alert('رزرو با موفقیت تغییر یافت\n\nآرایشگر باید تغییرات را تأیید کند');
                 } else {
-                    throw new Error('Failed to create updated booking');
+                    const errorData = await response.json().catch(() => ({ error: 'خطا در به‌روزرسانی' }));
+                    throw new Error(errorData.error || 'Failed to update booking');
                 }
             } else {
                 // Create new booking
@@ -1219,15 +1219,6 @@ export default function BookingPage() {
 
         // Only show confirmation if booking was successfully saved to database
         if (bookingSavedToDatabase) {
-            // Save to individual user booking (backup)
-            localStorage.setItem('bookingData', JSON.stringify(localBooking));
-
-            // Save to shared bookings list (backup)
-            const existingBookingsData = localStorage.getItem('allBookings');
-            const allBookings = existingBookingsData ? JSON.parse(existingBookingsData) : [];
-            allBookings.push(localBooking);
-            localStorage.setItem('allBookings', JSON.stringify(allBookings));
-
             // Reload bookings from database to get latest state
             await loadBookingsFromDatabase();
 
@@ -1841,10 +1832,10 @@ export default function BookingPage() {
                                 <span className="text-4xl text-green-600">✓</span>
                             </div>
                             <h2 className="text-2xl font-bold text-white mb-4">
-                                🎉 نوبت شما رزرو شد!
+                                🎉 درخواست رزرو شما ثبت شد!
                             </h2>
                             <p className="text-white/80 text-sm mb-6">
-                                رزرو شما با موفقیت ثبت شد. منتظر دیدار شما هستیم!
+                                رزرو شما با موفقیت ثبت شد. لطفا منتظر تأیید آرایشگر باشید.
                             </p>
                         </div>
 

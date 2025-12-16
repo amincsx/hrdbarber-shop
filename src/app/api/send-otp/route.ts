@@ -3,7 +3,7 @@ import MongoDatabase from '../../../lib/mongoDatabase.js';
 
 export async function POST(request: NextRequest) {
     try {
-        const { phone, message } = await request.json();
+        const { phone, message, context } = await request.json();
 
         if (!phone) {
             return NextResponse.json({ error: 'شماره تلفن الزامی است' }, { status: 400 });
@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'شماره تلفن معتبر نیست' }, { status: 400 });
         }
 
-        // For barber forgot password, validate that phone belongs to a barber
-        if (!message) { // OTP request (not custom SMS)
+        // ONLY for barber password reset, validate that phone belongs to a barber
+        if (!message && context === 'barber-forgot-password') {
             console.log('🔍 Checking if phone belongs to a barber:', phone);
             const barber = await MongoDatabase.findBarberByPhone(phone);
 
@@ -72,7 +72,64 @@ export async function POST(request: NextRequest) {
 
             console.log(`📱 Generated OTP for ${phone}:`, otp);
 
-            // Attempt to send OTP using Melipayamak API with proper parameters
+            // For barber signup, don't use local fallback - only send real SMS
+            if (context === 'barber-register') {
+                try {
+                    // Create AbortController for custom timeout
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
+                    const response = await fetch('https://console.melipayamak.com/api/send/otp/25085e67e97342aa886f9fdf12117341', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            to: phone,
+                            bodyId: 194445,
+                            args: [otp]
+                        }),
+                        signal: controller.signal
+                    });
+
+                    clearTimeout(timeoutId);
+
+                    if (!response.ok) {
+                        console.error('❌ Melipayamak API Error:', response.status, response.statusText);
+                        return NextResponse.json({
+                            success: false,
+                            error: 'خطا در ارسال پیامک (خطای سرور)'
+                        }, { status: 500 });
+                    }
+
+                    const result = await response.json();
+                    console.log('✅ Melipayamak SMS API Response:', result);
+
+                    if (result.status === 'ارسال موفق بود' || result.code) {
+                        const actualOtpSent = result.code || otp;
+                        console.log('📤 SMS sent successfully! OTP:', actualOtpSent);
+                        return NextResponse.json({
+                            success: true,
+                            message: 'کد تایید به شماره شما ارسال شد',
+                            otp: actualOtpSent
+                        }, { status: 200 });
+                    } else {
+                        console.error('❌ Melipayamak rejected OTP request:', result);
+                        return NextResponse.json({
+                            success: false,
+                            error: 'خطا در ارسال پیامک (پاسخ نامعتبر)'
+                        }, { status: 500 });
+                    }
+                } catch (smsError) {
+                    console.error('❌ Melipayamak fetch failed:', smsError.message);
+                    return NextResponse.json({
+                        success: false,
+                        error: `خطا در ارسال پیامک: ${smsError.message}`
+                    }, { status: 500 });
+                }
+            }
+
+            // For other contexts (user signup, password reset), allow local OTP fallback
             try {
                 // Create AbortController for custom timeout
                 const controller = new AbortController();
@@ -91,32 +148,24 @@ export async function POST(request: NextRequest) {
                     signal: controller.signal
                 });
 
-                clearTimeout(timeoutId); // Clear timeout if request completes
+                clearTimeout(timeoutId);
                 const result = await response.json();
                 console.log('✅ Melipayamak SMS API Response:', result);
 
                 if (result.status === 'ارسال موفق بود' || result.code) {
-                    // If Melipayamak returns a code, use that as it's what was actually sent via SMS
                     const actualOtpSent = result.code || otp;
-                    console.log('📤 SMS sent successfully! Actual OTP sent via SMS:', actualOtpSent);
-                    console.log('🔍 Original generated OTP was:', otp);
+                    console.log('📤 SMS sent successfully! OTP:', actualOtpSent);
                     return NextResponse.json({
                         success: true,
                         message: 'کد تایید به شماره شما ارسال شد',
                         otp: actualOtpSent
                     }, { status: 200 });
-                } else {
-                    console.log('⚠️ Melipayamak API returned unexpected response, using local OTP:', otp);
                 }
             } catch (smsError) {
-                if (smsError.name === 'AbortError') {
-                    console.log('⏱️ Melipayamak API timeout (8s), using local OTP:', otp);
-                } else {
-                    console.warn('❌ Melipayamak SMS Error:', smsError.message);
-                }
+                console.warn('⚠️ Melipayamak SMS failed, using local OTP:', smsError.message);
             }
 
-            // Return OTP for frontend verification (with fallback message)
+            // Fallback to local OTP only for user signup and password reset
             return NextResponse.json({
                 success: true,
                 message: 'کد تایید تولید شد (بررسی پیام کوتاه)',

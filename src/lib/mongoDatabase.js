@@ -1,16 +1,50 @@
+import mongoose from 'mongoose';
 import dbConnect from './mongodb.js';
 import { Barber, Booking, User } from './models.js';
 import { initializeProductionDatabase } from './initProductionDB.js';
+
+// Retry wrapper for database operations
+async function withRetry(operation, maxRetries = 3) {
+    let lastError;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            await dbConnect();
+            return await operation();
+        } catch (error) {
+            lastError = error;
+            console.error(`💥 Database operation failed (attempt ${attempt}/${maxRetries}):`, error.message);
+
+            if (attempt === maxRetries) {
+                console.error('🔥 All retry attempts failed');
+                break;
+            }
+
+            // Check if it's a connection error that we should retry
+            if (error.message.includes('connection') ||
+                error.message.includes('timeout') ||
+                error.message.includes('MongoServerError') ||
+                error.message.includes('beforeHandshake')) {
+
+                // Wait before retrying (exponential backoff)
+                const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+                console.log(`⏳ Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
+
+            // If it's not a connection error, don't retry
+            break;
+        }
+    }
+    throw lastError;
+}
 
 class MongoDatabase {
 
     // Barber operations
     static async getAllBarbers() {
-        try {
-            await dbConnect();
-
-            // Production database initialization temporarily disabled to fix connection issues
-            // Will be re-enabled once basic connection is working
+        return withRetry(async () => {
+            console.log('🔍 Getting all barbers...');
 
             // Get all barber users (those with role 'barber')
             const barberUsers = await User.find({ role: 'barber' }).sort({ createdAt: 1 });
@@ -27,12 +61,8 @@ class MongoDatabase {
             }));
 
             console.log('📋 Loaded barbers with usernames:', barbers.map(b => `${b.name} (${b.username})`));
-
             return barbers;
-        } catch (error) {
-            console.error('Error getting barbers:', error);
-            return [];
-        }
+        });
     }
 
     static async getBarberById(id) {
@@ -84,7 +114,11 @@ class MongoDatabase {
     static async updateBarber(barberId, updateData) {
         try {
             await dbConnect();
-            const updatedBarber = await Barber.findByIdAndUpdate(barberId, updateData, { new: true });
+            const updatedBarber = await Barber.findByIdAndUpdate(
+                barberId,
+                { $set: updateData }, // Use $set operator to only update specified fields
+                { new: true, runValidators: true }
+            );
             console.log('✅ Barber updated in MongoDB:', barberId);
             return updatedBarber;
         } catch (error) {
@@ -123,13 +157,14 @@ class MongoDatabase {
     }
 
     static async addBooking(bookingData) {
-        try {
-            await dbConnect();
+        return withRetry(async () => {
+            console.log('📝 Adding new booking...');
 
             // Find barber by name to get ID
             const barber = await Barber.findOne({ name: bookingData.barber });
             if (barber) {
                 bookingData.barber_id = barber._id;
+                console.log('🆔 Found barber_id for booking:', barber._id);
             }
 
             const booking = new Booking(bookingData);
@@ -137,10 +172,7 @@ class MongoDatabase {
 
             console.log('✅ Booking saved to MongoDB:', savedBooking._id);
             return savedBooking;
-        } catch (error) {
-            console.error('Error saving booking:', error);
-            throw error;
-        }
+        });
     }
 
     static async getBookingsByBarber(barberName) {
@@ -255,8 +287,8 @@ class MongoDatabase {
     }
 
     static async updateBooking(bookingId, updateData) {
-        try {
-            await dbConnect();
+        return withRetry(async () => {
+            console.log('🔄 Updating booking:', bookingId);
             const result = await Booking.findByIdAndUpdate(
                 bookingId,
                 { ...updateData, updated_at: new Date() },
@@ -266,10 +298,65 @@ class MongoDatabase {
                 console.log('✅ Booking updated in MongoDB:', bookingId);
                 return result;
             }
+            console.log('⚠️ Booking not found:', bookingId);
             return null;
+        });
+    }
+
+    static async updateBookings(filter, updateData) {
+        try {
+            await dbConnect();
+            const result = await Booking.updateMany(
+                filter,
+                { $set: { ...updateData, updated_at: new Date() } }
+            );
+            console.log(`✅ Updated ${result.modifiedCount} bookings matching filter:`, filter);
+            return result;
         } catch (error) {
-            console.error('Error updating booking:', error);
-            return null;
+            console.error('Error updating bookings:', error);
+            throw error;
+        }
+    }
+
+    static async getBookingsByBarberId(barberId) {
+        return withRetry(async () => {
+            console.log('🔍 [MongoDB] Getting bookings by barber_id:', barberId);
+
+            // Validate ObjectId format
+            if (!mongoose.Types.ObjectId.isValid(barberId)) {
+                console.log('⚠️ Invalid barber ID format, returning empty array');
+                return [];
+            }
+
+            const bookings = await Booking.find({ barber_id: barberId }).sort({ date_key: -1, start_time: 1 });
+            console.log(`📊 Found ${bookings.length} bookings for barber_id: ${barberId}`);
+            return bookings;
+        });
+    }
+
+    static async getBookingsByBarberIdAndDate(barberId, date) {
+        try {
+            await dbConnect();
+            console.log('🔍 [MongoDB] Getting bookings by barber_id and date:', barberId, date);
+            const bookings = await Booking.find({ barber_id: barberId, date_key: date }).sort({ start_time: 1 });
+            console.log(`📊 Found ${bookings.length} bookings for barber_id ${barberId} on ${date}`);
+            return bookings;
+        } catch (error) {
+            console.error('Error getting bookings by barber_id and date:', error);
+            return [];
+        }
+    }
+
+    static async getBookingsByBarberIdAndStatus(barberId, status) {
+        try {
+            await dbConnect();
+            console.log('🔍 [MongoDB] Getting bookings by barber_id and status:', barberId, status);
+            const bookings = await Booking.find({ barber_id: barberId, status: status }).sort({ date_key: -1, start_time: 1 });
+            console.log(`📊 Found ${bookings.length} bookings for barber_id ${barberId} with status ${status}`);
+            return bookings;
+        } catch (error) {
+            console.error('Error getting bookings by barber_id and status:', error);
+            return [];
         }
     }
 
@@ -290,6 +377,19 @@ class MongoDatabase {
             return user;
         } catch (error) {
             console.error('Error getting user by username:', error);
+            return null;
+        }
+    }
+
+    static async getUserByName(name) {
+        try {
+            await dbConnect();
+            console.log('🔍 [MongoDB] Searching for user by name:', name);
+            const user = await User.findOne({ name: name });
+            console.log('🔍 [MongoDB] User found by name:', !!user);
+            return user;
+        } catch (error) {
+            console.error('Error getting user by name:', error);
             return null;
         }
     }

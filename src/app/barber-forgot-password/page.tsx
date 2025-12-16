@@ -32,7 +32,10 @@ export default function BarberForgotPassword() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ phone: normalizedPhone })
+                body: JSON.stringify({
+                    phone: normalizedPhone,
+                    context: 'barber-forgot-password'
+                })
             });
 
             const result = await response.json();

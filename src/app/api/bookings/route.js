@@ -42,6 +42,23 @@ async function POST(request) {
             );
         }
 
+        // Find barber record to get barber_id for robust linking
+        let barberRecord = null;
+        try {
+            // First try to find by name (current booking system)
+            barberRecord = await MongoDatabase.getBarberByName(barber);
+            if (!barberRecord) {
+                // Try to find user by barber name and get their barber_id
+                const barberUsers = await MongoDatabase.getUsersByRole('barber');
+                const barberUser = barberUsers.find(u => u.name === barber);
+                if (barberUser && barberUser.barber_id) {
+                    barberRecord = await MongoDatabase.getBarberById(barberUser.barber_id);
+                }
+            }
+        } catch (lookupError) {
+            console.warn('⚠️ Could not find barber record:', barber, lookupError.message);
+        }
+
         // Create new booking with pending status (waiting for barber confirmation)
         console.log('💾 Attempting to save booking to MongoDB...');
         const bookingToSave = {
@@ -50,6 +67,7 @@ async function POST(request) {
             start_time,
             end_time,
             barber,
+            barber_id: barberRecord?._id || null, // Add barber_id for robust linking
             services: Array.isArray(services) ? services : [services],
             total_duration: total_duration || 60,
             status: 'pending', // Booking starts as pending, waiting for barber acceptance
@@ -58,6 +76,7 @@ async function POST(request) {
             persian_date: bookingData.persian_date
         };
         console.log('📦 Booking object to save:', JSON.stringify(bookingToSave, null, 2));
+        console.log('🔗 Barber ID linked:', barberRecord?._id || 'not found');
 
         const newBooking = await MongoDatabase.addBooking(bookingToSave);
 
@@ -215,17 +234,31 @@ async function DELETE(request) {
             );
         }
 
-        // Delete the booking from database
-        await MongoDatabase.deleteBooking(booking_id);
+        // Mark booking as cancelled (DON'T DELETE - keep it visible in dashboards)
+        console.log('🔔 Marking booking as cancelled (keeping in database)');
+        const updatedBooking = await MongoDatabase.updateBooking(booking_id, {
+            status: 'cancelled',
+            cancelled_at: new Date(),
+            cancelled_by: 'user',
+            cancellation_reason: requestData.reason || 'لغو شده توسط کاربر'
+        });
+
+        if (!updatedBooking) {
+            throw new Error('Failed to update booking status');
+        }
+
+        console.log('✅ Booking marked as cancelled:', booking_id);
 
         // Send notification to barber about the cancellation
         try {
+            console.log('📲 Sending cancellation notification to barber:', booking.barber);
+
             // Get barber username for URL
             const barberUser = await MongoDatabase.getUserByUsername(booking.barber) ||
                 (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === booking.barber);
             const barberUsername = barberUser?.username || booking.barber;
 
-            await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/barber/notify`, {
+            const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/barber/notify`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -233,26 +266,31 @@ async function DELETE(request) {
                 body: JSON.stringify({
                     barberId: booking.barber,
                     title: '❌ لغو رزرو',
-                    body: `مشتری ${booking.user_name || 'کاربر'} رزرو خود را لغو کرد.\n\nتاریخ: ${booking.date}\nساعت: ${booking.start_time}\nخدمات: ${booking.services?.join(', ') || 'نامشخص'}`,
+                    body: `مشتری ${booking.user_name || 'کاربر'} رزرو خود را لغو کرد.\n\nتاریخ: ${booking.date_key || booking.date}\nساعت: ${booking.start_time}\nخدمات: ${booking.services?.join(', ') || 'نامشخص'}`,
                     data: {
-                        bookingId: bookingId,
+                        bookingId: booking_id,
                         barberId: barberUsername,
-                        date: booking.date,
+                        date: booking.date_key || booking.date,
                         time: booking.start_time,
                         status: 'cancelled',
                         url: `/barber-dashboard/${encodeURIComponent(barberUsername)}?notification=1`
                     }
                 })
             });
-            console.log('✅ Cancellation notification sent to barber');
+
+            if (notificationResponse.ok) {
+                console.log('✅ Cancellation notification sent to barber');
+            } else {
+                console.log('⚠️ Failed to send notification to barber');
+            }
         } catch (notifError) {
-            console.error('⚠️ Failed to send cancellation notification:', notifError);
+            console.error('⚠️ Failed to send cancellation notification:', notifError.message);
             // Don't fail the cancellation if notification fails
         }
 
         return NextResponse.json({
             success: true,
-            message: 'رزرو با موفقیت لغو شد'
+            message: 'رزرو با موفقیت لغو شد و در تاریخچه باقی ماند'
         });
 
     } catch (error) {
@@ -318,12 +356,61 @@ async function PUT(request) {
             }
         }
 
+        // When user updates booking, reset status to pending so barber must accept/reject again
+        const updatePayload = {
+            ...bookingUpdates,
+            status: 'pending', // Reset to pending for barber approval
+            updated_at: new Date()
+        };
+
+        console.log('🔔 User updated booking, resetting status to pending');
+
         // Update booking
-        const updatedBooking = await MongoDatabase.updateBooking(id, bookingUpdates);
+        const updatedBooking = await MongoDatabase.updateBooking(id, updatePayload);
 
         if (updatedBooking) {
+            // Send notification to barber about the booking change
+            try {
+                const barberName = existingBooking.barber;
+                console.log(`📲 Sending notification to barber: ${barberName}`);
+
+                // Get barber username for notification
+                const barberUser = await MongoDatabase.getUserByUsername(barberName) ||
+                    (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === barberName);
+                const barberUsername = barberUser?.username || barberName;
+
+                const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/barber/notify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        barberId: barberName,
+                        title: '🔄 رزرو به‌روزرسانی شد!',
+                        body: `مشتری: ${existingBooking.user_name || 'کاربر'}\nتاریخ: ${bookingUpdates.date_key || existingBooking.date_key}\nزمان: ${bookingUpdates.start_time || existingBooking.start_time}\n\nلطفاً دوباره تایید یا رد کنید`,
+                        data: {
+                            bookingId: id,
+                            barberId: barberUsername,
+                            date: bookingUpdates.date_key || existingBooking.date_key,
+                            time: bookingUpdates.start_time || existingBooking.start_time,
+                            status: 'pending',
+                            url: `/barber-dashboard/${encodeURIComponent(barberUsername)}?notification=1`
+                        }
+                    })
+                });
+
+                if (notificationResponse.ok) {
+                    console.log('✅ Notification sent to barber about booking update');
+                } else {
+                    console.log('⚠️ Failed to send notification to barber');
+                }
+            } catch (notifError) {
+                console.error('⚠️ Notification error (non-critical):', notifError.message);
+                // Don't fail the update if notification fails
+            }
+
             return NextResponse.json({
-                message: 'رزرو با موفقیت به‌روزرسانی شد',
+                message: 'رزرو با موفقیت به‌روزرسانی شد. منتظر تأیید دوباره آرایشگر...',
                 booking: updatedBooking
             });
         } else {

@@ -47,7 +47,7 @@ export async function GET(request) {
             success: true,
             barber: {
                 name: barber?.name || user.name || barberId,
-                phone: barber?.phone || user.username || '',
+                phone: barber?.phone || user.phone || '',
                 username: user.username,
                 id: user._id
             }
@@ -115,13 +115,36 @@ export async function PUT(request) {
 
         // Update or create barber record
         if (barber) {
-            // Update existing barber
+            // Store old barber name before updating
+            const oldBarberName = barber.name;
+            const newBarberName = name.trim();
+
+            // Update existing barber - only update name and phone, preserve other fields
             const updatedBarberData = {
-                name: name.trim(),
+                name: newBarberName,
                 phone: phone.trim()
+                // Other fields like specialties, isActive, schedule are preserved
             };
-            await MongoDatabase.updateBarber(barber._id, updatedBarberData);
-            console.log('✅ Barber data updated');
+            const result = await MongoDatabase.updateBarber(barber._id, updatedBarberData);
+            console.log('✅ Barber data updated:', result);
+
+            // If barber name changed, update all bookings with the new name
+            if (oldBarberName !== newBarberName) {
+                console.log(`🔄 Updating bookings from "${oldBarberName}" to "${newBarberName}"`);
+                // Get the bookings collection and update all bookings for this barber
+                try {
+                    const db = request.nextUrl ? null : null; // Will use MongoDatabase
+                    // Update all bookings that have the old barber name
+                    const updateResult = await MongoDatabase.updateBookings(
+                        { barber: oldBarberName },
+                        { barber: newBarberName }
+                    );
+                    console.log('✅ Updated bookings:', updateResult);
+                } catch (updateError) {
+                    console.warn('⚠️ Could not update bookings:', updateError.message);
+                    // Don't fail the profile update if bookings update fails
+                }
+            }
         } else {
             // Create new barber record
             const newBarberData = {

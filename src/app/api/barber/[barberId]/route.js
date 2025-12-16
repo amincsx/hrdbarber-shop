@@ -1,6 +1,7 @@
 // JavaScript version of barber route with MongoDB database
 import { NextResponse } from 'next/server';
 import MongoDatabase from '../../../../lib/mongoDatabase.js';
+import { convertToJalaliDateString } from '../../../../lib/numberUtils.ts';
 
 // GET - Get bookings for specific barber
 async function GET(request, { params }) {
@@ -25,72 +26,70 @@ async function GET(request, { params }) {
         const date = searchParams.get('date');
         const status = searchParams.get('status');
 
-        // Decode the barberId for database lookup
+        // Decode the barberId - it should be either a MongoDB ObjectId or username for backward compatibility
         const decodedBarberId = decodeURIComponent(barberId);
-        console.log('🔍 Looking up bookings for:', decodedBarberId);
+        console.log('🔍 Looking up barber for:', decodedBarberId);
 
-        // Try to find barber by username first (English), then by name (Farsi)
-        const barberUser = await MongoDatabase.getUserByUsername(decodedBarberId);
-        const barberName = barberUser ? barberUser.name : decodedBarberId;
+        // Try to get barber by ID first (if it looks like MongoDB ObjectId)
+        let barberRecord = null;
+        let barberUser = null;
 
-        console.log('  - Lookup ID:', decodedBarberId);
-        console.log('  - Barber user found:', barberUser ? 'yes' : 'no');
-        console.log('  - Barber name:', barberName);
+        const isObjectId = /^[0-9a-fA-F]{24}$/.test(decodedBarberId);
 
-        // Also get all bookings to see what's in the database
-        const allDbBookings = await MongoDatabase.getAllBookings();
-        console.log('  - Total bookings in DB:', allDbBookings.length);
-        if (allDbBookings.length > 0) {
-            console.log('  - Sample booking barber names:', allDbBookings.slice(0, 5).map(b => b.barber));
+        if (isObjectId) {
+            // Direct barber ID lookup
+            console.log('  - Using barber ID lookup');
+            barberRecord = await MongoDatabase.getBarberById(decodedBarberId);
+            if (barberRecord && barberRecord.user_id) {
+                barberUser = await MongoDatabase.getUserById(barberRecord.user_id);
+            }
+        } else {
+            // Backward compatibility: lookup by username
+            console.log('  - Using username lookup for backward compatibility');
+            barberUser = await MongoDatabase.getUserByUsername(decodedBarberId);
+            if (barberUser && barberUser.barber_id) {
+                barberRecord = await MongoDatabase.getBarberById(barberUser.barber_id);
+            }
         }
+
+        if (!barberRecord) {
+            console.log('❌ Barber record not found');
+            return NextResponse.json(
+                { error: 'آرایشگر یافت نشد', total_bookings: 0, bookings: [] },
+                { status: 404 }
+            );
+        }
+
+        console.log('  - Barber ID:', barberRecord._id);
+        console.log('  - Barber name:', barberRecord.name);
+        console.log('  - User found:', barberUser ? 'yes' : 'no');
 
         let bookings;
 
         if (date) {
-            // Get bookings for specific date
-            const allBookings = await MongoDatabase.getBookingsByDate(date);
-            console.log(`📅 Total bookings on ${date}:`, allBookings.length);
-            // Match by either username or name
-            bookings = allBookings.filter(booking =>
-                booking.barber === decodedBarberId || booking.barber === barberName
-            );
-            console.log(`📅 Found ${bookings.length} bookings for ${decodedBarberId} on ${date}`);
+            // Get bookings for specific date using barber_id
+            console.log('📅 Getting bookings for date:', date);
+            bookings = await MongoDatabase.getBookingsByBarberIdAndDate(barberRecord._id, date);
+        } else if (status) {
+            // Get bookings by status using barber_id
+            console.log('📊 Getting bookings by status:', status);
+            bookings = await MongoDatabase.getBookingsByBarberIdAndStatus(barberRecord._id, status);
         } else {
-            // Get all bookings for this barber (try both username and name)
-            console.log('🔍 Searching for bookings by name:', barberName);
-            const bookingsByName = await MongoDatabase.getBookingsByBarber(barberName);
-            console.log('  - Bookings by name:', bookingsByName.length);
-            if (bookingsByName.length > 0) {
-                console.log('  - Sample booking by name:', bookingsByName[0]);
-            }
+            // Get all bookings for this barber using barber_id
+            console.log('📊 Getting all bookings for barber ID:', barberRecord._id);
+            bookings = await MongoDatabase.getBookingsByBarberId(barberRecord._id);
 
-            console.log('🔍 Searching for bookings by username:', decodedBarberId);
-            const bookingsByUsername = decodedBarberId !== barberName ?
-                await MongoDatabase.getBookingsByBarber(decodedBarberId) : [];
-            console.log('  - Bookings by username:', bookingsByUsername.length);
+            // Fallback: Also search by name for old bookings that might not have barber_id yet
+            const oldBookings = await MongoDatabase.getBookingsByBarber(barberRecord.name);
 
             // Merge and deduplicate
-            const allBookings = [...bookingsByName, ...bookingsByUsername];
-            console.log('  - Combined bookings before dedup:', allBookings.length);
+            const allBookings = [...bookings, ...oldBookings];
             const uniqueBookings = Array.from(
                 new Map(allBookings.map(b => [b._id?.toString() || b.id, b])).values()
             );
             bookings = uniqueBookings;
 
-            console.log(`📊 Found ${bookings.length} total bookings for ${decodedBarberId}`);
-            console.log(`📊 Returning bookings:`, bookings.map(b => ({
-                id: b.id,
-                user: b.user_name,
-                date: b.date_key,
-                time: b.start_time
-            })));
-        }
-
-        // Filter by status if provided
-        if (status) {
-            const beforeFilter = bookings.length;
-            bookings = bookings.filter(booking => booking.status === status);
-            console.log(`🔍 Filtered by status '${status}': ${beforeFilter} → ${bookings.length} bookings`);
+            console.log(`📊 Found ${bookings.length} total bookings (${bookings.length - oldBookings.length} with barber_id, ${oldBookings.length} legacy)`);
         }
 
         console.log(`✅ Returning ${bookings.length} bookings for barber ${decodedBarberId}`);
@@ -280,6 +279,7 @@ async function PUT(request, { params }) {
                     // Send SMS notification if phone number exists
                     if (booking.user_phone && booking.user_phone.length >= 10) {
                         try {
+                            const jalaliDate = convertToJalaliDateString(booking.date_key);
                             const smsResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/send-otp`, {
                                 method: 'POST',
                                 headers: {
@@ -287,7 +287,7 @@ async function PUT(request, { params }) {
                                 },
                                 body: JSON.stringify({
                                     phone: booking.user_phone,
-                                    message: `✅ رزرو شما تایید شد!\n\n👤 آرایشگر: ${booking.barber}\n📅 تاریخ: ${booking.date_key}\n🕐 ساعت: ${booking.start_time}\n✂️ خدمات: ${booking.services.join(', ')}\n\nبا تشکر از انتخاب شما`
+                                    message: `✅ رزرو شما تایید شد!\n\n👤 آرایشگر: ${booking.barber}\n📅 تاریخ: ${jalaliDate}\n🕐 ساعت: ${booking.start_time}\n✂️ خدمات: ${booking.services.join(', ')}\n\nبا تشکر از انتخاب شما`
                                 })
                             });
 
@@ -313,6 +313,7 @@ async function PUT(request, { params }) {
                     // Send SMS notification if phone number exists
                     if (booking.user_phone && booking.user_phone.length >= 10) {
                         try {
+                            const jalaliDate = convertToJalaliDateString(booking.date_key);
                             const cancellationReason = notes ? `\n\n📝 دلیل: ${notes}` : '';
                             const smsResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/send-otp`, {
                                 method: 'POST',
@@ -321,7 +322,7 @@ async function PUT(request, { params }) {
                                 },
                                 body: JSON.stringify({
                                     phone: booking.user_phone,
-                                    message: `❌ متاسفانه رزرو شما رد شد\n\n👤 آرایشگر: ${booking.barber}\n📅 تاریخ: ${booking.date_key}\n🕐 ساعت: ${booking.start_time}\n✂️ خدمات: ${booking.services.join(', ')}${cancellationReason}\n\nلطفا زمان دیگری انتخاب کنید`
+                                    message: `❌ متاسفانه رزرو شما رد شد\n\n👤 آرایشگر: ${booking.barber}\n📅 تاریخ: ${jalaliDate}\n🕐 ساعت: ${booking.start_time}\n✂️ خدمات: ${booking.services.join(', ')}${cancellationReason}\n\nلطفا زمان دیگری انتخاب کنید`
                                 })
                             });
 

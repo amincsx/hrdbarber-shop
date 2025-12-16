@@ -405,6 +405,7 @@ export default function BarberDashboard() {
         if (barberId) {
             fetchBarberBookings();
             fetchAvailability(); // Fetch availability settings
+            fetchProfileData(); // Fetch profile data for editing
 
             // Request notification permission
             if ('Notification' in window && Notification.permission === 'default') {
@@ -2138,79 +2139,6 @@ export default function BarberDashboard() {
                                             <span className="text-white/90 text-sm font-medium">{day}</span>
                                         </label>
                                     ))}
-                                </div>
-                            </div>
-
-                            {/* Flexible Off Hours */}
-                            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                                <label className="block text-white font-semibold mb-3 flex items-center gap-2">⏱️ ساعات تعطیل خاص</label>
-                                <div className="space-y-3">
-                                    {availability.offHours.map((offHour, index) => (
-                                        <div key={index} className="bg-white/5 p-3 rounded-lg border border-white/10">
-                                            <div className="grid grid-cols-2 gap-2 mb-2">
-                                                <div>
-                                                    <label className="block text-white/70 text-xs mb-1">از ساعت</label>
-                                                    <input
-                                                        type="time"
-                                                        value={offHour.start}
-                                                        onChange={(e) => {
-                                                            const newOffHours = [...availability.offHours];
-                                                            newOffHours[index].start = e.target.value;
-                                                            setAvailability({ ...availability, offHours: newOffHours });
-                                                        }}
-                                                        className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-white/70 text-xs mb-1">تا ساعت</label>
-                                                    <input
-                                                        type="time"
-                                                        value={offHour.end}
-                                                        onChange={(e) => {
-                                                            const newOffHours = [...availability.offHours];
-                                                            newOffHours[index].end = e.target.value;
-                                                            setAvailability({ ...availability, offHours: newOffHours });
-                                                        }}
-                                                        className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="mb-2">
-                                                <label className="block text-white/70 text-xs mb-1">تاریخ (اختیاری)</label>
-                                                <input
-                                                    type="date"
-                                                    value={offHour.date || ''}
-                                                    onChange={(e) => {
-                                                        const newOffHours = [...availability.offHours];
-                                                        newOffHours[index].date = e.target.value;
-                                                        setAvailability({ ...availability, offHours: newOffHours });
-                                                    }}
-                                                    className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm"
-                                                    placeholder="اگر خالی بماند، برای همه روزها اعمال می‌شود"
-                                                />
-                                                <p className="text-xs text-white/50 mt-1">اگر خالی باشد، این ساعت روزانه تعطیل است</p>
-                                            </div>
-                                            <button
-                                                onClick={() => {
-                                                    const newOffHours = availability.offHours.filter((_, i) => i !== index);
-                                                    setAvailability({ ...availability, offHours: newOffHours });
-                                                }}
-                                                className="text-red-400 hover:text-red-300 text-xs"
-                                            >
-                                                🗑️ حذف این ساعت تعطیل
-                                            </button>
-                                        </div>
-                                    ))}
-
-                                    <button
-                                        onClick={() => {
-                                            const newOffHours = [...availability.offHours, { start: '12:00', end: '13:00', date: '' }];
-                                            setAvailability({ ...availability, offHours: newOffHours });
-                                        }}
-                                        className="w-full py-2 border-2 border-dashed border-white/30 rounded-lg text-white/70 hover:text-white hover:border-white/50 transition-all"
-                                    >
-                                        ➕ افزودن ساعت تعطیل
-                                    </button>
                                 </div>
                             </div>
 

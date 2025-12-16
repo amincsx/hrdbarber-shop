@@ -35,7 +35,10 @@ export default function BarberRegister() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ phone: normalizedPhone })
+                body: JSON.stringify({
+                    phone: normalizedPhone,
+                    context: 'barber-register'
+                })
             });
 
             const result = await response.json();
@@ -304,13 +307,7 @@ export default function BarberRegister() {
                             </div>
                         )}
 
-                        {sentOtp && (
-                            <div className="p-4 bg-yellow-500/20 border border-yellow-500/30 rounded-xl">
-                                <p className="text-yellow-200 text-xs text-center mb-2">کد تأیید (همان کد ارسال شده به موبایل):</p>
-                                <p className="text-yellow-300 text-2xl font-bold text-center font-mono">{sentOtp}</p>
-                                <p className="text-yellow-200 text-xs text-center mt-2">این کد باید با کد دریافتی در پیامک یکسان باشد</p>
-                            </div>
-                        )}                        <div>
+                        <div>
                             <label className="block text-sm font-medium text-white mb-2">
                                 کد تأیید (6 رقمی)
                             </label>
