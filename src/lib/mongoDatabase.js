@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import dbConnect from './mongodb.js';
-import { Barber, Booking, User } from './models.js';
+import { Barber, Booking, User, BarberActivity } from './models.js';
 import { initializeProductionDatabase } from './initProductionDB.js';
 
 // Retry wrapper for database operations
@@ -643,6 +643,132 @@ class MongoDatabase {
             console.error('Error initializing barber authentication:', error);
             throw error;
         }
+    }
+
+    // Activity logging functions
+    static async logBarberActivity(activityData) {
+        return withRetry(async () => {
+            console.log('📝 Logging barber activity with data:', JSON.stringify(activityData, null, 2));
+
+            // Validate required fields
+            if (!activityData.barber_id) {
+                throw new Error('barber_id is required for activity logging');
+            }
+            if (!activityData.action) {
+                throw new Error('action is required for activity logging');
+            }
+            if (!activityData.customer_name) {
+                throw new Error('customer_name is required for activity logging');
+            }
+
+            const activity = new BarberActivity({
+                barber_id: activityData.barber_id,
+                customer_name: activityData.customer_name,
+                customer_phone: activityData.customer_phone,
+                action: activityData.action,
+                booking_id: activityData.booking_id,
+                details: activityData.details,
+                status: 'unread'
+            });
+
+            console.log('💾 Saving activity to database:', activity);
+            const savedActivity = await activity.save();
+            console.log('✅ Activity saved with ID:', savedActivity._id);
+
+            // Verify the activity was saved by querying it back
+            const verification = await BarberActivity.findById(savedActivity._id);
+            console.log('🔍 Verification - Activity exists in DB:', !!verification);
+
+            return savedActivity;
+        });
+    }
+
+    static async getBarberActivities(barberId, limit = 20) {
+        return withRetry(async () => {
+            console.log('🔍 Getting activities for barber ID:', barberId);
+            console.log('🔍 Barber ID type:', typeof barberId, 'Valid ObjectId:', mongoose.Types.ObjectId.isValid(barberId));
+
+            if (!mongoose.Types.ObjectId.isValid(barberId)) {
+                console.error('❌ Invalid barber_id format:', barberId);
+                return [];
+            }
+
+            const objectId = new mongoose.Types.ObjectId(barberId);
+            console.log('🔍 Searching for activities with ObjectId:', objectId);
+
+            // First, let's check if any activities exist at all
+            const totalActivities = await BarberActivity.countDocuments({});
+            console.log('📊 Total activities in database:', totalActivities);
+
+            // Check activities for this specific barber
+            const activities = await BarberActivity.find({
+                barber_id: objectId
+            })
+                .sort({ created_at: -1 })
+                .limit(limit);
+
+            console.log(`📋 Found ${activities.length} activities for barber ${barberId}`);
+
+            // If no activities found, let's see what barber IDs exist in activities
+            if (activities.length === 0 && totalActivities > 0) {
+                const existingBarberIds = await BarberActivity.distinct('barber_id');
+                console.log('📋 Existing barber IDs in activities:', existingBarberIds);
+            }
+
+            console.log('📋 Activities found:', activities.map(a => ({
+                id: a._id,
+                action: a.action,
+                customer: a.customer_name,
+                barber_id: a.barber_id
+            })));
+
+            return activities;
+        });
+    }
+
+    static async markActivitiesAsRead(barberId, activityIds = null) {
+        return withRetry(async () => {
+            console.log('✅ Marking activities as read for barber:', barberId);
+
+            if (!mongoose.Types.ObjectId.isValid(barberId)) {
+                console.error('❌ Invalid barber_id format:', barberId);
+                return false;
+            }
+
+            const filter = { barber_id: new mongoose.Types.ObjectId(barberId) };
+
+            // If specific activity IDs provided, filter by those
+            if (activityIds && activityIds.length > 0) {
+                filter._id = { $in: activityIds.map(id => new mongoose.Types.ObjectId(id)) };
+            }
+
+            const result = await BarberActivity.updateMany(
+                filter,
+                { $set: { status: 'read' } }
+            );
+
+            console.log(`✅ Marked ${result.modifiedCount} activities as read`);
+            return result;
+        });
+    }
+
+    static async getUnreadActivitiesCount(barberId) {
+        return withRetry(async () => {
+            console.log('🔢 Getting unread activities count for barber:', barberId);
+
+            if (!mongoose.Types.ObjectId.isValid(barberId)) {
+                console.error('❌ Invalid barber_id format:', barberId);
+                return 0;
+            }
+
+            const count = await BarberActivity.countDocuments({
+                barber_id: new mongoose.Types.ObjectId(barberId),
+                status: 'unread'
+            });
+
+            console.log(`🔔 Barber ${barberId} has ${count} unread activities`);
+            return count;
+        });
     }
 }
 

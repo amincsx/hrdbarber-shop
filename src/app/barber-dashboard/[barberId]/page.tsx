@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import BarberPWAInstall from '@/components/BarberPWAInstall';
+import ActivityFeed from '@/components/ActivityFeed';
 import { persianToEnglish } from '../../../lib/numberUtils';
 
 // Helper function to convert VAPID public key to Uint8Array
@@ -190,6 +191,7 @@ export default function BarberDashboard() {
         isAvailable: true
     });
     const [availabilityLoading, setAvailabilityLoading] = useState(false);
+    const [headerCollapsed, setHeaderCollapsed] = useState(false);
 
     // Register service worker and set up push notifications
     useEffect(() => {
@@ -1156,7 +1158,7 @@ export default function BarberDashboard() {
     }
 
     return (
-        <div className="min-h-screen p-4 relative overflow-hidden"
+        <div className="min-h-screen p-2 sm:p-4 relative overflow-hidden"
             dir="rtl"
             style={{
                 backgroundImage: 'url(/picbg2.jpg)',
@@ -1175,109 +1177,142 @@ export default function BarberDashboard() {
                 <div className="absolute top-1/3 left-1/4 w-64 h-64 bg-purple-300/5 rounded-full blur-3xl animate-pulse delay-2000"></div>
             </div>
 
-            <div className="max-w-6xl mx-auto relative z-10 px-4">
-                {/* New Booking Alert */}
+            <div className="max-w-6xl mx-auto relative z-10 px-2 sm:px-4">{/* New Booking Alert */}
                 {showNewBookingAlert && (
-                    <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-xl shadow-2xl animate-pulse">
+                    <div className="fixed top-2 sm:top-4 right-2 sm:right-4 z-50 bg-green-500 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-xl shadow-2xl animate-pulse max-w-xs sm:max-w-none">
                         <div className="flex items-center gap-2">
-                            <span className="text-2xl">🎉</span>
+                            <span className="text-lg sm:text-2xl">🎉</span>
                             <div>
-                                <p className="font-bold">رزرو جدید!</p>
-                                <p className="text-sm">لطفاً صفحه را تازه‌سازی کنید</p>
+                                <p className="font-bold text-sm sm:text-base">رزرو جدید!</p>
+                                <p className="text-xs sm:text-sm">لطفاً صفحه را تازه‌سازی کنید</p>
                             </div>
                         </div>
                     </div>
                 )}
 
                 {/* Header */}
-                <div className="glass-card p-4 sm:p-6 mb-6 floating">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div className="flex-1">
-                            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-glass mb-2 flex items-center">
-                                ✂️ داشبورد آرایشگر: {barberSession?.user?.name || decodeURIComponent(barberId)}
+                <div className="glass-card p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6 floating">
+                    <div className="flex justify-between items-center">
+                        <div className="flex-1 min-w-0">
+                            <h1 className="text-base sm:text-lg lg:text-2xl font-bold text-glass mb-1 sm:mb-2 flex flex-col sm:flex-row sm:items-center gap-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-lg sm:text-xl">✂️</span>
+                                    <span className="text-sm sm:text-base lg:text-xl">داشبورد آرایشگر</span>
+                                </div>
+                                <span className="text-sm sm:text-base lg:text-xl font-medium text-white/90 truncate">{barberSession?.user?.name || decodeURIComponent(barberId)}</span>
                             </h1>
-                            <p className="text-glass-secondary text-sm sm:text-base">
-                                تعداد کل رزروها: {barberData?.total_bookings || 0}
-                            </p>
+                            {!headerCollapsed && (
+                                <p className="text-glass-secondary text-xs sm:text-sm mt-1">
+                                    تعداد کل رزروها: {barberData?.total_bookings || 0}
+                                </p>
+                            )}
                         </div>
-                        <div className="flex gap-2 w-full sm:w-auto items-center flex-wrap">
+
+                        {/* Mobile toggle button */}
+                        <button
+                            onClick={() => setHeaderCollapsed(!headerCollapsed)}
+                            className="glass-button p-2 sm:hidden"
+                        >
+                            {headerCollapsed ? '📋' : '📝'}
+                        </button>
+                    </div>
+
+                    {/* Desktop buttons (always visible) and Mobile buttons (collapsible) */}
+                    <div className={`${headerCollapsed ? 'hidden' : 'block'} sm:block`}>
+                        <div className="mt-3 sm:mt-4 grid grid-cols-2 sm:flex gap-2 sm:gap-3">
                             <button
                                 onClick={() => {
                                     fetchBarberBookings();
-                                    alert('داده‌ها تازه‌سازی شد');
+                                    setHeaderCollapsed(true); // Auto-collapse on mobile after action
                                 }}
-                                className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial"
+                                className="glass-button px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-xs sm:text-sm lg:text-base flex items-center justify-center gap-1 sm:gap-2"
                             >
-                                🔄 تازه‌سازی
+                                <span className="text-sm sm:text-base">🔄</span>
+                                <span className="text-xs sm:text-sm">تازه‌سازی</span>
                             </button>
                             <button
                                 onClick={() => {
                                     setShowProfileModal(true);
                                     fetchProfileData();
+                                    setHeaderCollapsed(true);
                                 }}
-                                className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial bg-blue-500/20 border-blue-400/30"
+                                className="glass-button px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-xs sm:text-sm lg:text-base bg-blue-500/20 border-blue-400/30 flex items-center justify-center gap-1 sm:gap-2"
                             >
-                                ⚙️ ویرایش پروفایل
+                                <span className="text-sm sm:text-base">⚙️</span>
+                                <span className="text-xs sm:text-sm">پروفایل</span>
                             </button>
                             <button
                                 onClick={() => {
                                     setShowAvailabilityModal(true);
                                     fetchAvailability();
+                                    setHeaderCollapsed(true);
                                 }}
-                                className="glass-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial bg-purple-500/20 border-purple-400/30"
+                                className="glass-button px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-xs sm:text-sm lg:text-base bg-purple-500/20 border-purple-400/30 flex items-center justify-center gap-1 sm:gap-2"
                             >
-                                ⏰ ساعات کاری
+                                <span className="text-sm sm:text-base">⏰</span>
+                                <span className="text-xs sm:text-sm">ساعات کاری</span>
                             </button>
-                            <BarberPWAInstall
-                                barberName={barberSession?.user?.name || decodeURIComponent(barberId)}
-                                barberId={barberSession?.user?.username || decodeURIComponent(barberId)}
-                            />
+                            <div className="hidden sm:block">
+                                <BarberPWAInstall
+                                    barberName={barberSession?.user?.name || decodeURIComponent(barberId)}
+                                    barberId={barberSession?.user?.username || decodeURIComponent(barberId)}
+                                />
+                            </div>
                             <button
                                 onClick={handleLogout}
-                                className="glass-button glass-danger px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base flex-1 sm:flex-initial"
+                                className="glass-button glass-danger px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-xs sm:text-sm lg:text-base col-span-2 sm:col-span-1 flex items-center justify-center gap-1 sm:gap-2"
                             >
-                                🚪 خروج
+                                <span className="text-sm sm:text-base">🚪</span>
+                                <span className="text-xs sm:text-sm">خروج</span>
                             </button>
                         </div>
                     </div>
                 </div>
 
+                {/* Activity Feed Section - Latest Updates First */}
+                <div className="mb-4 sm:mb-6">
+                    <ActivityFeed
+                        barberId={barberSession?.user?._id || barberSession?.user?.username || decodeURIComponent(barberId)}
+                        className="backdrop-blur-xl"
+                    />
+                </div>
+
                 {/* Quick Stats */}
-                <div className="grid grid-cols-5 gap-2 sm:gap-3 lg:gap-4 mb-6">
-                    <div className="glass-card p-3 sm:p-4 text-center border-2 border-orange-400/40 animate-pulse">
-                        <div className="w-12 h-12 bg-orange-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <span className="text-2xl">⏳</span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6">
+                    <div className="glass-card p-3 sm:p-3 lg:p-4 text-center border-2 border-orange-400/40 animate-pulse min-h-[90px] sm:min-h-[100px] flex flex-col justify-center">
+                        <div className="w-10 h-10 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-orange-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <span className="text-xl sm:text-xl lg:text-2xl">⏳</span>
                         </div>
-                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1">در انتظار</h3>
-                        <p className="text-2xl sm:text-3xl font-bold text-orange-400">{pendingBookings.length}</p>
+                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1 leading-tight">در انتظار</h3>
+                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-400">{pendingBookings.length}</p>
                     </div>
-                    <div className="glass-card p-3 sm:p-4 text-center border-2 border-blue-400/40">
-                        <div className="w-12 h-12 bg-blue-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <span className="text-2xl">📅</span>
+                    <div className="glass-card p-3 sm:p-3 lg:p-4 text-center border-2 border-blue-400/40 min-h-[90px] sm:min-h-[100px] flex flex-col justify-center">
+                        <div className="w-10 h-10 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-blue-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <span className="text-xl sm:text-xl lg:text-2xl">📅</span>
                         </div>
-                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1">امروز</h3>
-                        <p className="text-2xl sm:text-3xl font-bold text-blue-400">{todaysBookings.length}</p>
+                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1 leading-tight">امروز</h3>
+                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-400">{todaysBookings.length}</p>
                     </div>
-                    <div className="glass-card p-3 sm:p-4 text-center border-2 border-purple-400/40">
-                        <div className="w-12 h-12 bg-purple-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <span className="text-2xl">🔮</span>
+                    <div className="glass-card p-3 sm:p-3 lg:p-4 text-center border-2 border-purple-400/40 col-span-2 sm:col-span-1 min-h-[90px] sm:min-h-[100px] flex flex-col justify-center">
+                        <div className="w-10 h-10 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-purple-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <span className="text-xl sm:text-xl lg:text-2xl">🔮</span>
                         </div>
-                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1">آینده</h3>
-                        <p className="text-2xl sm:text-3xl font-bold text-purple-400">{futureBookings.length}</p>
+                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1 leading-tight">آینده</h3>
+                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-400">{futureBookings.length}</p>
                     </div>
-                    <div className="glass-card p-3 sm:p-4 text-center border-2 border-green-400/40">
-                        <div className="w-12 h-12 bg-green-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <span className="text-2xl">📆</span>
+                    <div className="glass-card p-3 sm:p-3 lg:p-4 text-center border-2 border-green-400/40 col-span-2 sm:block min-h-[90px] sm:min-h-[100px] flex flex-col justify-center">
+                        <div className="w-10 h-10 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-green-500/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <span className="text-xl sm:text-xl lg:text-2xl">📆</span>
                         </div>
-                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1">این ماه</h3>
-                        <p className="text-2xl sm:text-3xl font-bold text-green-400">{thisMonthBookings.length + todaysBookings.length}</p>
+                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1 leading-tight">این ماه</h3>
+                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-400">{thisMonthBookings.length + todaysBookings.length}</p>
                     </div>
-                    <div className="glass-card p-3 sm:p-4 text-center border-2 border-white/30">
-                        <div className="w-12 h-12 bg-white/30 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <span className="text-2xl">📊</span>
+                    <div className="glass-card p-3 sm:p-3 lg:p-4 text-center border-2 border-white/30 hidden lg:flex lg:flex-col lg:justify-center min-h-[90px] sm:min-h-[100px]">
+                        <div className="w-10 h-10 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-white/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <span className="text-xl sm:text-xl lg:text-2xl">📊</span>
                         </div>
-                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1">کل رزروها</h3>
-                        <p className="text-2xl sm:text-3xl font-bold text-white">{barberData?.total_bookings || 0}</p>
+                        <h3 className="text-xs sm:text-sm font-medium text-white/90 mb-1 leading-tight">کل رزروها</h3>
+                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">{barberData?.total_bookings || 0}</p>
                     </div>
                 </div>
 

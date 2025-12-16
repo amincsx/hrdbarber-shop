@@ -253,6 +253,34 @@ async function PUT(request, { params }) {
         console.log('✅ Booking updated:', updatedBooking ? 'yes' : 'no');
 
         if (updatedBooking) {
+            // Log activity for barber
+            try {
+                const barberUser = await MongoDatabase.getUserByUsername(decodedBarberId);
+                if (barberUser?._id) {
+                    const actionMap = {
+                        'confirmed': 'booking_confirmed',
+                        'cancelled': 'booking_cancelled',
+                        'completed': 'booking_completed'
+                    };
+                    const statusMessages = {
+                        'confirmed': 'رزرو را تایید کرد',
+                        'cancelled': 'رزرو را رد کرد',
+                        'completed': 'رزرو را تکمیل کرد'
+                    };
+
+                    await MongoDatabase.logBarberActivity({
+                        barber_id: barberUser._id,
+                        customer_name: booking.user_name || 'کاربر',
+                        customer_phone: booking.user_phone || booking.user_id,
+                        action: actionMap[status] || 'booking_updated',
+                        booking_id: bookingIdToUpdate,
+                        details: `${statusMessages[status] || 'وضعیت رزرو تغییر کرد'} - ${booking.services?.join(', ') || 'خدمات'} در ${booking.start_time}`
+                    });
+                }
+            } catch (activityError) {
+                console.warn('⚠️ Failed to log activity:', activityError.message);
+            }
+
             // Send notification to user when barber confirms the booking
             if (status === 'confirmed') {
                 try {

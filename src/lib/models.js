@@ -151,9 +151,53 @@ const UserSchema = new mongoose.Schema({
     timestamps: true
 });
 
+// Barber Activity Schema - for notifications and activity feed
+const BarberActivitySchema = new mongoose.Schema({
+    barber_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'User'
+    },
+    customer_name: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    customer_phone: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    action: {
+        type: String,
+        required: true,
+        enum: ['booking_created', 'booking_updated', 'booking_cancelled', 'booking_confirmed', 'booking_completed']
+    },
+    booking_id: {
+        type: mongoose.Schema.Types.Mixed,  // Allow both ObjectId and String
+        ref: 'Booking'
+    },
+    details: {
+        type: String,
+        trim: true
+    },
+    status: {
+        type: String,
+        enum: ['unread', 'read'],
+        default: 'unread'
+    },
+    created_at: {
+        type: Date,
+        default: Date.now
+    }
+}, {
+    timestamps: true
+});
+
 // Create or get existing models
 const Barber = mongoose.models.Barber || mongoose.model('Barber', BarberSchema);
 const Booking = mongoose.models.Booking || mongoose.model('Booking', BookingSchema);
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
+const BarberActivity = mongoose.models.BarberActivity || mongoose.model('BarberActivity', BarberActivitySchema);
 
-export { Barber, Booking, User };
+export { Barber, Booking, User, BarberActivity };

@@ -84,6 +84,37 @@ async function POST(request) {
             console.log('✅ Booking saved successfully to MongoDB');
             console.log('🆔 Booking ID:', newBooking._id?.toString());
 
+            // Log activity for barber
+            try {
+                console.log('🔍 Attempting to log activity for barber:', barber);
+                // Find barber user for activity logging
+                const barberUser = await MongoDatabase.getUserByUsername(barber) ||
+                    (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === barber);
+
+                console.log('🔍 Found barber user for activity:', barberUser ? `${barberUser.username} (${barberUser._id})` : 'not found');
+
+                if (barberUser?._id) {
+                    const activityData = {
+                        barber_id: barberUser._id,
+                        customer_name: user_name || 'کاربر',
+                        customer_phone: user_phone || user_id,
+                        action: 'booking_created',
+                        booking_id: newBooking._id,
+                        details: `رزرو جدید برای ${services.join(', ')} در ${start_time} - ${end_time}`
+                    };
+
+                    console.log('📝 Logging activity with data:', JSON.stringify(activityData, null, 2));
+
+                    await MongoDatabase.logBarberActivity(activityData);
+                    console.log('✅ Activity logged successfully for barber:', barberUser.username);
+                } else {
+                    console.warn('⚠️ Could not find barber user for activity logging:', barber);
+                    console.warn('⚠️ Available barber users:', (await MongoDatabase.getUsersByRole('barber')).map(u => `${u.name} (${u.username})`));
+                }
+            } catch (activityError) {
+                console.error('❌ Failed to log activity:', activityError.message, activityError.stack);
+            }
+
             // Send push notification to the barber about new pending booking
             try {
                 // Get barber username for URL
@@ -249,6 +280,26 @@ async function DELETE(request) {
 
         console.log('✅ Booking marked as cancelled:', booking_id);
 
+        // Log activity for barber
+        try {
+            // Find barber_id for activity logging
+            const barberUser = await MongoDatabase.getUserByUsername(booking.barber) ||
+                (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === booking.barber);
+
+            if (barberUser?._id) {
+                await MongoDatabase.logBarberActivity({
+                    barber_id: barberUser._id,
+                    customer_name: booking.user_name || 'کاربر',
+                    customer_phone: booking.user_phone || booking.user_id,
+                    action: 'booking_cancelled',
+                    booking_id: booking._id || booking_id,
+                    details: `رزرو لغو شد - ${booking.services?.join(', ')} در ${booking.start_time}`
+                });
+            }
+        } catch (activityError) {
+            console.warn('⚠️ Failed to log cancellation activity:', activityError.message);
+        }
+
         // Send notification to barber about the cancellation
         try {
             console.log('📲 Sending cancellation notification to barber:', booking.barber);
@@ -369,6 +420,25 @@ async function PUT(request) {
         const updatedBooking = await MongoDatabase.updateBooking(id, updatePayload);
 
         if (updatedBooking) {
+            // Log activity for barber
+            try {
+                const barberName = existingBooking.barber;
+                const barberUser = await MongoDatabase.getUserByUsername(barberName) ||
+                    (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === barberName);
+
+                if (barberUser?._id) {
+                    await MongoDatabase.logBarberActivity({
+                        barber_id: barberUser._id,
+                        customer_name: existingBooking.user_name || 'کاربر',
+                        customer_phone: existingBooking.user_phone || existingBooking.user_id,
+                        action: 'booking_updated',
+                        booking_id: existingBooking._id || id,
+                        details: `رزرو تغییر کرد و منتظر تایید مجدد است - ${existingBooking.services?.join(', ')}`
+                    });
+                }
+            } catch (activityError) {
+                console.warn('⚠️ Failed to log update activity:', activityError.message);
+            }
             // Send notification to barber about the booking change
             try {
                 const barberName = existingBooking.barber;

@@ -11,12 +11,14 @@ export const dynamic = 'force-dynamic';
 export default function LoginPage() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPhone, setForgotPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [forgotStep, setForgotStep] = useState<'phone' | 'otp'>('phone');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState('');
@@ -36,7 +38,7 @@ export default function LoginPage() {
       console.log('📞 Original phone input:', phone);
       console.log('🔑 Original password input:', password);
       console.log('🔑 Normalized password:', normalizedPassword);
-      
+
       // Try API first with better error handling
       const response = await fetch(`/api/auth?phone=${encodeURIComponent(normalizedPhone)}&password=${encodeURIComponent(normalizedPassword)}`, {
         method: 'GET',
@@ -46,7 +48,7 @@ export default function LoginPage() {
       });
 
       console.log('📡 Login API response status:', response.status);
-      
+
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Login successful via API');
@@ -90,7 +92,7 @@ export default function LoginPage() {
 
     } catch (err) {
       console.error('🚨 Network error during login:', err);
-      
+
       // Only fallback to localStorage on complete network failure
       try {
         const storedUsers = localStorage.getItem('users') ? JSON.parse(localStorage.getItem('users')!) : [];
@@ -120,7 +122,7 @@ export default function LoginPage() {
 
     try {
       console.log('🔄 Forgot password step:', forgotStep);
-      
+
       if (forgotStep === 'phone') {
         if (!forgotPhone) {
           setForgotError('لطفاً شماره تلفن را وارد کنید');
@@ -140,7 +142,7 @@ export default function LoginPage() {
         }
 
         console.log('📱 Checking if user exists for phone:', normalizedForgotPhone);
-        
+
         // Step 1: Check if user exists first
         const checkResponse = await fetch('/api/forgot-password', {
           method: 'POST',
@@ -160,7 +162,7 @@ export default function LoginPage() {
         }
 
         console.log('✅ User exists, sending OTP...');
-        
+
         // Step 2: Send OTP using the same API as signup
         const otpResponse = await fetch('/api/send-otp', {
           method: 'POST',
@@ -183,7 +185,7 @@ export default function LoginPage() {
         }
       } else if (forgotStep === 'otp') {
         console.log('🔑 Resetting password with OTP...');
-        
+
         // Step 3: Verify OTP and reset password
         if (!newPassword) {
           setForgotError('لطفاً رمز عبور جدید را وارد کنید');
@@ -199,11 +201,11 @@ export default function LoginPage() {
         const normalizedForgotPhone = persianToEnglish(forgotPhone);
         const normalizedOtp = persianToEnglish(otpCode);
         const normalizedNewPassword = persianToEnglish(newPassword);
-        
+
         console.log('📞 Normalized forgot phone:', normalizedForgotPhone);
         console.log('🔢 Normalized OTP:', normalizedOtp);
         console.log('🔑 Normalized new password:', normalizedNewPassword);
-        
+
         const response = await fetch('/api/forgot-password', {
           method: 'POST',
           headers: {
@@ -245,6 +247,7 @@ export default function LoginPage() {
     setForgotPhone('');
     setOtpCode('');
     setNewPassword('');
+    setShowNewPassword(false);
     setForgotError('');
     setForgotSuccess('');
   };
@@ -290,18 +293,36 @@ export default function LoginPage() {
               placeholder="شماره تلفن یا نام کاربری"
               className="w-full p-4 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white placeholder-white/70"
             />
-            
+
           </div>
 
           <div>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="رمز عبور"
-              className="w-full p-4 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white placeholder-white/70"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="رمز عبور"
+                className="w-full p-4 pr-12 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white placeholder-white/70"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-black/70 hover:text-black transition-colors"
+              >
+                {showPassword ? (
+                  <svg className="w-5 h-5" fill="black" viewBox="0 0 20 20">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="black" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-14-14zM4 10a6 6 0 1110.949-3.236 1 1 0 11-1.898.756A4 4 0 006 10c0 .294-.023.583-.066.866a1 1 0 11-1.868-.272zm12 0c0 1.657-.672 3.157-1.757 4.243a1 1 0 001.414 1.414A6 6 0 0016 10z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           <button
@@ -384,14 +405,32 @@ export default function LoginPage() {
                   </div>
                   <div>
                     <label className="block text-white/80 mb-2">رمز عبور جدید</label>
-                    <input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required
-                      placeholder="رمز عبور جدید را وارد کنید"
-                      className="w-full p-4 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white placeholder-white/70"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                        placeholder="رمز عبور جدید را وارد کنید"
+                        className="w-full p-4 pr-12 rounded-2xl backdrop-blur-xl bg-white/10 border border-white/20 text-white placeholder-white/70"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-black/70 hover:text-black transition-colors"
+                      >
+                        {showNewPassword ? (
+                          <svg className="w-5 h-5" fill="black" viewBox="0 0 20 20">
+                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5" fill="black" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-14-14zM4 10a6 6 0 1110.949-3.236 1 1 0 11-1.898.756A4 4 0 006 10c0 .294-.023.583-.066.866a1 1 0 11-1.868-.272zm12 0c0 1.657-.672 3.157-1.757 4.243a1 1 0 001.414 1.414A6 6 0 0016 10z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
