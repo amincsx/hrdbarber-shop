@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست فعالیت‌های PWA</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            color: white;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        button {
+            background: rgba(59, 130, 246, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: rgba(59, 130, 246, 0.5);
+        }
+
+        .log {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .success {
+            color: #22c55e;
+        }
+
+        .error {
+            color: #ef4444;
+        }
+
+        .info {
+            color: #3b82f6;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔍 تست فعالیت‌های PWA</h1>
+        <p>این صفحه برای تست و دیباگ مشکل فعالیت‌ها در حالت PWA طراحی شده است.</p>
+
+        <div class="test-section">
+            <h3>📱 اطلاعات محیط</h3>
+            <div id="environment-info"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 تست API فعالیت‌ها</h3>
+            <input type="text" id="barberId" placeholder="نام آرایشگر (مثل: امین)"
+                style="width: 200px; padding: 8px; margin: 5px;">
+            <button onclick="testActivityAPI()">تست API</button>
+            <div id="activity-log" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔑 تست VAPID Keys</h3>
+            <button onclick="testVAPIDKeys()">بررسی کلیدهای VAPID</button>
+            <div id="vapid-log" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>💾 اطلاعات Session</h3>
+            <button onclick="checkSession()">بررسی Session</button>
+            <div id="session-log" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔄 تست کامل</h3>
+            <button onclick="runCompleteTest()">اجرای تست کامل</button>
+            <div id="complete-log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize environment info
+        document.addEventListener('DOMContentLoaded', () => {
+            showEnvironmentInfo();
+        });
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString('fa-IR');
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            element.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function showEnvironmentInfo() {
+            const info = document.getElementById('environment-info');
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+            const urlParams = new URLSearchParams(window.location.search);
+
+            info.innerHTML = `
+                <div class="log">
+                    <div class="info">🌐 URL: ${window.location.href}</div>
+                    <div class="info">📱 PWA Mode: ${isPWA ? 'Yes' : 'No'}</div>
+                    <div class="info">🔗 PWA Parameter: ${urlParams.get('pwa') || 'None'}</div>
+                    <div class="info">🕐 Timestamp: ${new Date().toLocaleString('fa-IR')}</div>
+                    <div class="info">🔧 User Agent: ${navigator.userAgent}</div>
+                    <div class="info">🏠 Origin: ${window.location.origin}</div>
+                </div>
+            `;
+        }
+
+        async function testActivityAPI() {
+            const barberId = document.getElementById('barberId').value || 'امین';
+            const logId = 'activity-log';
+
+            document.getElementById(logId).innerHTML = '';
+            log(logId, `🔍 Testing activities API for: ${barberId}`, 'info');
+
+            try {
+                const url = `/api/barber-activities/${encodeURIComponent(barberId)}`;
+                log(logId, `📡 Calling: ${url}`, 'info');
+
+                const response = await fetch(url, {
+                    cache: 'no-store',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                log(logId, `📊 Response status: ${response.status}`, response.ok ? 'success' : 'error');
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log(logId, `✅ Success! Activities: ${data.activities?.length || 0}, Unread: ${data.unreadCount || 0}`, 'success');
+
+                    if (data.debug) {
+                        log(logId, `🔧 Debug info: ${JSON.stringify(data.debug, null, 2)}`, 'info');
+                    }
+
+                    if (data.activities && data.activities.length > 0) {
+                        log(logId, `📋 Sample activity: ${JSON.stringify(data.activities[0], null, 2)}`, 'info');
+
+                        // Check activity ordering
+                        log(logId, `📅 Activity timestamps (first 3):`, 'info');
+                        data.activities.slice(0, 3).forEach((activity, i) => {
+                            log(logId, `   ${i + 1}. ${activity.customer_name} - ${activity.action}`, 'info');
+                            log(logId, `      createdAt: ${activity.createdAt || 'N/A'}`, 'info');
+                            log(logId, `      created_at: ${activity.created_at || 'N/A'}`, 'info');
+                            log(logId, `      _id: ${activity._id}`, 'info');
+                        });
+                    }
+                } else {
+                    const errorText = await response.text();
+                    log(logId, `❌ Error: ${response.status} - ${errorText}`, 'error');
+                }
+            } catch (error) {
+                log(logId, `💥 Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testVAPIDKeys() {
+            const logId = 'vapid-log';
+            document.getElementById(logId).innerHTML = '';
+            log(logId, '🔑 Testing VAPID keys...', 'info');
+
+            try {
+                const response = await fetch('/api/push/public-key', {
+                    cache: 'no-store'
+                });
+
+                log(logId, `📊 VAPID API status: ${response.status}`, response.ok ? 'success' : 'error');
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log(logId, `✅ VAPID configured: ${data.configured ? 'Yes' : 'No'}`, data.configured ? 'success' : 'error');
+                    log(logId, `🔧 Environment: ${data.environment}`, 'info');
+                    log(logId, `🔑 Public key length: ${data.publicKey ? data.publicKey.length : 0}`, 'info');
+                } else {
+                    const errorData = await response.json();
+                    log(logId, `❌ VAPID error: ${errorData.error}`, 'error');
+                }
+            } catch (error) {
+                log(logId, `💥 VAPID test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function checkSession() {
+            const logId = 'session-log';
+            document.getElementById(logId).innerHTML = '';
+            log(logId, '💾 Checking session data...', 'info');
+
+            try {
+                const barberSession = localStorage.getItem('barberSession');
+                const ownerSession = localStorage.getItem('ownerSession');
+
+                if (barberSession) {
+                    const parsed = JSON.parse(barberSession);
+                    log(logId, `👨‍💼 Barber session found:`, 'success');
+                    log(logId, `   - Name: ${parsed.user?.name || 'N/A'}`, 'info');
+                    log(logId, `   - Username: ${parsed.user?.username || 'N/A'}`, 'info');
+                    log(logId, `   - ID: ${parsed.user?._id || 'N/A'}`, 'info');
+                    log(logId, `   - PWA: ${parsed.pwa || 'No'}`, 'info');
+                    log(logId, `   - Auto: ${parsed.auto || 'No'}`, 'info');
+                } else {
+                    log(logId, '❌ No barber session found', 'error');
+                }
+
+                if (ownerSession) {
+                    log(logId, '👑 Owner session detected', 'success');
+                } else {
+                    log(logId, 'ℹ️ No owner session', 'info');
+                }
+            } catch (error) {
+                log(logId, `💥 Session check failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function runCompleteTest() {
+            const logId = 'complete-log';
+            document.getElementById(logId).innerHTML = '';
+            log(logId, '🚀 Starting complete test...', 'info');
+
+            // Test 1: Environment
+            log(logId, '📱 Environment check...', 'info');
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+            log(logId, `   PWA Mode: ${isPWA}`, isPWA ? 'success' : 'info');
+
+            // Test 2: Session
+            log(logId, '💾 Session check...', 'info');
+            const barberSession = localStorage.getItem('barberSession');
+            if (barberSession) {
+                const parsed = JSON.parse(barberSession);
+                log(logId, `   Session user: ${parsed.user?.name || parsed.user?.username}`, 'success');
+            } else {
+                log(logId, '   No session found', 'error');
+            }
+
+            // Test 3: VAPID
+            log(logId, '🔑 VAPID keys check...', 'info');
+            try {
+                const vapidResponse = await fetch('/api/push/public-key');
+                if (vapidResponse.ok) {
+                    const vapidData = await vapidResponse.json();
+                    log(logId, `   VAPID: ${vapidData.configured ? 'OK' : 'Failed'}`, vapidData.configured ? 'success' : 'error');
+                }
+            } catch (e) {
+                log(logId, '   VAPID: Failed', 'error');
+            }
+
+            // Test 4: Activity API
+            log(logId, '📊 Activity API check...', 'info');
+            const testBarberId = document.getElementById('barberId').value || 'امین';
+            try {
+                const activityResponse = await fetch(`/api/barber-activities/${encodeURIComponent(testBarberId)}`);
+                if (activityResponse.ok) {
+                    const activityData = await activityResponse.json();
+                    log(logId, `   Activities: ${activityData.activities?.length || 0} found`, 'success');
+                } else {
+                    log(logId, `   Activities: Failed (${activityResponse.status})`, 'error');
+                }
+            } catch (e) {
+                log(logId, '   Activities: Network error', 'error');
+            }
+
+            log(logId, '✅ Complete test finished!', 'success');
+        }
+    </script>
+</body>
+
+</html>

@@ -661,6 +661,9 @@ class MongoDatabase {
                 throw new Error('customer_name is required for activity logging');
             }
 
+            // Create timestamps that are synchronized
+            const now = new Date();
+
             const activity = new BarberActivity({
                 barber_id: activityData.barber_id,
                 customer_name: activityData.customer_name,
@@ -668,8 +671,13 @@ class MongoDatabase {
                 action: activityData.action,
                 booking_id: activityData.booking_id,
                 details: activityData.details,
-                status: 'unread'
+                status: 'unread',
+                created_at: now // Explicitly set created_at to ensure consistency
             });
+
+            // Also override the default createdAt from timestamps to match
+            activity.createdAt = now;
+            activity.updatedAt = now;
 
             console.log('💾 Saving activity to database:', activity);
             const savedActivity = await activity.save();
@@ -700,14 +708,32 @@ class MongoDatabase {
             const totalActivities = await BarberActivity.countDocuments({});
             console.log('📊 Total activities in database:', totalActivities);
 
-            // Check activities for this specific barber
+            // Check activities for this specific barber with improved sorting
+            // Force sort by ObjectId first (which contains creation timestamp) for most reliable ordering
             const activities = await BarberActivity.find({
                 barber_id: objectId
             })
-                .sort({ created_at: -1 })
+                // Sort by _id first (ObjectId timestamp is most reliable), then other fields
+                .sort({
+                    _id: -1,           // ObjectId contains precise timestamp - most reliable
+                    createdAt: -1,     // Mongoose timestamps
+                    created_at: -1     // Custom field
+                })
                 .limit(limit);
 
             console.log(`📋 Found ${activities.length} activities for barber ${barberId}`);
+
+            // Log sorting debug info
+            if (activities.length > 0) {
+                console.log('🔍 Activity sorting debug:', activities.slice(0, 3).map(a => ({
+                    id: a._id.toString(),
+                    action: a.action,
+                    customer: a.customer_name,
+                    createdAt: a.createdAt,
+                    created_at: a.created_at,
+                    objectIdTime: a._id.getTimestamp()
+                })));
+            }
 
             // If no activities found, let's see what barber IDs exist in activities
             if (activities.length === 0 && totalActivities > 0) {

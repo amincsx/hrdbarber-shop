@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست فوری فعالیت‌ها</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            color: white;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        button {
+            background: rgba(59, 130, 246, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: rgba(59, 130, 246, 0.5);
+        }
+
+        input {
+            padding: 10px;
+            margin: 5px;
+            width: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 4px;
+        }
+
+        .log {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .success {
+            color: #22c55e;
+        }
+
+        .error {
+            color: #ef4444;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🚀 تست فوری فعالیت‌ها</h1>
+
+        <div>
+            <input type="text" id="barberId" placeholder="نام آرایشگر" value="امین">
+            <input type="text" id="customerName" placeholder="نام مشتری" value="تست سریع">
+            <br>
+            <button onclick="createTestActivity()">ایجاد فعالیت تستی</button>
+            <button onclick="fetchActivities()">دریافت فعالیت‌ها</button>
+            <button onclick="clearLog()">پاک کردن لاگ</button>
+        </div>
+
+        <div id="log" class="log">آماده برای تست...</div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const element = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString('fa-IR');
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            element.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        async function createTestActivity() {
+            const barberId = document.getElementById('barberId').value;
+            const customerName = document.getElementById('customerName').value;
+
+            log(`🏗️ Creating test activity for ${barberId}...`);
+
+            try {
+                // First, let's find the barber user
+                const barberResponse = await fetch('/api/test-db');
+                const barberData = await barberResponse.json();
+
+                log(`👥 Available barbers: ${barberData.barbers?.map(b => b.name).join(', ')}`);
+
+                // Create a test booking to trigger activity
+                const testBooking = {
+                    barber: barberId,
+                    services: ['اصلاح مو'],
+                    date: new Date().toISOString().split('T')[0],
+                    start_time: '14:00',
+                    end_time: '15:00',
+                    user_name: customerName + ' - ' + Date.now(),
+                    user_phone: '0912' + Math.floor(Math.random() * 1000000),
+                    user_id: 'test_' + Date.now()
+                };
+
+                log(`📤 Sending test booking: ${JSON.stringify(testBooking, null, 2)}`);
+
+                const response = await fetch('/api/bookings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testBooking)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`✅ Test booking created successfully! ID: ${result._id}`, 'success');
+                    log(`🔄 Now fetching activities to see the update...`);
+
+                    // Wait a moment then fetch activities
+                    setTimeout(() => fetchActivities(), 1000);
+                } else {
+                    const error = await response.text();
+                    log(`❌ Failed to create test booking: ${error}`, 'error');
+                }
+
+            } catch (error) {
+                log(`💥 Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function fetchActivities() {
+            const barberId = document.getElementById('barberId').value;
+
+            log(`📊 Fetching activities for: ${barberId}`);
+
+            try {
+                const timestamp = Date.now();
+                const url = `/api/barber-activities/${encodeURIComponent(barberId)}?t=${timestamp}`;
+                log(`📡 URL: ${url}`);
+
+                const response = await fetch(url, {
+                    cache: 'no-store',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate'
+                    }
+                });
+
+                log(`📊 Response status: ${response.status}`);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`📋 Found ${data.activities?.length || 0} activities`, 'success');
+
+                    if (data.activities && data.activities.length > 0) {
+                        log(`🔄 Activity order:`);
+                        data.activities.forEach((activity, i) => {
+                            log(`  ${i + 1}. ${activity.customer_name} - ${activity.action}`);
+                            log(`     ID: ${activity._id}`);
+                            log(`     createdAt: ${activity.createdAt}`);
+                            log(`     created_at: ${activity.created_at}`);
+                        });
+
+                        // Show which would be in top 2
+                        log(`🏆 TOP 2 (should be newest):`);
+                        data.activities.slice(0, 2).forEach((activity, i) => {
+                            log(`  ${i + 1}. ${activity.customer_name} - ${activity.action}`, 'success');
+                        });
+
+                        if (data.activities.length > 2) {
+                            log(`📁 OLDER SECTION:`);
+                            data.activities.slice(2).forEach((activity, i) => {
+                                log(`  ${i + 3}. ${activity.customer_name} - ${activity.action}`);
+                            });
+                        }
+                    } else {
+                        log(`🔍 No activities found`);
+                    }
+
+                    if (data.debug) {
+                        log(`🔧 Debug info: ${JSON.stringify(data.debug, null, 2)}`);
+                    }
+                } else {
+                    const error = await response.text();
+                    log(`❌ Error fetching activities: ${error}`, 'error');
+                }
+
+            } catch (error) {
+                log(`💥 Network error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-fetch on load
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchActivities();
+        });
+    </script>
+</body>
+
+</html>

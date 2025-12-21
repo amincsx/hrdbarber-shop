@@ -223,6 +223,19 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // Skip caching for activity APIs - always fetch fresh
+    if (event.request.url.includes('/api/barber-activities/')) {
+        console.log('🚫 Android SW: Skipping cache for activity API:', event.request.url);
+        event.respondWith(
+            fetch(event.request).catch(() => {
+                return new Response('در حال حاضر آفلاین هستید', {
+                    headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+                });
+            })
+        );
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request)
             .then((response) => {
@@ -238,13 +251,15 @@ self.addEventListener('fetch', (event) => {
                         return response;
                     }
 
-                    // Cache the response for next time
-                    const responseToCache = response.clone();
+                    // Cache the response for next time (but exclude activity APIs)
+                    if (!event.request.url.includes('/api/barber-activities/')) {
+                        const responseToCache = response.clone();
 
-                    caches.open(BARBER_CACHE_NAME)
-                        .then((cache) => {
-                            cache.put(event.request, responseToCache);
-                        });
+                        caches.open(BARBER_CACHE_NAME)
+                            .then((cache) => {
+                                cache.put(event.request, responseToCache);
+                            });
+                    }
 
                     return response;
                 });

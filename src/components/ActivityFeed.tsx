@@ -77,15 +77,108 @@ export default function ActivityFeed({ barberId, className = '' }: ActivityFeedP
     const fetchActivities = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`/api/barber-activities/${barberId}`);
+            console.log('=== 🔍 ACTIVITY FETCH DEBUG START ===');
+            console.log('📊 ActivityFeed: Fetching activities for barberId:', barberId);
+            console.log('📊 ActivityFeed: barberId type:', typeof barberId);
+            console.log('📊 ActivityFeed: isPWA mode:', window.location.search.includes('pwa=1'));
+            console.log('📊 ActivityFeed: Current URL:', window.location.href);
+
+            const timestamp = Date.now();
+            const apiUrl = `/api/barber-activities/${barberId}?t=${timestamp}&refresh=1`;
+            console.log('📊 ActivityFeed: API URL:', apiUrl);
+            const response = await fetch(`/api/barber-activities/${barberId}?t=${timestamp}&refresh=1`, {
+                cache: 'no-store',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            });
+
+            console.log('📊 ActivityFeed: API response status:', response.status);
+            console.log('📊 ActivityFeed: API response headers:', Object.fromEntries(response.headers.entries()));
 
             if (response.ok) {
                 const data = await response.json();
-                setActivities(data.activities || []);
+                console.log('📊 ActivityFeed: Raw API response data:', data);
+                console.log('📊 ActivityFeed: Received data summary:', {
+                    activitiesCount: data.activities?.length || 0,
+                    unreadCount: data.unreadCount || 0,
+                    debug: data.debug
+                });
+
+                console.log('📊 ActivityFeed: Raw activities from API (showing timestamps):',
+                    (data.activities || []).map((a, i) => ({
+                        index: i + 1,
+                        id: a._id,
+                        customer: a.customer_name,
+                        action: a.action,
+                        createdAt: a.createdAt,
+                        created_at: a.created_at,
+                        createdAtTime: a.createdAt ? new Date(a.createdAt).getTime() : 'N/A',
+                        created_atTime: a.created_at ? new Date(a.created_at).getTime() : 'N/A'
+                    }))
+                );
+
+                console.log('🔄 Starting client-side sorting...');
+
+                // Additional client-side sorting to ensure proper order
+                // Sort by multiple date fields to handle any inconsistencies
+                const sortedActivities = (data.activities || []).sort((a, b) => {
+                    console.log(`🔄 Comparing: ${a.customer_name} vs ${b.customer_name}`);
+
+                    // Try ObjectId first (most reliable)
+                    if (a._id && b._id) {
+                        const comparison = b._id.localeCompare(a._id);
+                        console.log(`  - ObjectId comparison: ${comparison} (${b._id} vs ${a._id})`);
+                        if (comparison !== 0) return comparison;
+                    }
+
+                    // Fallback to timestamps
+                    const aTime = new Date(a.createdAt || a.created_at || 0).getTime();
+                    const bTime = new Date(b.createdAt || b.created_at || 0).getTime();
+                    const timeComparison = bTime - aTime;
+
+                    console.log(`  - Time comparison: ${timeComparison} (${bTime} vs ${aTime})`);
+                    console.log(`  - Winner: ${timeComparison > 0 ? b.customer_name : a.customer_name}`);
+
+                    // Newest first
+                    return timeComparison;
+                });
+
+                console.log('📊 ActivityFeed: After client-side sorting (final order):',
+                    sortedActivities.map((a, i) => ({
+                        index: i + 1,
+                        id: a._id,
+                        customer: a.customer_name,
+                        action: a.action,
+                        createdAt: a.createdAt,
+                        created_at: a.created_at
+                    }))
+                );
+
+                setActivities(sortedActivities);
                 setUnreadCount(data.unreadCount || 0);
+
+                // Debug: Show which activities go where
+                console.log('📊 ActivityFeed: Display sections breakdown:', {
+                    total: sortedActivities.length,
+                    mainSection: sortedActivities.slice(0, 2).map(a => a.customer_name),
+                    olderSection: sortedActivities.slice(2).map(a => a.customer_name)
+                });
+                console.log('=== ✅ ACTIVITY FETCH DEBUG END ===');
+            } else {
+                const errorText = await response.text().catch(() => 'Unknown error');
+                console.error('📊 ActivityFeed: API error:', {
+                    status: response.status,
+                    error: errorText,
+                    barberId: barberId
+                });
             }
         } catch (error) {
-            console.error('Failed to fetch activities:', error);
+            console.error('📊 ActivityFeed: Failed to fetch activities:', error);
         } finally {
             setLoading(false);
         }
@@ -93,6 +186,8 @@ export default function ActivityFeed({ barberId, className = '' }: ActivityFeedP
 
     const markAsRead = async (activityIds?: string[]) => {
         try {
+            console.log('📊 ActivityFeed: Marking as read:', activityIds ? activityIds.length : 'all');
+
             const response = await fetch(`/api/barber-activities/${barberId}/mark-read`, {
                 method: 'POST',
                 headers: {
@@ -102,6 +197,7 @@ export default function ActivityFeed({ barberId, className = '' }: ActivityFeedP
             });
 
             if (response.ok) {
+                console.log('📊 ActivityFeed: Successfully marked as read');
                 // Update local state
                 setActivities(prev =>
                     prev.map(activity => ({
@@ -115,9 +211,15 @@ export default function ActivityFeed({ barberId, className = '' }: ActivityFeedP
                 } else {
                     setUnreadCount(prev => Math.max(0, prev - activityIds.length));
                 }
+            } else {
+                const errorText = await response.text().catch(() => 'Unknown error');
+                console.error('📊 ActivityFeed: Mark as read failed:', {
+                    status: response.status,
+                    error: errorText
+                });
             }
         } catch (error) {
-            console.error('Failed to mark activities as read:', error);
+            console.error('📊 ActivityFeed: Failed to mark activities as read:', error);
         }
     };
 
@@ -126,10 +228,32 @@ export default function ActivityFeed({ barberId, className = '' }: ActivityFeedP
 
         // Refresh every 30 seconds
         const interval = setInterval(fetchActivities, 30000);
-        return () => clearInterval(interval);
+
+        // Listen for new booking events to refresh immediately
+        const handleNewBooking = () => {
+            console.log('🔄 ActivityFeed: New booking detected, refreshing activities...');
+            fetchActivities();
+        };
+
+        // Listen for custom events or storage changes
+        window.addEventListener('bookingCreated', handleNewBooking);
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'newBookingTrigger') {
+                handleNewBooking();
+            }
+        });
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('bookingCreated', handleNewBooking);
+            window.removeEventListener('storage', handleNewBooking);
+        };
     }, [barberId]);
 
-    const displayedActivities = showAll ? activities : activities.slice(0, 2);
+    // Always show first 2 activities in the main section
+    // Additional activities (3+) go in the expandable section
+    const mainActivities = activities.slice(0, 2);
+    const olderActivities = activities.slice(2);
 
     if (loading) {
         return (
@@ -174,10 +298,33 @@ export default function ActivityFeed({ barberId, className = '' }: ActivityFeedP
                         </button>
                     )}
                     <button
-                        onClick={fetchActivities}
+                        onClick={() => {
+                            console.log('🔄 Manual refresh triggered');
+                            fetchActivities();
+                        }}
                         className="glass-button text-xs sm:text-sm px-3 py-2 flex-1 sm:flex-initial"
                     >
                         🔄 به‌روزرسانی
+                    </button>
+                    <button
+                        onClick={() => {
+                            console.log('💥 Force refresh with cache clear');
+                            // Clear any cached data
+                            if ('caches' in window) {
+                                caches.keys().then(names => {
+                                    names.forEach(name => {
+                                        if (name.includes('barber')) {
+                                            caches.delete(name);
+                                        }
+                                    });
+                                });
+                            }
+                            // Force refresh
+                            setTimeout(() => fetchActivities(), 100);
+                        }}
+                        className="glass-button text-xs sm:text-sm px-2 py-2 bg-red-500/20 border-red-400/50 hover:bg-red-500/30"
+                    >
+                        🚫 پاک‌سازی کش
                     </button>
                 </div>
             </div>
@@ -189,9 +336,9 @@ export default function ActivityFeed({ barberId, className = '' }: ActivityFeedP
                 </div>
             ) : (
                 <>
-                    {/* Always visible - Last 2 activities */}
+                    {/* Always visible - First 2 activities (newest) */}
                     <div className="space-y-3">
-                        {displayedActivities.slice(0, 2).map((activity) => (
+                        {mainActivities.map((activity) => (
                             <div
                                 key={activity._id}
                                 className={`flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg backdrop-blur-sm transition-all duration-200 ${activity.status === 'unread'
@@ -239,8 +386,8 @@ export default function ActivityFeed({ barberId, className = '' }: ActivityFeedP
                         ))}
                     </div>
 
-                    {/* Show/Hide toggle for older activities */}
-                    {activities.length > 2 && (
+                    {/* Show/Hide toggle for older activities (3+) */}
+                    {olderActivities.length > 0 && (
                         <div className="mt-4 border-t border-white/10 pt-4">
                             {!showAll ? (
                                 <button
@@ -248,14 +395,14 @@ export default function ActivityFeed({ barberId, className = '' }: ActivityFeedP
                                     className="w-full text-center glass-button py-3 text-sm flex items-center justify-center gap-2"
                                 >
                                     <span>نمایش فعالیت‌های قدیمی‌تر</span>
-                                    <span className="text-xs opacity-70">({activities.length - 2} مورد)</span>
+                                    <span className="text-xs opacity-70">({olderActivities.length} مورد)</span>
                                     <span className="text-lg">⬇️</span>
                                 </button>
                             ) : (
                                 <>
                                     {/* Scrollable container for older activities */}
                                     <div className="max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent space-y-3 pr-2">
-                                        {activities.slice(2).map((activity) => (
+                                        {olderActivities.map((activity) => (
                                             <div
                                                 key={activity._id}
                                                 className={`flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg backdrop-blur-sm transition-all duration-200 ${activity.status === 'unread'

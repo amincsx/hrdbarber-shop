@@ -200,15 +200,25 @@ export default function BarberDashboard() {
                 try {
                     // Detect if we're on Android for enhanced service worker
                     const isAndroid = /Android/i.test(navigator.userAgent);
+                    const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                     const swPath = isAndroid ? '/barber-sw-android.js' : '/barber-sw.js';
 
-                    console.log(`🔧 Registering service worker: ${swPath} (Android: ${isAndroid})`);
+                    // Get the correct URL for production
+                    const baseUrl = window.location.origin;
+                    const fullSwPath = `${baseUrl}${swPath}`;
+
+                    console.log(`🔧 Registering service worker: ${swPath} (Android: ${isAndroid}, Mobile: ${isMobile})`);
+                    console.log('🔧 Base URL:', baseUrl);
+                    console.log('🔧 Full SW Path:', fullSwPath);
                     console.log('🔧 User agent:', navigator.userAgent);
                     console.log('🔧 Notification support:', 'Notification' in window);
                     console.log('🔧 PushManager support:', 'PushManager' in window);
+                    console.log('🔧 Is HTTPS:', window.location.protocol === 'https:');
 
-                    // Register service worker
-                    const registration = await navigator.serviceWorker.register(swPath);
+                    // Register service worker with scope for production
+                    const registration = await navigator.serviceWorker.register(swPath, {
+                        scope: '/'
+                    });
                     console.log('✅ Service Worker registered:', registration);
                     console.log('✅ SW scope:', registration.scope);
                     console.log('✅ SW active:', !!registration.active);
@@ -218,12 +228,21 @@ export default function BarberDashboard() {
                         console.log('🔧 Android detected - using enhanced permission flow');
                     }
 
-                    // Request notification permission
+                    // Request notification permission with mobile-specific handling
                     if (Notification.permission === 'default') {
+                        // For mobile devices, show user prompt first
+                        if (isMobile) {
+                            console.log('📱 Mobile device detected - requesting notification permission');
+                        }
+
                         const permission = await Notification.requestPermission();
                         console.log('🔔 Notification permission:', permission);
-                        if (isAndroid) {
-                            console.log('🔔 Android permission result:', permission);
+
+                        if (isMobile) {
+                            console.log('📱 Mobile permission result:', permission);
+                            // Additional logging for mobile debugging
+                            console.log('📱 Window location:', window.location.href);
+                            console.log('📱 Is PWA:', window.matchMedia('(display-mode: standalone)').matches);
                         }
                     }
 
@@ -234,39 +253,84 @@ export default function BarberDashboard() {
                             // Fetch VAPID public key from server (works in PWA too)
                             let vapidPublicKey: string | null = null;
                             try {
-                                const keyRes = await fetch('/api/push/public-key', { cache: 'no-store' });
+                                const keyRes = await fetch('/api/push/public-key', {
+                                    cache: 'no-store',
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'Content-Type': 'application/json'
+                                    }
+                                });
+
+                                if (!keyRes.ok) {
+                                    throw new Error(`VAPID key fetch failed: ${keyRes.status}`);
+                                }
+
                                 const keyJson = await keyRes.json();
                                 vapidPublicKey = keyJson.publicKey || null;
-                            } catch { }
+                                console.log('🔑 VAPID public key fetched:', vapidPublicKey ? 'Yes' : 'No');
+                            } catch (keyError) {
+                                console.error('❌ VAPID key fetch error:', keyError);
+                            }
+
+                            if (!vapidPublicKey) {
+                                console.warn('⚠️ No VAPID public key available - push notifications may not work in production');
+                            }
+
                             const applicationServerKey = vapidPublicKey ? urlBase64ToUint8Array(vapidPublicKey) : null;
 
                             const subscription = await registration.pushManager.subscribe({
                                 userVisibleOnly: true,
                                 applicationServerKey
-                            }).catch(() => {
-                                console.log('⚠️ Push subscription not available (needs VAPID keys)');
+                            }).catch((subscribeError) => {
+                                console.error('❌ Push subscription failed:', subscribeError);
+                                if (isMobile) {
+                                    console.error('📱 Mobile subscription error details:', {
+                                        name: subscribeError.name,
+                                        message: subscribeError.message,
+                                        hasVapid: !!applicationServerKey
+                                    });
+                                }
                                 return null;
                             });
 
                             if (subscription) {
-                                // Send subscription to server
-                                const response = await fetch('/api/barber/subscribe', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                    body: JSON.stringify({
-                                        barberId: decodeURIComponent(barberId),
-                                        subscription
-                                    })
+                                console.log('✅ Push subscription created:', {
+                                    endpoint: subscription.endpoint,
+                                    hasKeys: !!(subscription.keys && subscription.keys.p256dh)
                                 });
 
-                                if (response.ok) {
-                                    console.log('✅ Push notification subscription registered');
-                                } else {
-                                    const txt = await response.text().catch(() => '');
-                                    console.log('⚠️ Failed to register push subscription on server', response.status, txt);
+                                // Send subscription to server with retry logic
+                                try {
+                                    const response = await fetch('/api/barber/subscribe', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                            barberId: decodeURIComponent(barberId),
+                                            subscription,
+                                            userAgent: navigator.userAgent,
+                                            isMobile,
+                                            timestamp: new Date().toISOString()
+                                        })
+                                    });
+
+                                    if (response.ok) {
+                                        const result = await response.json();
+                                        console.log('✅ Push notification subscription registered:', result);
+                                    } else {
+                                        const errorText = await response.text().catch(() => 'Unknown error');
+                                        console.error('❌ Failed to register push subscription:', {
+                                            status: response.status,
+                                            error: errorText,
+                                            url: response.url
+                                        });
+                                    }
+                                } catch (networkError) {
+                                    console.error('❌ Network error registering subscription:', networkError);
                                 }
+                            } else {
+                                console.error('❌ Failed to create push subscription');
                             }
                         } catch (subError) {
                             console.log('⚠️ Push subscription error:', subError);
@@ -1272,7 +1336,25 @@ export default function BarberDashboard() {
                 {/* Activity Feed Section - Latest Updates First */}
                 <div className="mb-4 sm:mb-6">
                     <ActivityFeed
-                        barberId={barberSession?.user?._id || barberSession?.user?.username || decodeURIComponent(barberId)}
+                        barberId={(() => {
+                            // Try to get barberId from session first
+                            const sessionBarberId = barberSession?.user?._id || barberSession?.user?.username;
+                            // Fallback to URL parameter
+                            const urlBarberId = decodeURIComponent(barberId);
+                            // For PWA mode, prefer the URL parameter which is more reliable
+                            const isPWA = typeof window !== 'undefined' && window.location.search.includes('pwa=1');
+                            const finalBarberId = isPWA ? urlBarberId : (sessionBarberId || urlBarberId);
+
+                            console.log('📊 ActivityFeed barberId resolution:', {
+                                sessionBarberId,
+                                urlBarberId,
+                                isPWA,
+                                finalBarberId,
+                                sessionUser: barberSession?.user
+                            });
+
+                            return finalBarberId;
+                        })()}
                         className="backdrop-blur-xl"
                     />
                 </div>

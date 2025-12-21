@@ -1184,6 +1184,20 @@ export default function BookingPage() {
                     console.log('✅ Booking saved to database successfully:', result);
                     bookingSavedToDatabase = true;
 
+                    // Trigger activity refresh for barber dashboard
+                    try {
+                        // Send custom event to trigger activity refresh
+                        window.dispatchEvent(new CustomEvent('bookingCreated', {
+                            detail: { barberId: selectedBarber, bookingId: result._id }
+                        }));
+
+                        // Also set localStorage trigger for cross-tab updates
+                        localStorage.setItem('newBookingTrigger', Date.now().toString());
+                        console.log('🔔 Activity refresh triggered for barber:', selectedBarber);
+                    } catch (triggerError) {
+                        console.log('⚠️ Failed to trigger activity refresh:', triggerError);
+                    }
+
                     // Send notification to barber
                     try {
                         await fetch('/api/bookings/notify', {

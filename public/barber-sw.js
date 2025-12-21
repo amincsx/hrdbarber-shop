@@ -57,6 +57,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip caching for activity APIs - always fetch fresh
+  if (event.request.url.includes('/api/barber-activities/')) {
+    console.log('🚫 Skipping cache for activity API:', event.request.url);
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return new Response('در حال حاضر آفلاین هستید', {
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        });
+      })
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -71,8 +84,8 @@ self.addEventListener('fetch', (event) => {
             return response;
           }
 
-          // Cache API responses for barber data
-          if (event.request.url.includes('/api/barber/')) {
+          // Cache other API responses for barber data (but not activities)
+          if (event.request.url.includes('/api/barber/') && !event.request.url.includes('/api/barber-activities/')) {
             const responseToCache = response.clone();
             caches.open(BARBER_CACHE_NAME).then((cache) => {
               cache.put(event.request, responseToCache);
@@ -147,6 +160,8 @@ self.addEventListener('push', (event) => {
 // Notification click event
 self.addEventListener('notificationclick', (event) => {
   console.log('🔔 Barber Service Worker: Notification clicked');
+  console.log('🔔 Event action:', event.action);
+  console.log('🔔 Notification data:', event.notification.data);
 
   event.notification.close();
 
@@ -155,23 +170,38 @@ self.addEventListener('notificationclick', (event) => {
     event.waitUntil(
       clients.matchAll({ type: 'window', includeUncontrolled: true })
         .then((clientList) => {
+          console.log('🔔 Found clients:', clientList.length);
+
           // If app is already open, focus it
           for (const client of clientList) {
-            if (client.url.includes('/barber-dashboard/') && 'focus' in client) {
+            console.log('🔔 Client URL:', client.url);
+            if ((client.url.includes('/barber-dashboard/') || client.url.includes('/barber-app')) && 'focus' in client) {
+              console.log('🔔 Focusing existing client');
               return client.focus();
             }
           }
 
-          // Otherwise open new window with absolute URL
+          // Otherwise open new window with proper URL construction
           if (clients.openWindow) {
             const barberId = event.notification.data?.barberId || '';
-            // Use self.location.origin to get the base URL
+            // Use self.location.origin for proper domain handling in production
             const baseUrl = self.location.origin;
-            const url = barberId
-              ? `${baseUrl}/barber-dashboard/${encodeURIComponent(barberId)}?pwa=1&notification=1`
-              : `${baseUrl}/barber-login?pwa=1`;
-            return clients.openWindow(url);
+            let targetUrl;
+
+            if (barberId) {
+              targetUrl = `${baseUrl}/barber-dashboard/${encodeURIComponent(barberId)}?pwa=1&notification=1`;
+            } else {
+              targetUrl = `${baseUrl}/barber-app?pwa=1`;
+            }
+
+            console.log('🔔 Opening URL:', targetUrl);
+            return clients.openWindow(targetUrl);
+          } else {
+            console.error('❌ clients.openWindow not available');
           }
+        })
+        .catch((error) => {
+          console.error('❌ Error handling notification click:', error);
         })
     );
   }

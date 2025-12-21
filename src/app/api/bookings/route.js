@@ -105,8 +105,15 @@ async function POST(request) {
 
                     console.log('📝 Logging activity with data:', JSON.stringify(activityData, null, 2));
 
-                    await MongoDatabase.logBarberActivity(activityData);
-                    console.log('✅ Activity logged successfully for barber:', barberUser.username);
+                    const savedActivity = await MongoDatabase.logBarberActivity(activityData);
+                    console.log('✅ Activity logged successfully for barber:', barberUser.username, 'Activity ID:', savedActivity._id);
+
+                    // Log the exact timestamp for debugging
+                    console.log('🕰️ Activity timestamp details:', {
+                        createdAt: savedActivity.createdAt,
+                        created_at: savedActivity.created_at,
+                        objectIdTime: savedActivity._id.getTimestamp()
+                    });
                 } else {
                     console.warn('⚠️ Could not find barber user for activity logging:', barber);
                     console.warn('⚠️ Available barber users:', (await MongoDatabase.getUsersByRole('barber')).map(u => `${u.name} (${u.username})`));
