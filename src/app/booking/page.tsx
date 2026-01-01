@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -200,6 +200,7 @@ export default function BookingPage() {
     const [currentTime, setCurrentTime] = useState(new Date()); // Add current time state
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [isBookingInProgress, setIsBookingInProgress] = useState(false); // Loading state for booking submission
     const [editingBooking, setEditingBooking] = useState<any>(null); // For edit mode
     const [isEditMode, setIsEditMode] = useState(false);
 
@@ -485,12 +486,47 @@ export default function BookingPage() {
 
     // Generate time slots based on selected services and existing bookings
     const getBasicTimeSlots = () => {
+        // Always check if we need to filter for today, regardless of barber selection
+        const isToday = selectedDateObj &&
+            selectedDateObj.toDateString() === currentTime.toDateString();
+
+        console.log('🕐 getBasicTimeSlots called:', {
+            selectedDateObj: selectedDateObj?.toISOString(),
+            currentTime: currentTime.toISOString(),
+            isToday,
+            selectedBarber
+        });
+
         if (!selectedBarber) {
             // Default slots - only o'clock times
-            return [
+            const defaultSlots = [
                 '10:00', '11:00', '12:00', '13:00', '14:00', '15:00',
                 '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
             ];
+
+            // If today, filter out past times
+            if (isToday) {
+                const currentHours = currentTime.getHours();
+                const currentMinutes = currentTime.getMinutes();
+                const currentTimeInMinutes = currentHours * 60 + currentMinutes;
+
+                console.log('⏰ Filtering slots for today. Current time:', `${currentHours}:${currentMinutes}`, `(${currentTimeInMinutes} minutes)`);
+
+                return defaultSlots.filter(slot => {
+                    const [hour] = slot.split(':').map(Number);
+                    const slotTimeInMinutes = hour * 60;
+                    const minutesUntilSlot = slotTimeInMinutes - currentTimeInMinutes;
+
+                    const shouldShow = minutesUntilSlot >= 30;
+                    console.log(`  Slot ${slot}: ${slotTimeInMinutes} mins, until: ${minutesUntilSlot} mins, show: ${shouldShow}`);
+
+                    // Only show if there are at least 30 minutes until this time
+                    return shouldShow;
+                });
+            }
+
+            console.log('📅 Not today, showing all default slots');
+            return defaultSlots;
         }
 
         const schedule = getBarberSchedule(selectedBarber);
@@ -610,7 +646,7 @@ export default function BookingPage() {
         }, 0);
     };
 
-    const timeSlots = getBasicTimeSlots();
+    const timeSlots = useMemo(() => getBasicTimeSlots(), [selectedBarber, selectedServices, selectedDateObj, currentTime, existingBookings]);
 
     // Check if barber is available on selected date
     const isBarberAvailableOnDate = (barberName: string, date: Date) => {
@@ -656,13 +692,19 @@ export default function BookingPage() {
 
     const getAvailableTimeSlots = () => {
         const totalDuration = getTotalDuration();
-        const currentHours = currentTime.getHours();
-        const currentMinutes = currentTime.getMinutes();
+
+        // FOR TESTING: Use 17:07 as current time
+        const testCurrentTime = new Date();
+        testCurrentTime.setHours(17, 7, 0, 0);
+        const currentHours = testCurrentTime.getHours();
+        const currentMinutes = testCurrentTime.getMinutes();
         const currentTimeInMinutes = currentHours * 60 + currentMinutes;
 
         // Check if selected date is today
         const isToday = selectedDateObj &&
             selectedDateObj.toDateString() === currentTime.toDateString();
+
+        console.log(`🔄 getAvailableTimeSlots: Testing with time ${currentHours}:${String(currentMinutes).padStart(2, '0')} (${currentTimeInMinutes} minutes)`);
 
         // Check if barber is available on selected date
         const isBarberAvailable = selectedBarber && selectedDateObj ?
@@ -739,9 +781,13 @@ export default function BookingPage() {
             const slotTime = hours * 60 + minutes; // Convert to minutes
             const endTime = slotTime + (totalDuration || 30);
 
-            // If it's today, filter out past times
-            if (isToday && slotTime <= currentTimeInMinutes) {
-                return false;
+            // If it's today, filter out slots without enough time buffer
+            if (isToday) {
+                const minutesUntilSlot = slotTime - currentTimeInMinutes;
+                if (minutesUntilSlot < 30) {
+                    console.log(`⏰ getAvailableTimeSlots filtered slot ${slot}: only ${minutesUntilSlot} minutes away`);
+                    return false;
+                }
             }
 
             // Check if the service can fit within operating hours (10:00 - 21:00)
@@ -888,11 +934,21 @@ export default function BookingPage() {
     // Update current time every minute
     useEffect(() => {
         const interval = setInterval(() => {
-            setCurrentTime(new Date());
+            const newTime = new Date();
+            console.log(`⏰ Time updated: ${newTime.getHours()}:${String(newTime.getMinutes()).padStart(2, '0')}`);
+            setCurrentTime(newTime);
         }, 60000); // Update every minute
 
         return () => clearInterval(interval);
     }, []);
+
+    // Recalculate time slots when current time changes (for today)
+    useEffect(() => {
+        if (selectedDateObj && selectedDateObj.toDateString() === currentTime.toDateString()) {
+            // Force re-render when time updates on today's date
+            console.log('⏰ Current time updated, recalculating available slots for today');
+        }
+    }, [currentTime, selectedDateObj]);
 
     // Load accurate Persian dates from API in background
     useEffect(() => {
@@ -1003,13 +1059,30 @@ export default function BookingPage() {
             const isToday = selectedDateObj &&
                 selectedDateObj.toDateString() === currentTime.toDateString();
 
+            // FOR TESTING: Use 17:07 as current time to test filtering
+            const testCurrentTime = new Date();
+            testCurrentTime.setHours(17, 7, 0, 0);
+
+            console.log(`🔍 Checking slot ${slot}:`, {
+                isToday,
+                selectedDate: selectedDateObj?.toDateString(),
+                currentDate: currentTime.toDateString(),
+                currentTime: `${testCurrentTime.getHours()}:${String(testCurrentTime.getMinutes()).padStart(2, '0')}`,
+                startMinutes,
+                totalDuration
+            });
+
             // If it's today, filter out past times (except selected time)
             if (isToday && slot !== selectedTime) {
-                const currentHours = currentTime.getHours();
-                const currentMinutes = currentTime.getMinutes();
+                const currentHours = testCurrentTime.getHours(); // Use test time
+                const currentMinutes = testCurrentTime.getMinutes(); // Use test time
                 const currentTimeInMinutes = currentHours * 60 + currentMinutes;
 
-                if (startMinutes <= currentTimeInMinutes) {
+                // Require at least 30 minutes before the slot time
+                const minutesUntilSlot = startMinutes - currentTimeInMinutes;
+                console.log(`⏰ Today filtering for ${slot}: ${minutesUntilSlot} minutes until slot (need 30)`);
+                if (minutesUntilSlot < 30) {
+                    console.log(`❌ Filtered out slot ${slot}: only ${minutesUntilSlot} minutes away (need 30 min)`);
                     return false;
                 }
             }
@@ -1066,20 +1139,51 @@ export default function BookingPage() {
         return availableTimes;
     };
 
+    // Memoize available start times with proper dependencies
+    const availableStartTimes = useMemo(() => {
+        const now = new Date();
+        console.log(`🔄 Recalculating available start times at ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`);
+        console.log('📅 Selected date:', selectedDateObj?.toDateString());
+        console.log('📅 Current date:', currentTime.toDateString());
+        console.log('🎯 Selected services:', selectedServices);
+        console.log('⏰ Total duration:', getTotalDuration());
+
+        const result = getAvailableStartTimes();
+        console.log('✅ Available times:', result);
+        return result;
+    }, [timeSlots, selectedServices, selectedDateObj, selectedBarber, selectedTime, currentTime, existingBookings, barberAvailabilities]);
+
+    // Memoize available time slots with proper dependencies  
+    const availableTimeSlots = useMemo(() => {
+        console.log('🔄 Recalculating available time slots...');
+        return getAvailableTimeSlots();
+    }, [timeSlots, selectedServices, selectedDateObj, selectedBarber, selectedTime, currentTime, existingBookings]);
+
     const handleBooking = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Start performance timing
+        const startTime = performance.now();
+        console.log('⏱️ Booking process started');
+
+        // Set loading state immediately
+        setIsBookingInProgress(true);
+
         if (!selectedDateObj || !selectedTime) {
             alert('لطفاً تاریخ و ساعت را انتخاب کنید');
+            setIsBookingInProgress(false);
             return;
         }
 
         if (selectedServices.length === 0) {
             alert('لطفاً حداقل یک سرویس را انتخاب کنید');
+            setIsBookingInProgress(false);
             return;
         }
 
         if (!selectedBarber) {
             alert('لطفاً آرایشگر مورد نظر را انتخاب کنید');
+            setIsBookingInProgress(false);
             return;
         }
 
@@ -1095,6 +1199,9 @@ export default function BookingPage() {
             String(selectedDateObj.getMonth() + 1).padStart(2, '0') + '-' +
             String(selectedDateObj.getDate()).padStart(2, '0');
 
+        // Calculate Persian date once and cache it
+        const persianDate = formatPersianDateSync(selectedDateObj);
+
         const apiBooking = {
             user_id: userData?.phone || 'unknown',
             date_key: localDateKey,
@@ -1105,14 +1212,14 @@ export default function BookingPage() {
             total_duration: totalDuration,
             user_name: userData?.name || userData?.first_name || userData?.username || userData?.phone || 'کاربر',
             user_phone: userData?.phone || '',
-            persian_date: formatPersianDateSync(selectedDateObj)
+            persian_date: persianDate
         };
 
         // Create booking object for localStorage (with legacy field names)
         const localBooking = {
             id: Date.now().toString(),
             dateKey: localDateKey,
-            date: formatPersianDateSync(selectedDateObj),
+            date: persianDate, // Use cached Persian date
             startTime: selectedTime,
             endTime: endTime,
             services: selectedServices,
@@ -1184,35 +1291,35 @@ export default function BookingPage() {
                     console.log('✅ Booking saved to database successfully:', result);
                     bookingSavedToDatabase = true;
 
-                    // Trigger activity refresh for barber dashboard
-                    try {
-                        // Send custom event to trigger activity refresh
-                        window.dispatchEvent(new CustomEvent('bookingCreated', {
-                            detail: { barberId: selectedBarber, bookingId: result._id }
-                        }));
+                    // Trigger activity refresh for barber dashboard (non-blocking)
+                    setTimeout(() => {
+                        try {
+                            // Send custom event to trigger activity refresh
+                            window.dispatchEvent(new CustomEvent('bookingCreated', {
+                                detail: { barberId: selectedBarber, bookingId: result._id }
+                            }));
 
-                        // Also set localStorage trigger for cross-tab updates
-                        localStorage.setItem('newBookingTrigger', Date.now().toString());
-                        console.log('🔔 Activity refresh triggered for barber:', selectedBarber);
-                    } catch (triggerError) {
-                        console.log('⚠️ Failed to trigger activity refresh:', triggerError);
-                    }
+                            // Also set localStorage trigger for cross-tab updates
+                            localStorage.setItem('newBookingTrigger', Date.now().toString());
+                            console.log('🔔 Activity refresh triggered for barber:', selectedBarber);
+                        } catch (triggerError) {
+                            console.log('⚠️ Failed to trigger activity refresh:', triggerError);
+                        }
+                    }, 100);
 
-                    // Send notification to barber
-                    try {
-                        await fetch('/api/bookings/notify', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                barber: selectedBarber,
-                                booking: apiBooking
-                            })
-                        });
-                    } catch (notifyError) {
+                    // Send notification to barber (non-blocking, don't wait)
+                    fetch('/api/bookings/notify', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            barber: selectedBarber,
+                            booking: apiBooking
+                        })
+                    }).catch(notifyError => {
                         console.error('Failed to send notification:', notifyError);
-                    }
+                    });
                 } else {
                     const errorData = await response.json();
                     console.error('❌ Failed to save booking to database.');
@@ -1229,17 +1336,26 @@ export default function BookingPage() {
             console.error('❌ Error message:', error?.message);
             console.error('❌ Error stack:', error?.stack);
             alert(isEditMode ? `خطا در تغییر رزرو\n${error?.message || ''}` : `رزرو موفقیت آمیز نبود\n${error?.message || ''}`);
+            // Reset loading state on error
+            setIsBookingInProgress(false);
+            return; // Exit early on error
         }
 
         // Only show confirmation if booking was successfully saved to database
         if (bookingSavedToDatabase) {
-            // Reload bookings from database to get latest state
-            await loadBookingsFromDatabase();
+            // Add the new booking to existing bookings locally (faster than reloading from database)
+            const newBooking = {
+                ...apiBooking,
+                _id: Date.now().toString(), // Temporary ID
+                status: 'pending'
+            };
+            setExistingBookings(prev => [...prev, newBooking]);
+            console.log('📝 Added booking to local state for immediate UI update');
 
             // Store confirmation details without showing alert
             setBookingConfirmation({
                 barber: selectedBarber,
-                date: formatPersianDateSync(selectedDateObj),
+                date: persianDate, // Use cached Persian date
                 time: selectedTime,
                 endTime: minutesToTime(timeToMinutes(selectedTime) + getTotalDuration()),
                 services: selectedServices,
@@ -1250,6 +1366,13 @@ export default function BookingPage() {
         } else {
             console.error('❌ Booking was not saved to database, not showing confirmation');
         }
+
+        // Reset loading state
+        setIsBookingInProgress(false);
+
+        // Log performance timing
+        const performanceEndTime = performance.now();
+        console.log(`⏱️ Booking process completed in ${Math.round(performanceEndTime - startTime)}ms`);
     };
 
     // Show loading screen while checking authentication
@@ -1469,7 +1592,15 @@ export default function BookingPage() {
                                                 <button
                                                     key={index}
                                                     type="button"
-                                                    onClick={() => setSelectedDateObj(date)}
+                                                    onClick={() => {
+                                                        console.log(`🗓️ Date button clicked: ${label}`);
+                                                        if (index === 0) { // Today button
+                                                            console.log('🗓️ Today button clicked!');
+                                                            setCurrentTime(new Date()); // Force time update
+                                                            console.log('⏰ Time set to:', new Date().getHours() + ':' + String(new Date().getMinutes()).padStart(2, '0'));
+                                                        }
+                                                        setSelectedDateObj(date);
+                                                    }}
                                                     className={`p-3 rounded-xl text-xs text-center transition-all ${isSelected
                                                         ? 'bg-white/30 text-white border-white/50 shadow-lg'
                                                         : 'bg-white/5 text-white/60 border-white/10'
@@ -1691,7 +1822,7 @@ export default function BookingPage() {
                                                 transition: 'transform 0.3s ease'
                                             }}
                                         >
-                                            {getAvailableStartTimes().slice(0, 3).map((time) => (
+                                            {availableStartTimes.slice(0, 3).map((time) => (
                                                 <button
                                                     key={time}
                                                     type="button"
@@ -1707,7 +1838,7 @@ export default function BookingPage() {
                                         </div>
 
                                         {/* Toggle button for more rows */}
-                                        {getAvailableStartTimes().length > 3 && (
+                                        {availableStartTimes.length > 3 && (
                                             <button
                                                 type="button"
                                                 onClick={() => setShowAllTimeSlots(!showAllTimeSlots)}
@@ -1729,7 +1860,7 @@ export default function BookingPage() {
                                         )}
 
                                         {/* Additional rows - Collapsible */}
-                                        {showAllTimeSlots && getAvailableStartTimes().length > 3 && (
+                                        {showAllTimeSlots && availableStartTimes.length > 3 && (
                                             <div
                                                 className="grid grid-cols-3 gap-2"
                                                 style={{
@@ -1738,7 +1869,7 @@ export default function BookingPage() {
                                                     gap: '8px'
                                                 }}
                                             >
-                                                {getAvailableStartTimes().slice(3).map((time) => (
+                                                {availableStartTimes.slice(3).map((time) => (
                                                     <button
                                                         key={time}
                                                         type="button"
@@ -1755,7 +1886,7 @@ export default function BookingPage() {
                                         )}
 
                                         {/* Show exact booking times */}
-                                        {selectedServices.length > 0 && getAvailableStartTimes().length > 0 && (
+                                        {selectedServices.length > 0 && availableStartTimes.length > 0 && (
                                             <p
                                                 className="mt-2 text-xs text-white/70 text-center"
                                                 style={{
@@ -1765,12 +1896,12 @@ export default function BookingPage() {
                                                     textAlign: 'center'
                                                 }}
                                             >
-                                                {getAvailableStartTimes().length} زمان آزاد موجود است
+                                                {availableStartTimes.length} زمان آزاد موجود است
                                             </p>
                                         )}
 
                                         {/* Show no available times message */}
-                                        {selectedServices.length > 0 && getAvailableStartTimes().length === 0 && (
+                                        {selectedServices.length > 0 && availableStartTimes.length === 0 && (
                                             <p
                                                 className="mt-2 text-xs text-red-600 text-center"
                                                 style={{
@@ -1825,13 +1956,18 @@ export default function BookingPage() {
 
                             <button
                                 type="submit"
-                                disabled={!selectedBarber || !selectedDateObj || selectedServices.length === 0 || (!selectedTime && !selectedServices.includes('حالت'))}
-                                className={`w-full p-4 rounded-2xl font-medium backdrop-blur-xl border transition-all duration-300 shadow-xl ${selectedBarber && selectedDateObj && selectedServices.length > 0 && (selectedTime || selectedServices.includes('حالت'))
+                                disabled={!selectedBarber || !selectedDateObj || selectedServices.length === 0 || (!selectedTime && !selectedServices.includes('حالت')) || isBookingInProgress}
+                                className={`w-full p-4 rounded-2xl font-medium backdrop-blur-xl border transition-all duration-300 shadow-xl ${selectedBarber && selectedDateObj && selectedServices.length > 0 && (selectedTime || selectedServices.includes('حالت')) && !isBookingInProgress
                                     ? 'bg-white/10 border-white/20 hover:bg-white/20 text-white cursor-pointer'
                                     : 'bg-white/5 border-white/10 text-white/50 cursor-not-allowed'
                                     }`}
                             >
-                                {selectedBarber && selectedDateObj && selectedServices.length > 0 && (selectedTime || selectedServices.includes('حالت'))
+                                {isBookingInProgress ? (
+                                    <div className="flex items-center justify-center gap-3">
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                        <span>در حال ثبت رزرو...</span>
+                                    </div>
+                                ) : selectedBarber && selectedDateObj && selectedServices.length > 0 && (selectedTime || selectedServices.includes('حالت'))
                                     ? 'ثبت رزرو'
                                     : 'لطفاً تمام مراحل را تکمیل کنید'
                                 }

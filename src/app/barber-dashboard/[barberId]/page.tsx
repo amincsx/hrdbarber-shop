@@ -1506,7 +1506,6 @@ export default function BarberDashboard() {
                                                     <div className="grid grid-cols-1 gap-2 sm:gap-3">
                                                         <div>
                                                             <p className="text-white font-medium">👤 {booking.user_name}</p>
-                                                            <p className="text-white/70 text-sm">📞 {booking.user_phone}</p>
                                                         </div>
                                                         <div className="grid grid-cols-2 gap-3 text-sm">
                                                             <div>
@@ -1625,10 +1624,6 @@ export default function BarberDashboard() {
                                                         <p className="text-white font-medium">👤 {booking.user_name}</p>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-3 text-sm">
-                                                        <div>
-                                                            <span className="text-white/70">📞 تلفن:</span>
-                                                            <p className="text-white font-mono">{booking.user_phone}</p>
-                                                        </div>
                                                         <div>
                                                             <span className="text-white/70">⏰ ساعت:</span>
                                                             <p className="text-blue-300 font-bold">{formatTime(booking.start_time)} - {formatTime(booking.end_time)}</p>
@@ -1783,11 +1778,7 @@ export default function BarberDashboard() {
                                                     <div className="mt-4 pt-4 border-t border-white/10 bg-white/5 rounded-lg p-4">
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                                             <div>
-                                                                <span className="text-white/70 text-sm">📞 تلفن:</span>
-                                                                <p className="text-white font-mono">{booking.user_phone}</p>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-white/70 text-sm">🕒 مدت:</span>
+                                                                <span className="text-white/70 text-sm"> مدت:</span>
                                                                 <p className="text-white">{booking.total_duration} دقیقه</p>
                                                             </div>
                                                         </div>
@@ -1912,11 +1903,7 @@ export default function BarberDashboard() {
                                                     <div className="mt-4 pt-4 border-t border-white/10 bg-white/5 rounded-lg p-4">
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                                             <div>
-                                                                <span className="text-white/70 text-sm">📞 تلفن:</span>
-                                                                <p className="text-white font-mono">{booking.user_phone}</p>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-white/70 text-sm">🕒 مدت:</span>
+                                                                <span className="text-white/70 text-sm"> مدت:</span>
                                                                 <p className="text-white">{booking.total_duration} دقیقه</p>
                                                             </div>
                                                         </div>
@@ -2058,7 +2045,6 @@ export default function BarberDashboard() {
                                                                     👤 اطلاعات مشتری
                                                                 </h3>
                                                                 <p className="text-glass"><strong>نام:</strong> {booking.user_name}</p>
-                                                                <p className="text-glass"><strong>📞 تلفن:</strong> {booking.user_phone}</p>
                                                             </div>
                                                             <div>
                                                                 <h3 className="font-semibold text-glass mb-2 flex items-center">

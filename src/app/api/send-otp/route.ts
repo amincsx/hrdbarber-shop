@@ -30,41 +30,61 @@ export async function POST(request: NextRequest) {
             console.log('✅ Found barber for phone:', phone, '→', barber.name);
         }
 
-        // If message is provided, send custom SMS, otherwise send OTP
+        // If message is provided, try to send custom SMS
         if (message) {
-            // Send custom SMS using Melipayamak Simple Send API
-            console.log('📱 Attempting to send SMS to:', phone);
+            console.log('📱 Attempting to send custom SMS to:', phone);
             console.log('📝 Message:', message);
 
-            const response = await fetch('https://console.melipayamak.com/api/send/simple/25085e67e97342aa886f9fdf12117341', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    from: '50002710054227',
-                    to: phone,
-                    text: message
-                })
-            });
+            try {
+                // First try the Simple API
+                console.log('🔄 Trying Simple API...');
+                const simpleResponse = await fetch('https://console.melipayamak.com/api/send/simple/25085e67e97342aa886f9fdf12117341', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        from: '50002710054227',
+                        to: phone,
+                        text: message
+                    })
+                });
 
-            const result = await response.json();
-            console.log('SMS API Response:', result);
+                const simpleResult = await simpleResponse.json();
+                console.log('📱 Simple API Response:', simpleResult);
 
-            if (response.ok && result.recId) {
-                console.log('✅ SMS sent successfully, recId:', result.recId);
-                return NextResponse.json({
-                    success: true,
-                    message: 'پیامک ارسال شد',
-                    data: result
-                }, { status: 200 });
-            } else {
-                console.error('SMS Error Response:', result);
+                // Check if Simple API worked
+                if (simpleResponse.ok && simpleResult.recId) {
+                    console.log('✅ SMS sent successfully via Simple API, recId:', simpleResult.recId);
+                    return NextResponse.json({
+                        success: true,
+                        message: 'پیامک ارسال شد',
+                        data: simpleResult
+                    }, { status: 200 });
+                } else {
+                    console.warn('⚠️ Simple API failed, trying fallback method...');
+
+                    // For now, return success to prevent booking failures
+                    // The SMS functionality needs Melipayamak account configuration for custom messages
+                    console.log('📝 SMS service temporarily unavailable for custom messages');
+                    console.log('📋 Booking will proceed successfully, SMS notification disabled');
+
+                    return NextResponse.json({
+                        success: false, // Set to false so calling code knows SMS failed
+                        message: 'پیامک موقتاً غیرفعال است',
+                        details: 'Melipayamak Simple API requires account configuration for custom messages'
+                    }, { status: 200 }); // Return 200 so booking doesn't fail
+                }
+            } catch (smsError) {
+                console.error('❌ Custom SMS sending failed:', smsError.message);
+
+                // Final fallback: Return success but log the issue
+                console.log('📝 SMS service temporarily unavailable, logging for manual follow-up');
                 return NextResponse.json({
                     success: false,
-                    error: 'خطا در ارسال پیامک',
-                    details: result
-                }, { status: 500 });
+                    message: 'خدمات پیامک موقتاً غیرفعال است',
+                    details: 'Custom SMS requires manual setup - booking status updated successfully'
+                }, { status: 200 }); // Return 200 so booking update doesn't fail
             }
         } else {
             // Generate 6-digit OTP
@@ -75,9 +95,7 @@ export async function POST(request: NextRequest) {
             // For barber signup, don't use local fallback - only send real SMS
             if (context === 'barber-register') {
                 try {
-                    // Create AbortController for custom timeout
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+                    console.log('📱 Sending barber register SMS via Melipayamak');
 
                     const response = await fetch('https://console.melipayamak.com/api/send/otp/25085e67e97342aa886f9fdf12117341', {
                         method: 'POST',
@@ -88,11 +106,8 @@ export async function POST(request: NextRequest) {
                             to: phone,
                             bodyId: 194445,
                             args: [otp]
-                        }),
-                        signal: controller.signal
+                        })
                     });
-
-                    clearTimeout(timeoutId);
 
                     if (!response.ok) {
                         console.error('❌ Melipayamak API Error:', response.status, response.statusText);
@@ -131,9 +146,7 @@ export async function POST(request: NextRequest) {
 
             // For other contexts (user signup, password reset), allow local OTP fallback
             try {
-                // Create AbortController for custom timeout
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+                console.log('📱 Attempting SMS via Melipayamak with fallback');
 
                 const response = await fetch('https://console.melipayamak.com/api/send/otp/25085e67e97342aa886f9fdf12117341', {
                     method: 'POST',
@@ -144,15 +157,13 @@ export async function POST(request: NextRequest) {
                         to: phone,
                         bodyId: 194445,
                         args: [otp]
-                    }),
-                    signal: controller.signal
+                    })
                 });
 
-                clearTimeout(timeoutId);
                 const result = await response.json();
                 console.log('✅ Melipayamak SMS API Response:', result);
 
-                if (result.status === 'ارسال موفق بود' || result.code) {
+                if (response.ok && (result.status === 'ارسال موفق بود' || result.code)) {
                     const actualOtpSent = result.code || otp;
                     console.log('📤 SMS sent successfully! OTP:', actualOtpSent);
                     return NextResponse.json({
@@ -160,6 +171,8 @@ export async function POST(request: NextRequest) {
                         message: 'کد تایید به شماره شما ارسال شد',
                         otp: actualOtpSent
                     }, { status: 200 });
+                } else {
+                    throw new Error('Melipayamak API rejected request');
                 }
             } catch (smsError) {
                 console.warn('⚠️ Melipayamak SMS failed, using local OTP:', smsError.message);

@@ -217,6 +217,17 @@ async function PUT(request, { params }) {
 
         console.log('🔍 Found booking:', booking ? 'yes' : 'no');
 
+        if (booking) {
+            console.log('🔍 Booking details for SMS check:', {
+                id: booking._id || booking.id,
+                user_phone: booking.user_phone,
+                user_id: booking.user_id,
+                barber: booking.barber,
+                services: booking.services,
+                status: booking.status
+            });
+        }
+
         if (!booking) {
             return NextResponse.json(
                 { error: 'رزرو یافت نشد' },
@@ -306,25 +317,57 @@ async function PUT(request, { params }) {
 
                     // Send SMS notification if phone number exists
                     if (booking.user_phone && booking.user_phone.length >= 10) {
+                        console.log(`✅ SMS conditions met - sending to phone: ${booking.user_phone}`);
                         try {
+                            console.log(`📱 Sending SMS confirmation to phone: ${booking.user_phone}`);
                             const jalaliDate = convertToJalaliDateString(booking.date_key);
-                            const smsResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/send-otp`, {
+                            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+                            const smsUrl = `${baseUrl}/api/send-otp`;
+
+                            console.log(`📱 SMS API URL: ${smsUrl}`);
+
+                            const smsMessage = `✅ رزرو شما تایید شد!\n\n👤 آرایشگر: ${booking.barber}\n📅 تاریخ: ${jalaliDate}\n🕐 ساعت: ${booking.start_time}\n✂️ خدمات: ${booking.services.join(', ')}\n\nبا تشکر از انتخاب شما`;
+                            console.log(`📝 SMS message: ${smsMessage}`);
+
+                            const smsResponse = await fetch(smsUrl, {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
                                 },
                                 body: JSON.stringify({
                                     phone: booking.user_phone,
-                                    message: `✅ رزرو شما تایید شد!\n\n👤 آرایشگر: ${booking.barber}\n📅 تاریخ: ${jalaliDate}\n🕐 ساعت: ${booking.start_time}\n✂️ خدمات: ${booking.services.join(', ')}\n\nبا تشکر از انتخاب شما`
+                                    message: smsMessage
                                 })
                             });
 
-                            if (smsResponse.ok) {
-                                console.log('✅ SMS confirmation sent to user');
+                            const smsResult = await smsResponse.json();
+                            console.log('📱 SMS API Response:', {
+                                status: smsResponse.status,
+                                ok: smsResponse.ok,
+                                result: smsResult
+                            });
+
+                            if (smsResponse.ok && smsResult.success) {
+                                console.log('✅ SMS confirmation sent to user successfully');
+                            } else {
+                                console.warn('⚠️ SMS confirmation not sent:', smsResult.message || 'SMS service unavailable');
+                                // Continue anyway - don't fail the booking update because of SMS
+                                console.log('✅ Booking status updated (SMS notification temporarily disabled)');
                             }
                         } catch (smsError) {
-                            console.warn('⚠️ SMS notification failed (non-critical):', smsError.message);
+                            console.error('❌ SMS notification error:', {
+                                message: smsError.message,
+                                stack: smsError.stack
+                            });
                         }
+                    } else {
+                        console.warn('❌ SMS NOT sent for CONFIRMATION - missing/invalid phone number:', {
+                            user_phone: booking.user_phone,
+                            user_id: booking.user_id,
+                            phone_length: booking.user_phone?.length,
+                            has_phone: !!booking.user_phone,
+                            booking_keys: Object.keys(booking)
+                        });
                     }
 
                 } catch (notifError) {
@@ -341,25 +384,56 @@ async function PUT(request, { params }) {
                     // Send SMS notification if phone number exists
                     if (booking.user_phone && booking.user_phone.length >= 10) {
                         try {
+                            console.log(`📱 Sending SMS cancellation to phone: ${booking.user_phone}`);
                             const jalaliDate = convertToJalaliDateString(booking.date_key);
                             const cancellationReason = notes ? `\n\n📝 دلیل: ${notes}` : '';
-                            const smsResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/send-otp`, {
+                            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+                            const smsUrl = `${baseUrl}/api/send-otp`;
+
+                            console.log(`📱 SMS API URL: ${smsUrl}`);
+
+                            const smsMessage = `❌ متاسفانه رزرو شما رد شد\n\n👤 آرایشگر: ${booking.barber}\n📅 تاریخ: ${jalaliDate}\n🕐 ساعت: ${booking.start_time}\n✂️ خدمات: ${booking.services.join(', ')}${cancellationReason}\n\nلطفا زمان دیگری انتخاب کنید`;
+                            console.log(`📝 SMS message: ${smsMessage}`);
+
+                            const smsResponse = await fetch(smsUrl, {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
                                 },
                                 body: JSON.stringify({
                                     phone: booking.user_phone,
-                                    message: `❌ متاسفانه رزرو شما رد شد\n\n👤 آرایشگر: ${booking.barber}\n📅 تاریخ: ${jalaliDate}\n🕐 ساعت: ${booking.start_time}\n✂️ خدمات: ${booking.services.join(', ')}${cancellationReason}\n\nلطفا زمان دیگری انتخاب کنید`
+                                    message: smsMessage
                                 })
                             });
 
-                            if (smsResponse.ok) {
-                                console.log('✅ SMS cancellation sent to user');
+                            const smsResult = await smsResponse.json();
+                            console.log('📱 SMS API Response:', {
+                                status: smsResponse.status,
+                                ok: smsResponse.ok,
+                                result: smsResult
+                            });
+
+                            if (smsResponse.ok && smsResult.success) {
+                                console.log('✅ SMS cancellation sent to user successfully');
+                            } else {
+                                console.warn('⚠️ SMS cancellation not sent:', smsResult.message || 'SMS service unavailable');
+                                // Continue anyway - don't fail the booking update because of SMS
+                                console.log('✅ Booking status updated (SMS notification temporarily disabled)');
                             }
                         } catch (smsError) {
-                            console.warn('⚠️ SMS notification failed (non-critical):', smsError.message);
+                            console.error('❌ SMS notification error:', {
+                                message: smsError.message,
+                                stack: smsError.stack
+                            });
                         }
+                    } else {
+                        console.warn('❌ SMS NOT sent for CANCELLATION - missing/invalid phone number:', {
+                            user_phone: booking.user_phone,
+                            user_id: booking.user_id,
+                            phone_length: booking.user_phone?.length,
+                            has_phone: !!booking.user_phone,
+                            booking_keys: Object.keys(booking)
+                        });
                     }
 
                 } catch (notifError) {

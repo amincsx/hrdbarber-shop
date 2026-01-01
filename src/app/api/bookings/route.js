@@ -84,86 +84,68 @@ async function POST(request) {
             console.log('✅ Booking saved successfully to MongoDB');
             console.log('🆔 Booking ID:', newBooking._id?.toString());
 
-            // Log activity for barber
-            try {
-                console.log('🔍 Attempting to log activity for barber:', barber);
-                // Find barber user for activity logging
-                const barberUser = await MongoDatabase.getUserByUsername(barber) ||
-                    (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === barber);
-
-                console.log('🔍 Found barber user for activity:', barberUser ? `${barberUser.username} (${barberUser._id})` : 'not found');
-
-                if (barberUser?._id) {
-                    const activityData = {
-                        barber_id: barberUser._id,
-                        customer_name: user_name || 'کاربر',
-                        customer_phone: user_phone || user_id,
-                        action: 'booking_created',
-                        booking_id: newBooking._id,
-                        details: `رزرو جدید برای ${services.join(', ')} در ${start_time} - ${end_time}`
-                    };
-
-                    console.log('📝 Logging activity with data:', JSON.stringify(activityData, null, 2));
-
-                    const savedActivity = await MongoDatabase.logBarberActivity(activityData);
-                    console.log('✅ Activity logged successfully for barber:', barberUser.username, 'Activity ID:', savedActivity._id);
-
-                    // Log the exact timestamp for debugging
-                    console.log('🕰️ Activity timestamp details:', {
-                        createdAt: savedActivity.createdAt,
-                        created_at: savedActivity.created_at,
-                        objectIdTime: savedActivity._id.getTimestamp()
-                    });
-                } else {
-                    console.warn('⚠️ Could not find barber user for activity logging:', barber);
-                    console.warn('⚠️ Available barber users:', (await MongoDatabase.getUsersByRole('barber')).map(u => `${u.name} (${u.username})`));
-                }
-            } catch (activityError) {
-                console.error('❌ Failed to log activity:', activityError.message, activityError.stack);
-            }
-
-            // Send push notification to the barber about new pending booking
-            try {
-                // Get barber username for URL
-                const barberUser = await MongoDatabase.getUserByUsername(barber) ||
-                    (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === barber);
-                const barberUsername = barberUser?.username || barber;
-
-                const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/barber/notify`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        barberId: barber,
-                        title: '⏳ درخواست رزرو جدید!',
-                        body: `مشتری: ${user_name || 'کاربر'}\nخدمات: ${services.join(', ')}\nزمان: ${start_time}\n\nلطفاً تایید یا رد کنید`,
-                        data: {
-                            bookingId: newBooking.id || newBooking._id,
-                            barberId: barberUsername,
-                            date: date_key,
-                            time: start_time,
-                            status: 'pending',
-                            url: `/barber-dashboard/${encodeURIComponent(barberUsername)}?notification=1`
-                        }
-                    })
-                });
-
-                if (notificationResponse.ok) {
-                    console.log('✅ Notification sent to barber:', barber);
-                } else {
-                    console.log('⚠️ Failed to send notification to barber');
-                }
-            } catch (notifError) {
-                console.error('⚠️ Notification error (non-critical):', notifError);
-                // Don't fail the booking if notification fails
-            }
-
-            return NextResponse.json({
+            // Return success immediately, then do non-critical operations in background
+            const responsePromise = NextResponse.json({
                 message: 'رزرو با موفقیت ثبت شد',
                 booking: newBooking,
-                source: 'mongodb'
+                _id: newBooking._id?.toString()
             });
+
+            // Do activity logging and notifications in background (non-blocking)
+            setImmediate(async () => {
+                // Log activity for barber (background)
+                try {
+                    console.log('🔍 Logging barber activity in background...');
+                    const barberUser = await MongoDatabase.getUserByUsername(barber) ||
+                        (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === barber);
+
+                    if (barberUser?._id) {
+                        const activityData = {
+                            barber_id: barberUser._id,
+                            customer_name: user_name || 'کاربر',
+                            customer_phone: user_phone || user_id,
+                            action: 'booking_created',
+                            booking_id: newBooking._id,
+                            details: `رزرو جدید برای ${services.join(', ')} در ${start_time} - ${end_time}`
+                        };
+
+                        await MongoDatabase.logBarberActivity(activityData);
+                        console.log('✅ Background activity logged for barber:', barberUser.username);
+                    }
+                } catch (activityError) {
+                    console.error('❌ Background activity logging failed:', activityError.message);
+                }
+
+                // Send push notification in background (background)
+                try {
+                    console.log('📱 Sending push notification in background...');
+                    const barberUser = await MongoDatabase.getUserByUsername(barber) ||
+                        (await MongoDatabase.getUsersByRole('barber')).find(u => u.name === barber);
+                    const barberUsername = barberUser?.username || barber;
+
+                    fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/barber/notify`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            barberId: barber,
+                            title: '⏳ درخواست رزرو جدید!',
+                            body: `مشتری: ${user_name || 'کاربر'}\nخدمات: ${services.join(', ')}\nزمان: ${start_time}\n\nلطفاً تایید یا رد کنید`,
+                            data: {
+                                bookingId: newBooking.id || newBooking._id,
+                                barberId: barberUsername,
+                                date: date_key,
+                                time: start_time,
+                                status: 'pending',
+                                url: `/barber-dashboard/${encodeURIComponent(barberUsername)}?notification=1`
+                            }
+                        })
+                    }).catch(notifError => console.error('❌ Background notification failed:', notifError.message));
+                } catch (backgroundError) {
+                    console.error('❌ Background processing error:', backgroundError.message);
+                }
+            });
+
+            return responsePromise;
         } else {
             throw new Error('Failed to save booking');
         }
